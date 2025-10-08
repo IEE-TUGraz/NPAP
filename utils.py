@@ -1,4 +1,6 @@
 import functools
+import hashlib
+import json
 
 import networkx as nx
 
@@ -48,3 +50,32 @@ def validate_required_attributes(func):
         return func(self, graph, n_clusters, **kwargs)
 
     return wrapper
+
+
+def compute_graph_hash(graph: nx.Graph) -> str:
+    """
+    Compute a hash of the graph structure for validation
+
+    This creates a fingerprint of the graph based on:
+    - Number of nodes
+    - Number of edges
+    - Node IDs (sorted)
+
+    Used to validate that a partition matches the graph it was created from.
+
+    Args:
+        graph: NetworkX graph
+
+    Returns:
+        Hash string
+    """
+    # Create a deterministic representation
+    graph_data = {
+        'n_nodes': len(list(graph.nodes())),
+        'n_edges': len(graph.edges()),
+        'nodes': sorted([str(n) for n in graph.nodes()]),
+    }
+
+    # Convert to JSON and hash
+    json_str = json.dumps(graph_data, sort_keys=True)
+    return hashlib.sha256(json_str.encode()).hexdigest()[:16]
