@@ -5,7 +5,7 @@ import networkx as nx
 
 from ..exceptions import AggregationError
 from ..interfaces import (
-    TopologyStrategy, NodePropertyStrategy
+    TopologyStrategy, NodePropertyStrategy, EdgePropertyStrategy
 )
 
 
@@ -200,5 +200,68 @@ class FirstNodeStrategy(NodePropertyStrategy):
         except Exception as e:
             raise AggregationError(
                 f"Failed to get first node property '{property_name}': {e}",
+                strategy="first"
+            ) from e
+
+
+# ============================================================================
+# EDGE PROPERTY STRATEGIES - Statistical aggregation for edge properties
+# ============================================================================
+
+class SumEdgeStrategy(EdgePropertyStrategy):
+    """Sum numerical properties across edges"""
+
+    def aggregate_property(self, original_edges: List[Dict[str, Any]], property_name: str) -> Any:
+        """Sum property values across edges"""
+        try:
+            values = []
+            for edge_data in original_edges:
+                if property_name in edge_data:
+                    value = edge_data[property_name]
+                    if isinstance(value, (int, float)):
+                        values.append(value)
+
+            return sum(values) if values else 0
+        except Exception as e:
+            raise AggregationError(
+                f"Failed to sum edge property '{property_name}': {e}",
+                strategy="sum"
+            ) from e
+
+
+class AverageEdgeStrategy(EdgePropertyStrategy):
+    """Average numerical properties across edges"""
+
+    def aggregate_property(self, original_edges: List[Dict[str, Any]], property_name: str) -> Any:
+        """Average property values across edges"""
+        try:
+            values = []
+            for edge_data in original_edges:
+                if property_name in edge_data:
+                    value = edge_data[property_name]
+                    if isinstance(value, (int, float)):
+                        values.append(value)
+
+            return sum(values) / len(values) if values else 0
+        except Exception as e:
+            raise AggregationError(
+                f"Failed to average edge property '{property_name}': {e}",
+                strategy="average"
+            ) from e
+
+
+class FirstEdgeStrategy(EdgePropertyStrategy):
+    """Take the first available value for non-numerical properties"""
+
+    def aggregate_property(self, original_edges: List[Dict[str, Any]], property_name: str) -> Any:
+        """Take first available property value"""
+        try:
+            for edge_data in original_edges:
+                if property_name in edge_data:
+                    return edge_data[property_name]
+            return None
+        except Exception as e:
+            raise AggregationError(
+                f"Failed to get first edge property '{property_name}': {e}",
                 strategy="first"
             ) from e
