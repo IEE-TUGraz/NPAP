@@ -1,9 +1,9 @@
-from typing import Dict
+from typing import Any, Dict, List
 
 import networkx as nx
 
 from .interfaces import (
-    DataLoadingStrategy
+    DataLoadingStrategy, PartitioningStrategy
 )
 
 
@@ -35,3 +35,40 @@ class InputDataManager:
 
         self._strategies['csv_files'] = CSVFilesStrategy()
         self._strategies['networkx_direct'] = NetworkXDirectStrategy()
+
+
+class PartitioningManager:
+    """Manages partitioning strategies"""
+
+    def __init__(self):
+        self._strategies: Dict[str, PartitioningStrategy] = {}
+        self._register_default_strategies()
+
+    def register_strategy(self, name: str, strategy: PartitioningStrategy):
+        """Register a new partitioning strategy"""
+        self._strategies[name] = strategy
+
+    def partition(self, graph: nx.Graph, method: str, n_clusters: int, **kwargs) -> Dict[int, List[Any]]:
+        """Execute partitioning using specified strategy"""
+        if method not in self._strategies:
+            available = ', '.join(self._strategies.keys())
+            raise ValueError(f"Unknown partitioning strategy: {method}. Available: {available}")
+
+        return self._strategies[method].partition(graph, n_clusters, **kwargs)
+
+    def _register_default_strategies(self):
+        """Register built-in partitioning strategies"""
+        from .partitioning.geographical import GeographicalPartitioning
+
+        self._strategies['geographical_kmeans'] = GeographicalPartitioning(
+            algorithm='kmeans',
+            distance_metric='euclidean'
+        )
+        self._strategies['geographical_kmedoids_euclidean'] = GeographicalPartitioning(  # TODO
+            algorithm='kmedoids',
+            distance_metric='euclidean'
+        )
+        self._strategies['geographical_kmedoids_haversine'] = GeographicalPartitioning(  # TODO
+            algorithm='kmedoids',
+            distance_metric='haversine'
+        )
