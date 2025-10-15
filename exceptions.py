@@ -71,3 +71,11 @@ class StrategyNotFoundError(NPAPError):
         self.strategy_name = strategy_name
         self.strategy_type = strategy_type
         self.available_strategies = available_strategies or []
+
+
+class VisualizationError(NPAPError):
+    """Raised when visualization fails"""
+
+    def __init__(self, message: str, details: Dict[str, Any] = None):
+        super().__init__(message)
+        self.details = details or {}

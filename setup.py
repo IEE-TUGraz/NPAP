@@ -11,6 +11,7 @@ setup(
         "networkx",
         "numpy",
         "pandas",
+        "plotly",
         "scikit-learn",
     ],
 )

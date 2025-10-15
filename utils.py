@@ -99,3 +99,74 @@ def validate_graph_compatibility(partition_result, current_graph_hash: str):
             expected_hash=partition_result.original_graph_hash,
             actual_hash=current_graph_hash
         )
+
+
+def plot_network_on_map(graph):
+    """
+    Plots a NetworkX graph on an interactive map.
+
+    Args:
+        graph: A NetworkX graph with node and edge attributes.
+    """
+    import plotly.graph_objects as go
+    import plotly.io as pio
+
+    # Render in browser by default
+    pio.renderers.default = "browser"
+
+    # Create edge traces
+    edge_x = []
+    edge_y = []
+    for edge in graph.edges():
+        # Get coordinates for the edge
+        x0, y0 = graph.nodes[edge[0]]['longitude'], graph.nodes[edge[0]]['latitude']
+        x1, y1 = graph.nodes[edge[1]]['longitude'], graph.nodes[edge[1]]['latitude']
+
+        # Add them to the list, with a 'None' to break the line between edges
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+
+    edge_trace = go.Scattermapbox(
+        lon=edge_x,
+        lat=edge_y,
+        mode='lines',
+        line=dict(width=2, color='#888'),
+        hoverinfo='none',
+        name='Transmission Lines'
+    )
+
+    # Create node traces
+    node_x, node_y, node_texts = [], [], []
+    for node, data in graph.nodes(data=True):
+        node_x.append(data['longitude'])
+        node_y.append(data['latitude'])
+        voltage = data.get('base_voltage', 'N/A')
+        node_texts.append(f'Node: {node}<br>Base Voltage: {round(voltage, 3)} kV')
+
+    node_trace = go.Scattermapbox(
+        lon=node_x,
+        lat=node_y,
+        mode='markers',
+        marker=dict(size=10, color='teal'),
+        hoverinfo='text',
+        text=node_texts,
+        name='Substations'
+    )
+
+    # Create the figure
+    fig = go.Figure(data=[edge_trace, node_trace])
+
+    fig.update_layout(
+        title_text='Power Network Graph',
+        hovermode='closest',
+        showlegend=True,
+        mapbox=dict(
+            style="carto-positron",
+            bearing=0,
+            center=dict(lat=50.5, lon=14.0),
+            pitch=0,
+            zoom=3.5
+        ),
+        margin={"r": 0, "t": 40, "l": 0, "b": 0}
+    )
+    fig.show()

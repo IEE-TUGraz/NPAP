@@ -6,7 +6,9 @@ dependencies:
   - networkx
   - numpy
   - pandas
-  - scikit-learn
+  - plotly
   - pip
+  - scikit-learn
   - pip:
       - -e .
+      - kaleido

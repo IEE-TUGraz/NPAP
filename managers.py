@@ -491,3 +491,15 @@ class PartitionAggregatorManager:
         """Compute hash for graph validation"""
         from utils import compute_graph_hash
         return compute_graph_hash(graph)
+
+    def plot_network_on_map(self, graph: nx.Graph = None):
+        """Plot current graph on geographical map if coordinates are available"""
+        if not self._current_graph and graph is None:
+            raise ValueError("No graph loaded.")
+
+        from utils import plot_network_on_map
+
+        if graph is not None:
+            plot_network_on_map(graph)
+        else:
+            plot_network_on_map(self._current_graph)
