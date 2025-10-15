@@ -87,9 +87,9 @@ def _geographical_mode() -> AggregationProfile:
         physical_strategy=None,
         physical_properties=[],
         node_properties={
-            "lat": "average",
-            "long": "average",
-            "base_voltage": "sum"
+            "lat": "average",  # similar to middle point
+            "lon": "average",  # similar to middle point
+            "base_voltage": "average"
         },
         edge_properties={
             "p_max": "sum",

@@ -37,7 +37,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
         """Load graph from CSV files"""
         try:
             # Load nodes
-            nodes_df = pd.read_csv(node_file)
+            nodes_df = pd.read_csv(node_file, delimiter=";")
             if nodes_df.empty:
                 raise DataLoadingError("Node file is empty", strategy="csv_files")
 
@@ -51,7 +51,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
                 )
 
             # Load edges
-            edges_df = pd.read_csv(edge_file)
+            edges_df = pd.read_csv(edge_file, delimiter=";")
             if edges_df.empty:
                 raise DataLoadingError("Edge file is empty", strategy="csv_files")
 
