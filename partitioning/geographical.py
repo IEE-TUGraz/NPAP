@@ -2,7 +2,7 @@ from typing import Dict, List, Any
 
 import networkx as nx
 import numpy as np
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics.pairwise import euclidean_distances, haversine_distances
 from sklearn_extra.cluster import KMedoids
 
@@ -24,7 +24,7 @@ class GeographicalPartitioning(PartitioningStrategy):
         self.algorithm = algorithm
         self.distance_metric = distance_metric
 
-        if algorithm not in ['kmeans', 'kmedoids']:
+        if algorithm not in ['kmeans', 'kmedoids', 'dbscan']:
             raise ValueError(f"Unsupported algorithm: {algorithm}")
         if distance_metric not in ['haversine', 'euclidean']:
             raise ValueError(f"Unsupported distance metric: {distance_metric}")
@@ -65,6 +65,8 @@ class GeographicalPartitioning(PartitioningStrategy):
                 labels = self._kmeans_clustering(coordinates, n_clusters, **kwargs)
             elif self.algorithm == 'kmedoids':
                 labels = self._kmedoids_clustering(coordinates, n_clusters, **kwargs)
+            elif self.algorithm == 'dbscan':
+                labels = self._dbscan_clustering(coordinates, **kwargs)
             else:
                 raise PartitioningError(f"Unknown algorithm: {self.algorithm}")
 
@@ -145,3 +147,35 @@ class GeographicalPartitioning(PartitioningStrategy):
 
         except Exception as e:
             raise PartitioningError(f"K-medoids clustering failed: {e}") from e
+
+    def _dbscan_clustering(self, coordinates: np.ndarray, **kwargs) -> np.ndarray:
+        """Perform DBSCAN clustering on geographical coordinates."""
+        try:
+            eps = kwargs.get('eps')
+            min_samples = kwargs.get('min_samples')
+
+            if eps is None or min_samples is None:
+                raise PartitioningError("DBSCAN requires 'eps' and 'min_samples' parameters.")
+
+            # Calculate the distance matrix based on the specified metric
+            if self.distance_metric == 'euclidean':
+                distance_matrix = euclidean_distances(coordinates)
+            elif self.distance_metric == 'haversine':
+                coords_rad = np.radians(coordinates)
+                earth_radius_km = 6371
+                distance_matrix = haversine_distances(coords_rad) * earth_radius_km
+            else:
+                raise PartitioningError(f"Unsupported distance metric for DBSCAN: {self.distance_metric}")
+
+            # Perform DBSCAN clustering
+            dbscan = DBSCAN(
+                eps=eps,
+                min_samples=min_samples,
+                metric='precomputed'  # tells the model to use the pre-calculated distance matrix
+            )
+
+            labels = dbscan.fit_predict(distance_matrix)
+            return labels
+
+        except Exception as e:
+            raise PartitioningError(f"DBSCAN clustering failed: {e}") from e

@@ -75,6 +75,14 @@ class PartitioningManager:
             algorithm='kmedoids',
             distance_metric='haversine'
         )
+        self._strategies['geographical_dbscan_euclidean'] = GeographicalPartitioning(
+            algorithm='dbscan',
+            distance_metric='euclidean'
+        )
+        self._strategies['geographical_dbscan_haversine'] = GeographicalPartitioning(
+            algorithm='dbscan',
+            distance_metric='haversine'
+        )
 
 
 class AggregationManager:
