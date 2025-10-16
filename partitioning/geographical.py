@@ -3,6 +3,8 @@ from typing import Dict, List, Any
 import networkx as nx
 import numpy as np
 from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import euclidean_distances, haversine_distances
+from sklearn_extra.cluster import KMedoids
 
 from exceptions import PartitioningError
 from interfaces import PartitioningStrategy
@@ -116,4 +118,30 @@ class GeographicalPartitioning(PartitioningStrategy):
 
     def _kmedoids_clustering(self, coordinates: np.ndarray, n_clusters: int, **kwargs) -> np.ndarray:
         """Perform K-medoids clustering on geographical coordinates"""
-        pass  # TODO
+        try:
+            # Calculate distance matrix based on the specified metric
+            if self.distance_metric == 'euclidean':
+                distance_matrix = euclidean_distances(coordinates)
+            elif self.distance_metric == 'haversine':
+                coords_rad = np.radians(coordinates)
+                earth_radius_km = 6371
+                distance_matrix = haversine_distances(coords_rad) * earth_radius_km
+            else:
+                raise PartitioningError(f"Unsupported distance metric for K-medoids: {self.distance_metric}")
+
+            # Perform K-medoids clustering using the precomputed distance matrix
+            random_state = kwargs.get('random_state', 42)
+            max_iter = kwargs.get('max_iter', 300)
+
+            kmedoids = KMedoids(
+                n_clusters=n_clusters,
+                metric='precomputed',  # tells the model to use the pre-calculated distance matrix
+                random_state=random_state,
+                max_iter=max_iter
+            )
+
+            labels = kmedoids.fit_predict(distance_matrix)
+            return labels
+
+        except Exception as e:
+            raise PartitioningError(f"K-medoids clustering failed: {e}") from e

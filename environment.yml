@@ -9,6 +9,7 @@ dependencies:
   - plotly
   - pip
   - scikit-learn
+  - scikit-learn-extra
   - pip:
       - -e .
       - kaleido

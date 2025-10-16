@@ -13,5 +13,6 @@ setup(
         "pandas",
         "plotly",
         "scikit-learn",
+        "scikit-learn-extra",
     ],
 )

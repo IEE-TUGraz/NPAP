@@ -67,11 +67,11 @@ class PartitioningManager:
             algorithm='kmeans',
             distance_metric='euclidean'
         )
-        self._strategies['geographical_kmedoids_euclidean'] = GeographicalPartitioning(  # TODO
+        self._strategies['geographical_kmedoids_euclidean'] = GeographicalPartitioning(
             algorithm='kmedoids',
             distance_metric='euclidean'
         )
-        self._strategies['geographical_kmedoids_haversine'] = GeographicalPartitioning(  # TODO
+        self._strategies['geographical_kmedoids_haversine'] = GeographicalPartitioning(
             algorithm='kmedoids',
             distance_metric='haversine'
         )
