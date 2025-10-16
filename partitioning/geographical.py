@@ -71,7 +71,7 @@ class GeographicalPartitioning(PartitioningStrategy):
             # Create partition mapping
             partition_map = {}
             for i, label in enumerate(labels):
-                if label not in partition_map:
+                if int(label) not in partition_map:
                     partition_map[label] = []
                 partition_map[label].append(nodes[i])
 
