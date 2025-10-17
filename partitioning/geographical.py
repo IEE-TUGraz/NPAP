@@ -63,13 +63,13 @@ class GeographicalPartitioning(PartitioningStrategy):
 
             # Perform clustering
             if self.algorithm == 'kmeans':
-                labels = self._kmeans_clustering(coordinates, n_clusters, **kwargs)
+                labels = self._kmeans_clustering(coordinates, **kwargs)
             elif self.algorithm == 'kmedoids':
-                labels = self._kmedoids_clustering(coordinates, n_clusters, **kwargs)
+                labels = self._kmedoids_clustering(coordinates, **kwargs)
             elif self.algorithm == 'dbscan':
                 labels = self._dbscan_clustering(coordinates, **kwargs)
             elif self.algorithm == 'hierarchical':
-                labels = self._hierarchical_clustering(coordinates, n_clusters)
+                labels = self._hierarchical_clustering(coordinates, **kwargs)
             elif self.algorithm == 'hdbscan':
                 labels = self._hdbscan_clustering(coordinates, **kwargs)
             else:
@@ -99,7 +99,7 @@ class GeographicalPartitioning(PartitioningStrategy):
                     graph_info={'nodes': len(list(graph.nodes())), 'edges': len(graph.edges())}
                 ) from e
 
-    def _kmeans_clustering(self, coordinates: np.ndarray, n_clusters: int, **kwargs) -> np.ndarray:
+    def _kmeans_clustering(self, coordinates: np.ndarray, **kwargs) -> np.ndarray:
         """Perform K-means clustering on geographical coordinates"""
         try:
             # K-means requires Euclidean distance
@@ -109,6 +109,9 @@ class GeographicalPartitioning(PartitioningStrategy):
             # K-means clustering
             random_state = kwargs.get('random_state', 42)
             max_iter = kwargs.get('max_iter', 300)
+            n_clusters = kwargs.get('n_clusters')
+            if n_clusters is None or n_clusters <= 0:
+                raise PartitioningError("K-means requires a positive 'n_clusters' parameter.")
 
             kmeans = KMeans(
                 n_clusters=n_clusters,
@@ -123,7 +126,7 @@ class GeographicalPartitioning(PartitioningStrategy):
         except Exception as e:
             raise PartitioningError(f"K-means clustering failed: {e}") from e
 
-    def _kmedoids_clustering(self, coordinates: np.ndarray, n_clusters: int, **kwargs) -> np.ndarray:
+    def _kmedoids_clustering(self, coordinates: np.ndarray, **kwargs) -> np.ndarray:
         """Perform K-medoids clustering on geographical coordinates"""
         try:
             # Calculate distance matrix based on the specified metric
@@ -139,6 +142,9 @@ class GeographicalPartitioning(PartitioningStrategy):
             # Perform K-medoids clustering using the precomputed distance matrix
             random_state = kwargs.get('random_state', 42)
             max_iter = kwargs.get('max_iter', 300)
+            n_clusters = kwargs.get('n_clusters')
+            if n_clusters is None or n_clusters <= 0:
+                raise PartitioningError("K-medoids requires a positive 'n_clusters' parameter.")
 
             kmedoids = KMedoids(
                 n_clusters=n_clusters,
@@ -185,12 +191,16 @@ class GeographicalPartitioning(PartitioningStrategy):
         except Exception as e:
             raise PartitioningError(f"DBSCAN clustering failed: {e}") from e
 
-    def _hierarchical_clustering(self, coordinates: np.ndarray, n_clusters: int) -> np.ndarray:
+    def _hierarchical_clustering(self, coordinates: np.ndarray, **kwargs) -> np.ndarray:
         """Perform Hierarchical Clustering on geographical coordinates."""
         try:
             # Ward linkage only works with Euclidean distance
             if self.distance_metric != 'euclidean':
                 raise PartitioningError("Ward linkage for Hierarchical Clustering requires Euclidean distance.")
+
+            n_clusters = kwargs.get('n_clusters')
+            if n_clusters is None or n_clusters <= 0:
+                raise PartitioningError("Hierarchical clustering requires a positive 'n_clusters' parameter.")
 
             # Perform Agglomerative Clustering
             agg_cluster = AgglomerativeClustering(

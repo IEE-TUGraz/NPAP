@@ -51,13 +51,13 @@ class PartitioningManager:
         """Register a new partitioning strategy"""
         self._strategies[name] = strategy
 
-    def partition(self, graph: nx.Graph, method: str, n_clusters: int, **kwargs) -> Dict[int, List[Any]]:
+    def partition(self, graph: nx.Graph, method: str, **kwargs) -> Dict[int, List[Any]]:
         """Execute partitioning using specified strategy"""
         if method not in self._strategies:
             available = ', '.join(self._strategies.keys())
             raise ValueError(f"Unknown partitioning strategy: {method}. Available: {available}")
 
-        return self._strategies[method].partition(graph, n_clusters, **kwargs)
+        return self._strategies[method].partition(graph, **kwargs)
 
     def _register_default_strategies(self):
         """Register built-in partitioning strategies"""
@@ -421,13 +421,13 @@ class PartitionAggregatorManager:
         self._current_partition = None  # Clear any existing partition
         return self._current_graph
 
-    def partition(self, strategy: str, n_clusters: int, **kwargs) -> PartitionResult:
+    def partition(self, strategy: str, **kwargs) -> PartitionResult:
         """Partition current graph and store result"""
         if not self._current_graph:
             raise ValueError("No graph loaded. Call load_data() first.")
 
         mapping = self.partitioning_manager.partition(
-            self._current_graph, strategy, n_clusters, **kwargs
+            self._current_graph, strategy, **kwargs
         )
 
         self._current_partition = PartitionResult(
@@ -435,7 +435,7 @@ class PartitionAggregatorManager:
             original_graph_hash=self._current_graph_hash,
             strategy_name=strategy,
             strategy_metadata={},
-            n_clusters=n_clusters
+            n_clusters=len(set(mapping.keys()))
         )
         return self._current_partition
 
@@ -484,7 +484,7 @@ class PartitionAggregatorManager:
         return self._current_graph
 
     def full_workflow(self, data_strategy: str, partition_strategy: str,
-                      n_clusters: int, aggregation_profile: AggregationProfile = None,
+                      aggregation_profile: AggregationProfile = None,
                       aggregation_mode: AggregationMode = None,
                       **kwargs) -> nx.Graph:
         """Execute complete workflow without storing intermediates"""
@@ -495,7 +495,7 @@ class PartitionAggregatorManager:
 
         # Execute pipeline
         self.load_data(data_strategy, **data_params)
-        partition_result = self.partition(partition_strategy, n_clusters, **partition_params)
+        partition_result = self.partition(partition_strategy, **partition_params)
         return self.aggregate(partition_result, aggregation_profile, aggregation_mode)
 
     def get_current_graph(self) -> Optional[nx.Graph]:

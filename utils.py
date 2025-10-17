@@ -14,7 +14,7 @@ def validate_required_attributes(func):
     """
 
     @functools.wraps(func)
-    def wrapper(self, graph: nx.Graph, n_clusters: int, **kwargs):
+    def wrapper(self, graph: nx.Graph, **kwargs):
         required = self.required_attributes
 
         # Fast early-exit validation for nodes
@@ -47,7 +47,7 @@ def validate_required_attributes(func):
                     )
 
         # Only call original function if validation passes
-        return func(self, graph, n_clusters, **kwargs)
+        return func(self, graph, **kwargs)
 
     return wrapper
 

@@ -76,7 +76,7 @@ class PartitioningStrategy(ABC):
 
     @validate_required_attributes
     @abstractmethod
-    def partition(self, graph: nx.Graph, n_clusters: int, **kwargs) -> Dict[int, List[Any]]:
+    def partition(self, graph: nx.Graph, **kwargs) -> Dict[int, List[Any]]:
         """Partition nodes into clusters"""
         pass
 
