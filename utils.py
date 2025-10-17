@@ -120,8 +120,8 @@ def interactive_plot(graph: nx.Graph, title: str = None):
     edge_y = []
     for edge in graph.edges():
         # Get coordinates for the edge
-        x0, y0 = graph.nodes[edge[0]]['longitude'], graph.nodes[edge[0]]['latitude']
-        x1, y1 = graph.nodes[edge[1]]['longitude'], graph.nodes[edge[1]]['latitude']
+        x0, y0 = graph.nodes[edge[0]]['lon'], graph.nodes[edge[0]]['lat']
+        x1, y1 = graph.nodes[edge[1]]['lon'], graph.nodes[edge[1]]['lat']
 
         # Add them to the list, with a 'None' to break the line between edges
         edge_x.extend([x0, x1, None])
@@ -139,8 +139,8 @@ def interactive_plot(graph: nx.Graph, title: str = None):
     # Create node traces
     node_x, node_y, node_texts = [], [], []
     for node, data in graph.nodes(data=True):
-        node_x.append(data['longitude'])
-        node_y.append(data['latitude'])
+        node_x.append(data['lon'])
+        node_y.append(data['lat'])
         voltage = data.get('base_voltage', 'N/A')
         node_texts.append(f'Node: {node}<br>Base Voltage: {round(voltage, 3)} kV')
 

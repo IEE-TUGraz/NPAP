@@ -34,11 +34,11 @@ class GeographicalPartitioning(PartitioningStrategy):
     def required_attributes(self) -> Dict[str, List[str]]:
         """Required node attributes for geographical partitioning"""
         return {
-            'nodes': ['latitude', 'longitude'],
+            'nodes': ['lat', 'lon'],
             'edges': []
         }
 
-    def partition(self, graph: nx.Graph, n_clusters: int, **kwargs) -> Dict[int, List[Any]]:
+    def partition(self, graph: nx.Graph, **kwargs) -> Dict[int, List[Any]]:
         """Partition nodes based on geographical coordinates"""
         try:
             # Extract coordinates
@@ -47,8 +47,8 @@ class GeographicalPartitioning(PartitioningStrategy):
 
             for node in nodes:
                 node_data = graph.nodes[node]
-                lat = node_data.get('latitude')
-                lon = node_data.get('longitude')
+                lat = node_data.get('lat')
+                lon = node_data.get('lon')
 
                 if lat is None or lon is None:
                     raise PartitioningError(
