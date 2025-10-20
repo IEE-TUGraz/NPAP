@@ -41,7 +41,19 @@ def get_mode_profile(mode: AggregationMode, **overrides) -> AggregationProfile:
     # Apply overrides
     for key, value in overrides.items():
         if hasattr(profile, key):
-            setattr(profile, key, value)
+            current_value = getattr(profile, key)
+
+            if isinstance(current_value, dict) and isinstance(value, dict):
+                # Add new keys or overwrites existing ones
+                current_value.update(value)
+
+            elif isinstance(current_value, list) and isinstance(value, list):
+                # Add the user's list to the end of the existing list
+                current_value.extend(value)
+
+            else:
+                # Replace the existing value
+                setattr(profile, key, value)
 
     return profile
 
