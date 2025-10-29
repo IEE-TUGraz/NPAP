@@ -212,6 +212,115 @@ class AggregationManager:
 
         return aggregated
 
+    def aggregate_parallel_edges(self, graph: nx.MultiGraph, edge_properties: Dict[str, str] = None,
+                                 default_strategy: str = "sum", warn_on_defaults: bool = True) -> nx.Graph:
+        """
+        Collapse parallel edges in a MultiGraph to produce a simple Graph.
+
+        This method aggregates all parallel edges between the same node pairs
+        using the specified edge property strategies, converting a MultiGraph
+        to a simple Graph that can be partitioned.
+
+        Args:
+            graph: MultiGraph with potential parallel edges
+            edge_properties: Dict mapping property names to aggregation strategies
+                           e.g., {"reactance": "average", "length": "sum"}
+            default_strategy: Strategy to use for properties not specified (default: "sum")
+            warn_on_defaults: Whether to warn when using default strategy
+
+        Returns:
+            Simple Graph with parallel edges aggregated
+
+        Raises:
+            ValueError: If graph is not a MultiGraph
+            AggregationError: If aggregation fails
+        """
+        from exceptions import AggregationError
+
+        # Validate input
+        if not isinstance(graph, nx.MultiGraph):
+            raise ValueError(
+                f"Expected MultiGraph, got {type(graph).__name__}. "
+                "This method is only for collapsing parallel edges."
+            )
+
+        edge_properties = edge_properties or {}
+
+        # Validate strategies exist
+        for prop, strategy in edge_properties.items():
+            if strategy not in self._edge_strategies:
+                available = ', '.join(self._edge_strategies.keys())
+                raise ValueError(
+                    f"Unknown edge strategy '{strategy}' for property '{prop}'. "
+                    f"Available: {available}"
+                )
+
+        if default_strategy not in self._edge_strategies:
+            available = ', '.join(self._edge_strategies.keys())
+            raise ValueError(
+                f"Unknown default edge strategy '{default_strategy}'. "
+                f"Available: {available}"
+            )
+
+        try:
+            # Create simple graph
+            simple_graph = nx.Graph()
+
+            # Copy all nodes with their attributes
+            simple_graph.add_nodes_from(graph.nodes(data=True))
+
+            # Collect all edge properties
+            all_properties = set()
+            for u, v, data in graph.edges(data=True):
+                all_properties.update(data.keys())
+
+            # Process each unique edge (node pair)
+            processed_edges = set()
+            for u, v in graph.edges():
+                # Skip if already processed (for undirected graphs)
+                edge_key = tuple(sorted([u, v]))
+                if edge_key in processed_edges:
+                    continue
+                processed_edges.add(edge_key)
+
+                # Get all parallel edges between u and v
+                parallel_edges_data = []
+                for key in graph[u][v]:
+                    parallel_edges_data.append(graph[u][v][key])
+
+                # Aggregate properties
+                aggregated_attrs = {}
+                for prop in all_properties:
+                    if prop in edge_properties:
+                        # User specified strategy
+                        strategy_name = edge_properties[prop]
+                        strategy = self._edge_strategies[strategy_name]
+                        aggregated_attrs[prop] = strategy.aggregate_property(
+                            parallel_edges_data, prop
+                        )
+                    else:
+                        # Use default strategy
+                        if warn_on_defaults:
+                            warnings.warn(
+                                f"Edge property '{prop}' not specified. "
+                                f"Using default strategy '{default_strategy}'"
+                            )
+                        strategy = self._edge_strategies[default_strategy]
+                        aggregated_attrs[prop] = strategy.aggregate_property(
+                            parallel_edges_data, prop
+                        )
+
+                # Add aggregated edge to simple graph
+                simple_graph.add_edge(u, v, **aggregated_attrs)
+
+            return simple_graph
+
+        except Exception as e:
+            raise AggregationError(
+                f"Failed to aggregate parallel edges: {e}",
+                strategy="parallel_edge_aggregation"
+            ) from e
+
     def _validate_profile(self, profile: AggregationProfile):
         """Validate that all strategies in profile exist"""
         if profile.topology_strategy not in self._topology_strategies:
@@ -479,6 +588,53 @@ class PartitionAggregatorManager:
 
         # Update hash and clear partition since graph has changed
         self._current_graph_hash = self._compute_graph_hash(self._current_graph)
+        self._current_partition = None
+
+        return self._current_graph
+
+    def aggregate_parallel_edges(self, edge_properties: Dict[str, str] = None,
+                                 default_strategy: str = "sum",
+                                 warn_on_defaults: bool = True) -> nx.Graph:
+        """
+        Convert current MultiGraph to simple Graph by aggregating parallel edges.
+
+        This method aggregates all parallel edges between the same node pairs
+        into single edges, using the specified aggregation strategies. The graph
+        must be a MultiGraph for this operation to be meaningful.
+
+        Args:
+            edge_properties: Dict mapping property names to aggregation strategies
+                           e.g., {"reactance": "average", "length": "sum"}
+            default_strategy: Strategy to use for properties not specified (default: "sum")
+            warn_on_defaults: Whether to warn when using default strategy
+
+        Returns:
+            Simple Graph with parallel edges aggregated
+
+        Raises:
+            ValueError: If no graph is loaded or graph is not a MultiGraph
+        """
+        if not self._current_graph:
+            raise ValueError("No graph loaded. Call load_data() first.")
+
+        if not isinstance(self._current_graph, nx.MultiGraph):
+            raise ValueError(
+                f"Current graph is not a MultiGraph (it's {type(self._current_graph).__name__}). "
+                "This method is only for aggregating parallel edges in MultiGraphs."
+            )
+
+        # Aggregate parallel edges
+        self._current_graph = self.aggregation_manager.aggregate_parallel_edges(
+            self._current_graph,
+            edge_properties=edge_properties,
+            default_strategy=default_strategy,
+            warn_on_defaults=warn_on_defaults
+        )
+
+        # Update hash since graph has changed
+        self._current_graph_hash = self._compute_graph_hash(self._current_graph)
+
+        # Clear partition since graph structure changed
         self._current_partition = None
 
         return self._current_graph
