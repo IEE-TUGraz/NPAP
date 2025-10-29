@@ -650,15 +650,48 @@ class PartitionAggregatorManager:
                       aggregation_profile: AggregationProfile = None,
                       aggregation_mode: AggregationMode = None,
                       **kwargs) -> nx.Graph:
-        """Execute complete workflow without storing intermediates"""
-        # Extract data loading params vs partition params
-        data_params = {k: v for k, v in kwargs.items()
-                       if k in ['node_file', 'edge_file', 'graph', 'connection_string', 'table_prefix']}
-        partition_params = {k: v for k, v in kwargs.items() if k not in data_params}
+        """
+        Execute complete workflow without storing intermediates
 
-        # Execute pipeline
+        If a MultiGraph is loaded, parallel edges will be automatically aggregated
+        before partitioning.
+
+        Args:
+            data_strategy: Data loading strategy name
+            partition_strategy: Partitioning strategy name
+            aggregation_profile: Aggregation profile (custom)
+            aggregation_mode: Aggregation mode (pre-defined)
+            **kwargs: Parameters for data loading, parallel edge aggregation, partitioning
+
+        Returns:
+            Aggregated graph
+        """
+        # Parameters for data loading
+        data_params = {k: v for k, v in kwargs.items()
+                       if k in ['node_file', 'edge_file', 'graph', 'connection_string', 'table_prefix',
+                                'delimiter', 'decimal', 'node_id_col', 'edge_from_col', 'edge_to_col']}
+
+        # Parameters for parallel edge aggregation (if MultiGraph)
+        parallel_edge_params = {k: v for k, v in kwargs.items()
+                                if k in ['edge_properties', 'parallel_edge_default_strategy',
+                                         'parallel_edge_warn_on_defaults']}
+
+        # Parameters for partitioning
+        partition_params = {k: v for k, v in kwargs.items()
+                            if k not in data_params and k not in parallel_edge_params}
+
+        # Step 1: Load data
         self.load_data(data_strategy, **data_params)
+
+        # Step 2: If MultiGraph, aggregate parallel edges first
+        if isinstance(self._current_graph, nx.MultiGraph):
+            print("→ MultiGraph detected in workflow. Auto-aggregating parallel edges...")
+            self.aggregate_parallel_edges(**parallel_edge_params)
+
+        # Step 3: Partition
         partition_result = self.partition(partition_strategy, **partition_params)
+
+        # Step 4: Aggregate clusters
         return self.aggregate(partition_result, aggregation_profile, aggregation_mode)
 
     def get_current_graph(self) -> Optional[nx.Graph]:
