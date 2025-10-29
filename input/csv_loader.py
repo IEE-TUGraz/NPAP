@@ -33,7 +33,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
 
         return True
 
-    def load(self, node_file: str, edge_file: str, **kwargs) -> nx.Graph:
+    def load(self, node_file: str, edge_file: str, **kwargs) -> nx.Graph | nx.MultiGraph:
         """Load graph from CSV files"""
         try:
             delimiter = kwargs["delimiter"] if 'delimiter' in kwargs else ','
@@ -83,6 +83,14 @@ class CSVFilesStrategy(DataLoadingStrategy):
                 for _, row in nodes_df.iterrows()
             ]
 
+            # Check for parallel edges (duplicate node pairs)
+            edge_pairs = edges_df[[edge_from_col, edge_to_col]].copy()
+            # Sort pairs to consider (A,B) and (B,A) as same pair for undirected graph
+            edge_pairs['sorted_pair'] = edge_pairs.apply(
+                lambda row: tuple(sorted([row[edge_from_col], row[edge_to_col]])), axis=1
+            )
+            has_parallel_edges = edge_pairs['sorted_pair'].duplicated().any()
+
             # Prepare edge tuples: (from_node, to_node, attr_dict)
             edge_tuples = []
             for _, row in edges_df.iterrows():
@@ -95,8 +103,15 @@ class CSVFilesStrategy(DataLoadingStrategy):
                          col not in [edge_from_col, edge_to_col] and pd.notna(row[col])}
                 edge_tuples.append((from_node, to_node, attrs))
 
-            # Create graph
-            graph = nx.Graph()
+            # Create appropriate graph type based on parallel edges
+            if has_parallel_edges:
+                graph = nx.MultiGraph()
+                print("MULTIGRAPH DETECTED: Parallel edges found in the data.")
+                print("The loaded graph contains multiple edges between the same node pairs. MultiGraphs cannot be "
+                      "partitioned directly. Call manager.aggregate_parallel_edges() to collapse parallel edges")
+            else:
+                graph = nx.Graph()
+
             graph.add_nodes_from(node_tuples)
             graph.add_edges_from(edge_tuples)
 
