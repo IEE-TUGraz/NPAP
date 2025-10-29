@@ -535,6 +535,13 @@ class PartitionAggregatorManager:
         if not self._current_graph:
             raise ValueError("No graph loaded. Call load_data() first.")
 
+        # Check if graph is MultiGraph - cannot partition MultiGraphs
+        if isinstance(self._current_graph, nx.MultiGraph):
+            raise ValueError(
+                "Cannot partition MultiGraph directly. MultiGraphs contain parallel edges "
+                "that must be aggregated first.Please call manager.aggregate_parallel_edges() before partitioning."
+            )
+
         mapping = self.partitioning_manager.partition(
             self._current_graph, strategy, **kwargs
         )
