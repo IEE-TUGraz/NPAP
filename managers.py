@@ -441,7 +441,7 @@ class PartitionAggregatorManager:
 
     def aggregate(self, partition_result: PartitionResult = None,
                   profile: AggregationProfile = None,
-                  mode: AggregationMode = None) -> nx.Graph:
+                  mode: AggregationMode = None, **overrides) -> nx.Graph:
         """
         Aggregate using partition result and profile
 
@@ -468,7 +468,7 @@ class PartitionAggregatorManager:
 
         # Determine profile to use
         if profile is None and mode is not None:
-            profile = self.aggregation_manager.get_mode_profile(mode)
+            profile = self.aggregation_manager.get_mode_profile(mode, **overrides)
         elif profile is None:
             profile = AggregationProfile()  # Default
 
