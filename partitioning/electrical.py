@@ -3,6 +3,7 @@ from typing import Dict, List, Any, Optional
 import networkx as nx
 import numpy as np
 from sklearn.cluster import KMeans
+from sklearn_extra.cluster import KMedoids
 
 from exceptions import PartitioningError
 from interfaces import PartitioningStrategy
@@ -379,4 +380,38 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                 strategy="electrical_kmeans"
             ) from e
 
+    @staticmethod
+    def _kmedoids_clustering(distance_matrix: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        Perform K-medoids clustering using precomputed electrical distances.
+
+        K-medoids naturally works with distance matrices and is more robust
+        to outliers than K-means.
+
+        Args:
+            distance_matrix: Precomputed electrical distance matrix
+            **kwargs: Clustering parameters
+
+        Returns:
+            Cluster labels
+        """
+        try:
+            n_clusters = kwargs.get('n_clusters')
+            random_state = kwargs.get('random_state', 42)
+            max_iter = kwargs.get('max_iter', 300)
+
+            kmedoids = KMedoids(
+                n_clusters=n_clusters,
+                metric='precomputed',
+                random_state=random_state,
+                max_iter=max_iter
+            )
+
+            labels = kmedoids.fit_predict(distance_matrix)
+            return labels
+
+        except Exception as e:
+            raise PartitioningError(
+                f"K-medoids clustering with electrical distance failed: {e}",
+                strategy="electrical_kmedoids"
             ) from e
