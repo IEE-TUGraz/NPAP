@@ -2,6 +2,7 @@ from typing import Dict, List, Any, Optional
 
 import networkx as nx
 import numpy as np
+from sklearn.cluster import KMeans
 
 from exceptions import PartitioningError
 from interfaces import PartitioningStrategy
@@ -339,5 +340,43 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             susceptances.append(1.0 / reactance)
 
         return np.array(susceptances)
+
+    @staticmethod
+    def _kmeans_clustering(distance_matrix: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        Perform K-means clustering using electrical distances.
+
+        Note: K-means expects feature vectors, not distance matrices.
+        We use the distance matrix rows as feature vectors, which effectively
+        clusters nodes based on their distance profiles to all other nodes.
+
+        Args:
+            distance_matrix: Precomputed electrical distance matrix
+            **kwargs: Clustering parameters
+
+        Returns:
+            Cluster labels
+        """
+        try:
+            n_clusters = kwargs.get('n_clusters')
+            random_state = kwargs.get('random_state', 42)
+            max_iter = kwargs.get('max_iter', 300)
+
+            # Use distance matrix rows as features
+            kmeans = KMeans(
+                n_clusters=n_clusters,
+                random_state=random_state,
+                max_iter=max_iter,
+                n_init=10
+            )
+
+            labels = kmeans.fit_predict(distance_matrix)
+            return labels
+
+        except Exception as e:
+            raise PartitioningError(
+                f"K-means clustering with electrical distance failed: {e}",
+                strategy="electrical_kmeans"
+            ) from e
 
             ) from e
