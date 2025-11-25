@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Dict, List, Any, Optional, Tuple
 
 import networkx as nx
 import numpy as np
@@ -92,6 +93,8 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             PartitioningError: If partitioning fails
         """
         try:
+            self._validate_network_connectivity(graph)
+
             n_clusters = kwargs.get('n_clusters')
             if n_clusters is None or n_clusters <= 0:
                 raise PartitioningError(
@@ -145,6 +148,30 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                 strategy=f"electrical_{self.algorithm}",
                 graph_info={'nodes': len(list(graph.nodes())), 'edges': len(graph.edges())}
             ) from e
+
+    def _validate_network_connectivity(self, graph: nx.Graph) -> None:
+        """
+        Validate network connectivity.
+
+        Args:
+            graph: NetworkX graph to validate
+
+        Raises:
+            PartitioningError: If validation fails
+        """
+        if not nx.is_connected(graph):
+            n_components = nx.number_connected_components(graph)
+            raise PartitioningError(
+                f"Graph must be connected for electrical distance partitioning. "
+                f"Found {n_components} disconnected components (islands). "
+                f"Consider processing each component separately or connecting the network.",
+                strategy=f"electrical_{self.algorithm}",
+                graph_info={
+                    'nodes': len(list(graph.nodes())),
+                    'edges': len(graph.edges()),
+                    'n_components': n_components
+                }
+            )
 
     def _calculate_electrical_distance_matrix(self, graph: nx.Graph,
                                               nodes: List[Any]) -> np.ndarray:
