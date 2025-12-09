@@ -19,29 +19,39 @@ class SimpleTopologyStrategy(TopologyStrategy):
 
     This is the most basic topology strategy:
     - Creates one node per cluster
-    - Creates an edge between two clusters only if there was at least one edge
-      between nodes in those clusters in the original graph
+    - Creates a directed edge between two clusters only if there was at least one
+      directed edge between nodes in those clusters in the original graph
+    - Preserves edge direction from original graph
     - Does NOT create new edges
     """
 
-    def create_topology(self, graph: nx.Graph,
-                        partition_map: Dict[int, List[Any]]) -> nx.Graph:
+    def create_topology(self, graph: nx.DiGraph,
+                        partition_map: Dict[int, List[Any]]) -> nx.DiGraph:
         """Create aggregated topology with basic node and edge mapping"""
         try:
-            aggregated = nx.Graph()
+            aggregated = nx.DiGraph()
 
             # Step 1: Create nodes (one per cluster)
             for cluster_id in partition_map.keys():
                 aggregated.add_node(cluster_id)
 
             # Step 2: Create edges only where connections exist
-            for cluster1, cluster2 in itertools.combinations(partition_map.keys(), 2):
+            # For directed graphs, check both directions separately
+            for cluster1, cluster2 in itertools.permutations(partition_map.keys(), 2):
                 nodes1 = partition_map[cluster1]
                 nodes2 = partition_map[cluster2]
 
-                # Check if there are any edges between these clusters
-                if self._clusters_connected(graph, nodes1, nodes2):
+                # Check if there are any directed edges from cluster1 to cluster2
+                if self._clusters_connected_directed(graph, nodes1, nodes2):
                     aggregated.add_edge(cluster1, cluster2)
+
+            # Also check for self-loops within clusters
+            for cluster_id in partition_map.keys():
+                nodes = partition_map[cluster_id]
+                if self._has_internal_edges(graph, nodes):
+                    # Create self-loop if there are internal edges (optional)
+                    # aggregated.add_edge(cluster_id, cluster_id)
+                    pass
 
             return aggregated
 
@@ -50,6 +60,26 @@ class SimpleTopologyStrategy(TopologyStrategy):
                 f"Failed to create simple topology: {e}",
                 strategy="simple_topology"
             ) from e
+
+    @staticmethod
+    def _clusters_connected_directed(graph: nx.DiGraph,
+                                     source_nodes: List[Any],
+                                     target_nodes: List[Any]) -> bool:
+        """Return True if any directed edge exists from source_nodes to target_nodes."""
+        for n1 in source_nodes:
+            for n2 in target_nodes:
+                if graph.has_edge(n1, n2):
+                    return True
+        return False
+
+    @staticmethod
+    def _has_internal_edges(graph: nx.DiGraph, nodes: List[Any]) -> bool:
+        """Return True if there are any edges within the same cluster."""
+        for n1 in nodes:
+            for n2 in nodes:
+                if n1 != n2 and graph.has_edge(n1, n2):
+                    return True
+        return False
 
     @property
     def can_create_new_edges(self) -> bool:
@@ -80,11 +110,11 @@ class ElectricalTopologyStrategy(TopologyStrategy):
         """
         self.initial_connectivity = initial_connectivity
 
-    def create_topology(self, graph: nx.Graph,
-                        partition_map: Dict[int, List[Any]]) -> nx.Graph:
+    def create_topology(self, graph: nx.DiGraph,
+                        partition_map: Dict[int, List[Any]]) -> nx.DiGraph:
         """Create topology suitable for electrical aggregation"""
         try:
-            aggregated = nx.Graph()
+            aggregated = nx.DiGraph()
 
             # Step 1: Create nodes
             for cluster_id in partition_map.keys():
@@ -92,17 +122,17 @@ class ElectricalTopologyStrategy(TopologyStrategy):
 
             # Step 2: Create edges based on connectivity mode
             if self.initial_connectivity == "full":
-                # Create fully connected graph
-                for cluster1, cluster2 in itertools.combinations(partition_map.keys(), 2):
+                # Create fully connected directed graph (both directions)
+                for cluster1, cluster2 in itertools.permutations(partition_map.keys(), 2):
                     aggregated.add_edge(cluster1, cluster2)
 
             elif self.initial_connectivity == "existing":
-                # Only create edges where connections exist (same as simple)
-                for cluster1, cluster2 in itertools.combinations(partition_map.keys(), 2):
+                # Only create edges where connections exist (respecting direction)
+                for cluster1, cluster2 in itertools.permutations(partition_map.keys(), 2):
                     nodes1 = partition_map[cluster1]
                     nodes2 = partition_map[cluster2]
 
-                    if self._clusters_connected(graph, nodes1, nodes2):
+                    if self._clusters_connected_directed(graph, nodes1, nodes2):
                         aggregated.add_edge(cluster1, cluster2)
 
             else:
@@ -115,6 +145,17 @@ class ElectricalTopologyStrategy(TopologyStrategy):
                 f"Failed to create electrical topology: {e}",
                 strategy="electrical_topology"
             ) from e
+
+    @staticmethod
+    def _clusters_connected_directed(graph: nx.DiGraph,
+                                     source_nodes: List[Any],
+                                     target_nodes: List[Any]) -> bool:
+        """Return True if any directed edge exists from source_nodes to target_nodes."""
+        for n1 in source_nodes:
+            for n2 in target_nodes:
+                if graph.has_edge(n1, n2):
+                    return True
+        return False
 
     @property
     def can_create_new_edges(self) -> bool:
@@ -129,7 +170,7 @@ class ElectricalTopologyStrategy(TopologyStrategy):
 class SumNodeStrategy(NodePropertyStrategy):
     """Sum numerical properties across nodes in a cluster"""
 
-    def aggregate_property(self, graph: nx.Graph, nodes: List[Any], property_name: str) -> Any:
+    def aggregate_property(self, graph: nx.DiGraph, nodes: List[Any], property_name: str) -> Any:
         """Sum property values across nodes"""
         try:
             values = []
@@ -150,7 +191,7 @@ class SumNodeStrategy(NodePropertyStrategy):
 class AverageNodeStrategy(NodePropertyStrategy):
     """Average numerical properties across nodes in a cluster"""
 
-    def aggregate_property(self, graph: nx.Graph, nodes: List[Any], property_name: str) -> Any:
+    def aggregate_property(self, graph: nx.DiGraph, nodes: List[Any], property_name: str) -> Any:
         """Average property values across nodes"""
         try:
             values = []
@@ -171,7 +212,7 @@ class AverageNodeStrategy(NodePropertyStrategy):
 class FirstNodeStrategy(NodePropertyStrategy):
     """Take the first available value for non-numerical properties"""
 
-    def aggregate_property(self, graph: nx.Graph, nodes: List[Any], property_name: str) -> Any:
+    def aggregate_property(self, graph: nx.DiGraph, nodes: List[Any], property_name: str) -> Any:
         """Take first available property value"""
         try:
             for node in nodes:

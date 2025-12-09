@@ -5,7 +5,7 @@ from interfaces import DataLoadingStrategy
 
 
 class NetworkXDirectStrategy(DataLoadingStrategy):
-    """Use NetworkX graph directly"""
+    """Use NetworkX graph directly, converting to directed graph"""
 
     def validate_inputs(self, **kwargs) -> bool:
         """Validate that a NetworkX graph is provided"""
@@ -33,30 +33,70 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
 
         return True
 
-    def load(self, graph: nx.Graph, **kwargs) -> nx.Graph:
-        """Use graph directly (supports Graph and MultiGraph, creates a copy)"""
-        try:
-            if  isinstance(graph, (nx.MultiGraph, nx.MultiDiGraph)):
-                # Inform user about MultiGraph
-                print("MULTIGRAPH DETECTED: Parallel edges found in the data.")
-                print("The loaded graph contains multiple edges between the same node pairs. MultiGraphs cannot be "
-                      "partitioned directly. Call manager.aggregate_parallel_edges() to collapse parallel edges")
+    def load(self, graph: nx.Graph, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
+        """
+        Use graph directly, converting to directed graph if needed.
 
-                # Create copy as MultiGraph
-                result = nx.MultiGraph()
+        Supports all NetworkX graph types:
+        - Graph -> DiGraph (creates both directions for each edge)
+        - DiGraph -> DiGraph (copy)
+        - MultiGraph -> MultiDiGraph (creates both directions for each edge)
+        - MultiDiGraph -> MultiDiGraph (copy)
+
+        Args:
+            graph: Input NetworkX graph
+            **kwargs: Additional parameters
+                - bidirectional: If True (default), convert undirected edges to
+                                 bidirectional directed edges. If False, only
+                                 create edges in the original iteration order.
+
+        Returns:
+            DiGraph or MultiDiGraph
+        """
+        try:
+            bidirectional = kwargs.get('bidirectional', True)
+
+            if isinstance(graph, nx.MultiDiGraph):
+                # Already a MultiDiGraph - create copy
+                print("MULTI-DIGRAPH DETECTED: Input is already a MultiDiGraph.")
+                print("MultiDiGraphs cannot be partitioned directly.")
+                print("Call manager.aggregate_parallel_edges() to collapse parallel edges.")
+
+                result = nx.MultiDiGraph()
                 result.add_nodes_from(graph.nodes(data=True))
                 result.add_edges_from(graph.edges(data=True, keys=True))
-            else:
-                # Convert to simple Graph if needed and create copy
-                if isinstance(graph, nx.Graph):
-                    result = graph.copy()
-                else:
-                    # Convert DiGraph to Graph
-                    result = nx.Graph()
-                    result.add_nodes_from(graph.nodes(data=True))
-                    result.add_edges_from(graph.edges(data=True))
 
-            # Validate the copied graph
+            elif isinstance(graph, nx.DiGraph):
+                # Already directed - create copy
+                result = graph.copy()
+
+            elif isinstance(graph, nx.MultiGraph):
+                # Convert MultiGraph to MultiDiGraph
+                print("MULTI-DIGRAPH DETECTED: Converting MultiGraph to MultiDiGraph.")
+                print("MultiDiGraphs cannot be partitioned directly.")
+                print("Call manager.aggregate_parallel_edges() to collapse parallel edges.")
+
+                result = nx.MultiDiGraph()
+                result.add_nodes_from(graph.nodes(data=True))
+
+                # Add edges - for undirected, optionally create both directions
+                for u, v, key, data in graph.edges(data=True, keys=True):
+                    result.add_edge(u, v, key=key, **data)
+                    if bidirectional:
+                        result.add_edge(v, u, key=key, **data)
+
+            else:
+                # Convert Graph to DiGraph
+                result = nx.DiGraph()
+                result.add_nodes_from(graph.nodes(data=True))
+
+                # Add edges - for undirected, optionally create both directions
+                for u, v, data in graph.edges(data=True):
+                    result.add_edge(u, v, **data)
+                    if bidirectional:
+                        result.add_edge(v, u, **data)
+
+            # Validate the resulting graph
             if len(list(result.nodes())) == 0:
                 raise DataLoadingError(
                     "Graph has no nodes after processing",

@@ -21,7 +21,7 @@ class InputDataManager:
         """Register a new data loading strategy"""
         self._strategies[name] = strategy
 
-    def load(self, strategy_name: str, **kwargs) -> nx.Graph:
+    def load(self, strategy_name: str, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
         """Load data using specified strategy"""
         if strategy_name not in self._strategies:
             available = ', '.join(self._strategies.keys())
@@ -51,7 +51,7 @@ class PartitioningManager:
         """Register a new partitioning strategy"""
         self._strategies[name] = strategy
 
-    def partition(self, graph: nx.Graph, method: str, **kwargs) -> Dict[int, List[Any]]:
+    def partition(self, graph: nx.DiGraph, method: str, **kwargs) -> Dict[int, List[Any]]:
         """Execute partitioning using specified strategy"""
         if method not in self._strategies:
             available = ', '.join(self._strategies.keys())
@@ -161,8 +161,8 @@ class AggregationManager:
         from aggregation.modes import get_mode_profile
         return get_mode_profile(mode, **overrides)
 
-    def aggregate(self, graph: nx.Graph, partition_map: Dict[int, List[Any]],
-                  profile: AggregationProfile = None) -> nx.Graph:
+    def aggregate(self, graph: nx.DiGraph, partition_map: Dict[int, List[Any]],
+                  profile: AggregationProfile = None) -> nx.DiGraph:
         """
         Execute aggregation using the specified profile
 
@@ -222,36 +222,39 @@ class AggregationManager:
 
         return aggregated
 
-    def aggregate_parallel_edges(self, graph: nx.MultiGraph, edge_properties: Dict[str, str] = None,
-                                 default_strategy: str = "sum", warn_on_defaults: bool = True) -> nx.Graph:
+    def aggregate_parallel_edges(self, graph: nx.MultiDiGraph, edge_properties: Dict[str, str] = None,
+                                 default_strategy: str = "sum", warn_on_defaults: bool = True) -> nx.DiGraph:
         """
-        Collapse parallel edges in a MultiGraph to produce a simple Graph.
+        Collapse parallel edges in a MultiDiGraph to produce a simple DiGraph.
 
-        This method aggregates all parallel edges between the same node pairs
-        using the specified edge property strategies, converting a MultiGraph
-        to a simple Graph that can be partitioned.
+        This method aggregates all parallel edges between the same directed node pairs
+        using the specified edge property strategies, converting a MultiDiGraph
+        to a simple DiGraph that can be partitioned.
+
+        For directed graphs, edges (A->B) and (B->A) are treated as separate edges
+        and are aggregated independently.
 
         Args:
-            graph: MultiGraph with potential parallel edges
+            graph: MultiDiGraph with potential parallel edges
             edge_properties: Dict mapping property names to aggregation strategies
                            e.g., {"reactance": "average", "length": "sum"}
             default_strategy: Strategy to use for properties not specified (default: "sum")
             warn_on_defaults: Whether to warn when using default strategy
 
         Returns:
-            Simple Graph with parallel edges aggregated
+            Simple DiGraph with parallel edges aggregated
 
         Raises:
-            ValueError: If graph is not a MultiGraph
+            ValueError: If graph is not a MultiDiGraph
             AggregationError: If aggregation fails
         """
         from exceptions import AggregationError
 
         # Validate input
-        if not isinstance(graph, nx.MultiGraph):
+        if not isinstance(graph, nx.MultiDiGraph):
             raise ValueError(
-                f"Expected MultiGraph, got {type(graph).__name__}. "
-                "This method is only for collapsing parallel edges."
+                f"Expected MultiDiGraph, got {type(graph).__name__}. "
+                "This method is only for collapsing parallel edges in directed multigraphs."
             )
 
         edge_properties = edge_properties or {}
@@ -273,8 +276,8 @@ class AggregationManager:
             )
 
         try:
-            # Create simple graph
-            simple_graph = nx.Graph()
+            # Create simple directed graph
+            simple_graph = nx.DiGraph()
 
             # Copy all nodes with their attributes
             simple_graph.add_nodes_from(graph.nodes(data=True))
@@ -284,22 +287,26 @@ class AggregationManager:
             for u, v, data in graph.edges(data=True):
                 all_properties.update(data.keys())
 
-            # Process each unique edge (node pair)
+            # Process each unique directed edge (u->v pair)
+            # For directed graphs, we process each direction separately
             processed_edges = set()
+
             for u, v in graph.edges():
-                # Skip if already processed (for undirected graphs)
-                edge_key = tuple(sorted([u, v]))
+                # For directed graphs, (u, v) and (v, u) are different edges
+                edge_key = (u, v)
                 if edge_key in processed_edges:
                     continue
                 processed_edges.add(edge_key)
 
-                # Get all parallel edges between u and v
+                # Get all parallel edges from u to v (same direction only)
                 parallel_edges_data = []
                 for key in graph[u][v]:
                     parallel_edges_data.append(graph[u][v][key])
 
                 # Aggregate properties
                 aggregated_attrs = {}
+                warned_properties = set()
+
                 for prop in all_properties:
                     if prop in edge_properties:
                         # User specified strategy
@@ -310,11 +317,12 @@ class AggregationManager:
                         )
                     else:
                         # Use default strategy
-                        if warn_on_defaults:
+                        if warn_on_defaults and prop not in warned_properties:
                             warnings.warn(
                                 f"Edge property '{prop}' not specified. "
                                 f"Using default strategy '{default_strategy}'"
                             )
+                            warned_properties.add(prop)
                         strategy = self._edge_strategies[default_strategy]
                         aggregated_attrs[prop] = strategy.aggregate_property(
                             parallel_edges_data, prop
@@ -391,8 +399,8 @@ class AggregationManager:
                     UserWarning
                 )
 
-    def _aggregate_node_properties(self, graph: nx.Graph, partition_map: Dict[int, List[Any]],
-                                   aggregated: nx.Graph, profile: AggregationProfile,
+    def _aggregate_node_properties(self, graph: nx.DiGraph, partition_map: Dict[int, List[Any]],
+                                   aggregated: nx.DiGraph, profile: AggregationProfile,
                                    skip_properties: set = None):
         """Aggregate node properties statistically, skipping properties aggregated in physical step"""
         skip_properties = skip_properties or set()
@@ -434,8 +442,8 @@ class AggregationManager:
             # Update node attributes
             aggregated.nodes[cluster_id].update(node_attrs)
 
-    def _aggregate_edge_properties(self, graph: nx.Graph, partition_map: Dict[int, List[Any]],
-                                   aggregated: nx.Graph, profile: AggregationProfile,
+    def _aggregate_edge_properties(self, graph: nx.DiGraph, partition_map: Dict[int, List[Any]],
+                                   aggregated: nx.DiGraph, profile: AggregationProfile,
                                    skip_properties: set = None):
         """Aggregate edge properties statistically, skipping properties aggregated in physical step"""
         skip_properties = skip_properties or set()
@@ -451,7 +459,7 @@ class AggregationManager:
             nodes1 = partition_map[cluster1]
             nodes2 = partition_map[cluster2]
 
-            # Find all original edges between these clusters
+            # Find all original edges between these clusters (respecting direction)
             original_edges = []
             for n1 in nodes1:
                 for n2 in nodes2:
@@ -525,7 +533,7 @@ class PartitionAggregatorManager:
     """Main orchestrator - the primary class users interact with"""
 
     def __init__(self):
-        self._current_graph: Optional[nx.Graph] = None
+        self._current_graph: Optional[nx.DiGraph] = None
         self._current_graph_hash: Optional[str] = None
         self._current_partition: Optional[PartitionResult] = None
 
@@ -534,7 +542,7 @@ class PartitionAggregatorManager:
         self.partitioning_manager = PartitioningManager()
         self.aggregation_manager = AggregationManager()
 
-    def load_data(self, strategy: str, **kwargs) -> nx.Graph:
+    def load_data(self, strategy: str, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
         """Load data using specified strategy"""
         self._current_graph = self.input_manager.load(strategy, **kwargs)
         self._current_graph_hash = self._compute_graph_hash(self._current_graph)
@@ -546,11 +554,11 @@ class PartitionAggregatorManager:
         if not self._current_graph:
             raise ValueError("No graph loaded. Call load_data() first.")
 
-        # Check if graph is MultiGraph - cannot partition MultiGraphs
-        if isinstance(self._current_graph, nx.MultiGraph):
+        # Check if graph is MultiDiGraph - cannot partition MultiDiGraphs
+        if isinstance(self._current_graph, nx.MultiDiGraph):
             raise ValueError(
-                "Cannot partition MultiGraph directly. MultiGraphs contain parallel edges "
-                "that must be aggregated first.Please call manager.aggregate_parallel_edges() before partitioning."
+                "Cannot partition MultiDiGraph directly. MultiDiGraphs contain parallel edges "
+                "that must be aggregated first. Please call manager.aggregate_parallel_edges() before partitioning."
             )
 
         mapping = self.partitioning_manager.partition(
@@ -568,7 +576,7 @@ class PartitionAggregatorManager:
 
     def aggregate(self, partition_result: PartitionResult = None,
                   profile: AggregationProfile = None,
-                  mode: AggregationMode = None, **overrides) -> nx.Graph:
+                  mode: AggregationMode = None, **overrides) -> nx.DiGraph:
         """
         Aggregate using partition result and profile
 
@@ -612,13 +620,15 @@ class PartitionAggregatorManager:
 
     def aggregate_parallel_edges(self, edge_properties: Dict[str, str] = None,
                                  default_strategy: str = "sum",
-                                 warn_on_defaults: bool = True) -> nx.Graph:
+                                 warn_on_defaults: bool = True) -> nx.DiGraph:
         """
-        Convert current MultiGraph to simple Graph by aggregating parallel edges.
+        Convert current MultiDiGraph to simple DiGraph by aggregating parallel edges.
 
-        This method aggregates all parallel edges between the same node pairs
+        This method aggregates all parallel edges between the same directed node pairs
         into single edges, using the specified aggregation strategies. The graph
-        must be a MultiGraph for this operation to be meaningful.
+        must be a MultiDiGraph for this operation to be meaningful.
+
+        For directed graphs, edges (A->B) and (B->A) are treated as separate edges.
 
         Args:
             edge_properties: Dict mapping property names to aggregation strategies
@@ -627,18 +637,18 @@ class PartitionAggregatorManager:
             warn_on_defaults: Whether to warn when using default strategy
 
         Returns:
-            Simple Graph with parallel edges aggregated
+            Simple DiGraph with parallel edges aggregated
 
         Raises:
-            ValueError: If no graph is loaded or graph is not a MultiGraph
+            ValueError: If no graph is loaded or graph is not a MultiDiGraph
         """
         if not self._current_graph:
             raise ValueError("No graph loaded. Call load_data() first.")
 
-        if not isinstance(self._current_graph, nx.MultiGraph):
+        if not isinstance(self._current_graph, nx.MultiDiGraph):
             raise ValueError(
-                f"Current graph is not a MultiGraph (it's {type(self._current_graph).__name__}). "
-                "This method is only for aggregating parallel edges in MultiGraphs."
+                f"Current graph is not a MultiDiGraph (it's {type(self._current_graph).__name__}). "
+                "This method is only for aggregating parallel edges in MultiDiGraphs."
             )
 
         # Aggregate parallel edges
@@ -660,7 +670,7 @@ class PartitionAggregatorManager:
     def full_workflow(self, data_strategy: str, partition_strategy: str,
                       aggregation_profile: AggregationProfile = None,
                       aggregation_mode: AggregationMode = None,
-                      **kwargs) -> nx.Graph:
+                      **kwargs) -> nx.DiGraph:
         """
         Execute complete workflow without storing intermediates
 
@@ -681,8 +691,9 @@ class PartitionAggregatorManager:
         data_params = {k: v for k, v in kwargs.items()
                        if k in ['node_file', 'edge_file', 'graph', 'connection_string', 'table_prefix',
                                 'delimiter', 'decimal', 'node_id_col', 'edge_from_col', 'edge_to_col']}
+                                'bidirectional']}
 
-        # Parameters for parallel edge aggregation (if MultiGraph)
+        # Parameters for parallel edge aggregation (if MultiDiGraph)
         parallel_edge_params = {k: v for k, v in kwargs.items()
                                 if k in ['edge_properties', 'parallel_edge_default_strategy',
                                          'parallel_edge_warn_on_defaults']}
@@ -694,9 +705,9 @@ class PartitionAggregatorManager:
         # Step 1: Load data
         self.load_data(data_strategy, **data_params)
 
-        # Step 2: If MultiGraph, aggregate parallel edges first
-        if isinstance(self._current_graph, nx.MultiGraph):
-            print("→ MultiGraph detected in workflow. Auto-aggregating parallel edges...")
+        # Step 2: If MultiDiGraph, aggregate parallel edges first
+        if isinstance(self._current_graph, nx.MultiDiGraph):
+            print("→ MultiDiGraph detected in workflow. Auto-aggregating parallel edges...")
             self.aggregate_parallel_edges(**parallel_edge_params)
 
         # Step 3: Partition
@@ -705,7 +716,7 @@ class PartitionAggregatorManager:
         # Step 4: Aggregate clusters
         return self.aggregate(partition_result, aggregation_profile, aggregation_mode)
 
-    def get_current_graph(self) -> Optional[nx.Graph]:
+    def get_current_graph(self) -> Optional[nx.DiGraph]:
         """Get the current graph"""
         return self._current_graph
 
@@ -714,12 +725,12 @@ class PartitionAggregatorManager:
         return self._current_partition
 
     @staticmethod
-    def _compute_graph_hash(graph: nx.Graph) -> str:
+    def _compute_graph_hash(graph: nx.DiGraph) -> str:
         """Compute hash for graph validation"""
         from utils import compute_graph_hash
         return compute_graph_hash(graph)
 
-    def plot_network_on_map(self, graph: nx.Graph = None):
+    def plot_network_on_map(self, graph: nx.DiGraph = None):
         """Plot current graph on geographical map if coordinates are available"""
         if not self._current_graph and graph is None:
             raise ValueError("No graph loaded.")

@@ -33,8 +33,8 @@ class CSVFilesStrategy(DataLoadingStrategy):
 
         return True
 
-    def load(self, node_file: str, edge_file: str, **kwargs) -> nx.Graph | nx.MultiGraph:
-        """Load graph from CSV files"""
+    def load(self, node_file: str, edge_file: str, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
+        """Load graph from CSV files as a directed graph"""
         try:
             delimiter = kwargs["delimiter"] if 'delimiter' in kwargs else ','
             decimal = kwargs["decimal"] if 'decimal' in kwargs else '.'
@@ -54,7 +54,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
                 )
 
             # Load edges
-            edges_df = pd.read_csv(edge_file, delimiter=delimiter, decimal=decimal)
+            edges_df = pd.read_csv(edge_file, delimiter=delimiter, decimal=decimal, quotechar="'")
             if edges_df.empty:
                 raise DataLoadingError("Edge file is empty", strategy="csv_files")
 
@@ -83,13 +83,13 @@ class CSVFilesStrategy(DataLoadingStrategy):
                 for _, row in nodes_df.iterrows()
             ]
 
-            # Check for parallel edges (duplicate node pairs)
+            # Check for parallel edges (duplicate directed pairs)
+            # For directed graphs, (A->B) and (B->A) are different edges
             edge_pairs = edges_df[[edge_from_col, edge_to_col]].copy()
-            # Sort pairs to consider (A,B) and (B,A) as same pair for undirected graph
-            edge_pairs['sorted_pair'] = edge_pairs.apply(
-                lambda row: tuple(sorted([row[edge_from_col], row[edge_to_col]])), axis=1
+            edge_pairs['directed_pair'] = edge_pairs.apply(
+                lambda row: (row[edge_from_col], row[edge_to_col]), axis=1
             )
-            has_parallel_edges = edge_pairs['sorted_pair'].duplicated().any()
+            has_parallel_edges = edge_pairs['directed_pair'].duplicated().any()
 
             # Prepare edge tuples: (from_node, to_node, attr_dict)
             edge_tuples = []
@@ -103,14 +103,15 @@ class CSVFilesStrategy(DataLoadingStrategy):
                          col not in [edge_from_col, edge_to_col] and pd.notna(row[col])}
                 edge_tuples.append((from_node, to_node, attrs))
 
-            # Create appropriate graph type based on parallel edges
+            # Create appropriate directed graph type based on parallel edges
             if has_parallel_edges:
-                graph = nx.MultiGraph()
-                print("MULTIGRAPH DETECTED: Parallel edges found in the data.")
-                print("The loaded graph contains multiple edges between the same node pairs. MultiGraphs cannot be "
-                      "partitioned directly. Call manager.aggregate_parallel_edges() to collapse parallel edges")
+                graph = nx.MultiDiGraph()
+                print("MULTI-DIGRAPH DETECTED: Parallel edges found in the data.")
+                print("The loaded graph contains multiple directed edges between the same node pairs.")
+                print("MultiDiGraphs cannot be partitioned directly.")
+                print("Call manager.aggregate_parallel_edges() to collapse parallel edges.")
             else:
-                graph = nx.Graph()
+                graph = nx.DiGraph()
 
             graph.add_nodes_from(node_tuples)
             graph.add_edges_from(edge_tuples)

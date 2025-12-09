@@ -61,8 +61,8 @@ class DataLoadingStrategy(ABC):
     """Interface for data loading strategies"""
 
     @abstractmethod
-    def load(self, **kwargs) -> nx.Graph:
-        """Load data and return NetworkX graph"""
+    def load(self, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
+        """Load data and return NetworkX directed graph"""
         pass
 
     @abstractmethod
@@ -76,7 +76,7 @@ class PartitioningStrategy(ABC):
 
     @validate_required_attributes
     @abstractmethod
-    def partition(self, graph: nx.Graph, **kwargs) -> Dict[int, List[Any]]:
+    def partition(self, graph: nx.DiGraph, **kwargs) -> Dict[int, List[Any]]:
         """Partition nodes into clusters"""
         pass
 
@@ -98,17 +98,17 @@ class TopologyStrategy(ABC):
     """
 
     @abstractmethod
-    def create_topology(self, graph: nx.Graph,
-                        partition_map: Dict[int, List[Any]]) -> nx.Graph:
+    def create_topology(self, graph: nx.DiGraph,
+                        partition_map: Dict[int, List[Any]]) -> nx.DiGraph:
         """
         Create aggregated graph structure (nodes + edges, no properties yet)
 
         Args:
-            graph: Original graph
+            graph: Original directed graph
             partition_map: Cluster_id -> list of original node ids
 
         Returns:
-            Graph with aggregated topology (nodes and edges, but no attributes)
+            DiGraph with aggregated topology (nodes and edges, but no attributes)
         """
         pass
 
@@ -118,10 +118,26 @@ class TopologyStrategy(ABC):
         return False
 
     @staticmethod
-    def _clusters_connected(graph: nx.Graph, nodes1: List[Any], nodes2: List[Any]) -> bool:
-        """Return True if any edge exists between nodes in nodes1 and nodes2."""
+    def _clusters_connected(graph: nx.DiGraph, nodes1: List[Any], nodes2: List[Any]) -> bool:
+        """
+        Return True if any edge exists between nodes in nodes1 and nodes2.
+
+        For directed graphs, this checks edges in both directions.
+        Use _clusters_connected_directed for direction-specific checks.
+        """
         for n1 in nodes1:
             for n2 in nodes2:
+                if graph.has_edge(n1, n2) or graph.has_edge(n2, n1):
+                    return True
+        return False
+
+    @staticmethod
+    def _clusters_connected_directed(graph: nx.DiGraph,
+                                     source_nodes: List[Any],
+                                     target_nodes: List[Any]) -> bool:
+        """Return True if any directed edge exists from source_nodes to target_nodes."""
+        for n1 in source_nodes:
+            for n2 in target_nodes:
                 if graph.has_edge(n1, n2):
                     return True
         return False
@@ -137,23 +153,23 @@ class PhysicalAggregationStrategy(ABC):
     """
 
     @abstractmethod
-    def aggregate(self, original_graph: nx.Graph,
+    def aggregate(self, original_graph: nx.DiGraph,
                   partition_map: Dict[int, List[Any]],
-                  topology_graph: nx.Graph,
+                  topology_graph: nx.DiGraph,
                   properties: List[str],
-                  parameters: Dict[str, Any] = None) -> nx.Graph:
+                  parameters: Dict[str, Any] = None) -> nx.DiGraph:
         """
         Apply physical aggregation to the topology graph
 
         Args:
-            original_graph: Full resolution graph with all properties
+            original_graph: Full resolution directed graph with all properties
             partition_map: Node-to-cluster mapping
-            topology_graph: Graph with aggregated structure but no properties yet
+            topology_graph: DiGraph with aggregated structure but no properties yet
             properties: Physical properties to aggregate (coupled)
             parameters: Additional parameters for the strategy
 
         Returns:
-            Graph with physical properties correctly aggregated
+            DiGraph with physical properties correctly aggregated
         """
         pass
 
@@ -189,7 +205,7 @@ class NodePropertyStrategy(ABC):
     """Interface for node property aggregation strategies"""
 
     @abstractmethod
-    def aggregate_property(self, graph: nx.Graph, nodes: List[Any], property_name: str) -> Any:
+    def aggregate_property(self, graph: nx.DiGraph, nodes: List[Any], property_name: str) -> Any:
         """Aggregate a specific property across nodes"""
         pass
 
