@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx
 
@@ -66,6 +66,7 @@ class PartitioningManager:
         from partitioning.geographical import GeographicalPartitioning
         from partitioning.electrical import ElectricalDistancePartitioning
         from partitioning.va_geographical import VAGeographicalPartitioning
+        from partitioning.va_geographical import VAGeographicalConfig
 
         # Geographical distance partitioning strategies
         self._strategies['geographical_kmeans'] = GeographicalPartitioning(
@@ -109,7 +110,7 @@ class PartitioningManager:
             algorithm='kmedoids'
         )
 
-        # Voltage-Aware Geographical partitioning strategies
+        # Voltage-Aware Geographical partitioning strategies - Standard mode
         self._strategies['va_geographical_kmedoids_euclidean'] = VAGeographicalPartitioning(
             algorithm='kmedoids',
             distance_metric='euclidean'
@@ -117,6 +118,18 @@ class PartitioningManager:
         self._strategies['va_geographical_kmedoids_haversine'] = VAGeographicalPartitioning(
             algorithm='kmedoids',
             distance_metric='haversine'
+        )
+
+        # Voltage-Aware Geographical partitioning strategies - Proportional mode
+        self._strategies['va_geographical_proportional_kmedoids_euclidean'] = VAGeographicalPartitioning(
+            algorithm='kmedoids',
+            distance_metric='euclidean',
+            config=VAGeographicalConfig(proportional_clustering=True)
+        )
+        self._strategies['va_geographical_proportional_kmedoids_haversine'] = VAGeographicalPartitioning(
+            algorithm='kmedoids',
+            distance_metric='haversine',
+            config=VAGeographicalConfig(proportional_clustering=True)
         )
 
 

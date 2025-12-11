@@ -23,9 +23,14 @@ class VAGeographicalConfig:
                           between nodes at different voltage levels.
                           Using a large finite value instead of np.inf
                           to avoid numerical issues in clustering algorithms.
+        proportional_clustering: If False (default), runs clustering on full
+                              matrix with infinite distances between voltage levels.
+                              If True, clusters each voltage island independently
+                              with proportional cluster distribution.
     """
     voltage_tolerance: float = 1.0
     infinite_distance: float = 1e4
+    proportional_clustering: bool = False
 
 
 class VAGeographicalPartitioning(PartitioningStrategy):
@@ -42,14 +47,22 @@ class VAGeographicalPartitioning(PartitioningStrategy):
     - Transformers connect different voltage levels but shouldn't cause
       those levels to merge during clustering
 
-    Mathematical approach:
-    1. Extract geographical coordinates (lat, lon) for all nodes
-    2. Extract voltage levels for all nodes
-    3. Build distance matrix:
-       - d(i,j) = geographical_distance(i,j) if voltage(i) = voltage(j)
-       - d(i,j) = infinite if voltage(i) ≠ voltage(j)
-    4. Apply K-Medoids clustering with precomputed distance matrix
+    Two clustering modes are available:
 
+    Standard mode (per_island_clustering=False, default):
+        - Builds full NxN distance matrix
+        - Sets d(i,j) = inf if voltage(i) != voltage(j)
+        - Runs single clustering algorithm on entire matrix
+        - Algorithm handles infinite distances to respect voltage boundaries
+
+    Proportional mode (per_island_clustering=True):
+        - Groups nodes by voltage level
+        - Distributes n_clusters proportionally among voltage groups
+        - Runs clustering independently on each group
+        - Guaranteed balanced distribution per voltage level
+
+    Supported algorithms:
+        - 'kmedoids': K-Medoids clustering (works naturally with precomputed distances)
     Example distance matrix for N=4 nodes (2 at 220kV, 2 at 380kV):
         ( 0.0,   X,   inf, inf )
         ( X,   0.0,   inf, inf )
@@ -59,6 +72,9 @@ class VAGeographicalPartitioning(PartitioningStrategy):
     Where X and Y are actual geographical distances within voltage islands.
     """
 
+    SUPPORTED_ALGORITHMS = ['kmedoids']
+    SUPPORTED_DISTANCE_METRICS = ['euclidean', 'haversine']
+
     def __init__(self, algorithm: str = 'kmedoids',
                  distance_metric: str = 'euclidean',
                  voltage_attr: str = 'voltage',
@@ -67,8 +83,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         Initialize voltage-aware geographical partitioning strategy.
 
         Args:
-            algorithm: Clustering algorithm. Currently only 'kmedoids' is
-                      supported as it naturally works with precomputed
+            algorithm: Clustering algorithm. Supported options:
+                      - 'kmedoids': K-Medoids (robust, works with precomputed distances)
                       distance matrices.
             distance_metric: Distance metric for geographical distances.
                            'euclidean' for flat/projected coordinates,
@@ -84,11 +100,16 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         self.voltage_attr = voltage_attr
         self.config = config or VAGeographicalConfig()
 
-        if algorithm not in ['kmedoids']:
+        if algorithm not in self.SUPPORTED_ALGORITHMS:
             raise ValueError(
                 f"Unsupported algorithm: {algorithm}. "
-                "Voltage-aware partitioning requires precomputed distance matrices, "
-                "so only 'kmedoids' is currently supported."
+                f"Supported: {', '.join(self.SUPPORTED_ALGORITHMS)}"
+            )
+
+        if distance_metric not in self.SUPPORTED_DISTANCE_METRICS:
+            raise ValueError(
+                f"Unsupported distance metric: {distance_metric}. "
+                f"Supported: {', '.join(self.SUPPORTED_DISTANCE_METRICS)}"
             )
 
         if distance_metric not in ['euclidean', 'haversine']:
@@ -125,7 +146,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             if n_clusters is None or n_clusters <= 0:
                 raise PartitioningError(
                     "Voltage-aware geographical partitioning requires a positive 'n_clusters' parameter.",
-                    strategy=f"va_geographical_{self.algorithm}"
+                    strategy=self._get_strategy_name()
                 )
 
             # Extract node data
@@ -135,7 +156,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             if n_clusters > n_nodes:
                 raise PartitioningError(
                     f"Cannot create {n_clusters} clusters from {n_nodes} nodes.",
-                    strategy=f"va_geographical_{self.algorithm}"
+                    strategy=self._get_strategy_name()
                 )
 
             # Extract coordinates and voltages
@@ -151,17 +172,18 @@ class VAGeographicalPartitioning(PartitioningStrategy):
                       f"distinct voltage levels. Some voltage levels may share clusters, "
                       f"but infinite distance constraints will be respected.")
 
-            # Build voltage-aware distance matrix
-            distance_matrix = self._build_voltage_aware_distance_matrix(coordinates, voltages)
-
             # Log voltage level summary
             self._log_voltage_summary(voltages)
 
-            # Perform clustering
-            labels = self._kmedoids_clustering(distance_matrix, **kwargs)
-
-            # Create partition mapping
-            partition_map = self._create_partition_map(nodes, labels)
+            # Choose clustering mode based on configuration
+            if self.config.proportional_clustering:
+                partition_map = self._proportional_partition(
+                    nodes, coordinates, voltages, **kwargs
+                )
+            else:
+                partition_map = self._standard_partition(
+                    nodes, coordinates, voltages, **kwargs
+                )
 
             # Validate result
             self._validate_partition(partition_map, n_nodes)
@@ -176,9 +198,245 @@ class VAGeographicalPartitioning(PartitioningStrategy):
                 raise
             raise PartitioningError(
                 f"Voltage-aware geographical partitioning failed: {e}",
-                strategy=f"va_geographical_{self.algorithm}",
+                strategy=self._get_strategy_name(),
                 graph_info={'nodes': len(list(graph.nodes())), 'edges': len(graph.edges())}
             ) from e
+
+    def _get_strategy_name(self) -> str:
+        """Get descriptive strategy name for error messages."""
+        mode = "proportional" if self.config.proportional_clustering else "standard"
+        return f"va_geographical_{mode}_{self.algorithm}"
+
+    # =========================================================================
+    # STANDARD MODE: Single clustering with infinite distances
+    # =========================================================================
+
+    def _standard_partition(self, nodes: List[Any], coordinates: np.ndarray,
+                            voltages: np.ndarray, **kwargs) -> Dict[int, List[Any]]:
+        """
+        Partition using single clustering on full matrix with infinite distances.
+
+        This mode builds a voltage-aware distance matrix where nodes at different
+        voltage levels have infinite distance, then runs the clustering algorithm
+        on the entire matrix.
+
+        Args:
+            nodes: List of node IDs
+            coordinates: Node coordinates [n x 2]
+            voltages: Node voltage values
+            **kwargs: Clustering parameters
+
+        Returns:
+            Partition mapping
+        """
+        # Build voltage-aware distance matrix
+        distance_matrix = self._build_voltage_aware_distance_matrix(coordinates, voltages)
+
+        # Run clustering algorithm
+        labels = self._run_clustering(distance_matrix, **kwargs)
+
+        # Create partition mapping
+        return self._create_partition_map(nodes, labels)
+
+    def _proportional_partition(self, nodes: List[Any], coordinates: np.ndarray,
+                                voltages: np.ndarray, **kwargs) -> Dict[int, List[Any]]:
+        """
+        Partition each voltage island independently with proportional distribution.
+
+        Args:
+            nodes: List of node IDs
+            coordinates: Node coordinates [n x 2]
+            voltages: Node voltage values
+            **kwargs: Clustering parameters
+
+        Returns:
+            Partition mapping
+        """
+        n_clusters = kwargs.get('n_clusters')
+
+        # Group nodes by voltage
+        voltage_groups = self._group_by_voltage(voltages)
+
+        # Allocate clusters proportionally
+        allocation = self._allocate_clusters(voltage_groups, n_clusters)
+
+        # Partition each group
+        partition_map: Dict[int, List[Any]] = {}
+        cluster_offset = 0
+
+        for voltage, node_indices in voltage_groups.items():
+            n_clust = allocation[voltage]
+            group_nodes = [nodes[i] for i in node_indices]
+            group_coords = coordinates[node_indices]
+
+            # Handle edge cases: more clusters than nodes
+            if len(group_nodes) <= n_clust:
+                for node_id in group_nodes:
+                    partition_map[cluster_offset] = [node_id]
+                    cluster_offset += 1
+                continue
+
+            # Cluster this group using geographical distances only
+            distances = self._calculate_geographical_distances(group_coords)
+            labels = self._run_clustering(
+                distances,
+                n_clusters=n_clust,
+                random_state=kwargs.get('random_state', 42),
+                max_iter=kwargs.get('max_iter', 300)
+            )
+
+            for local_idx, label in enumerate(labels):
+                global_id = cluster_offset + int(label)
+                if global_id not in partition_map:
+                    partition_map[global_id] = []
+                partition_map[global_id].append(group_nodes[local_idx])
+
+            cluster_offset += n_clust
+
+        return partition_map
+
+    def _group_by_voltage(self, voltages: np.ndarray) -> Dict[Any, List[int]]:
+        """
+        Group node indices by voltage level.
+
+        Args:
+            voltages: Array of voltage values
+
+        Returns:
+            Dict mapping voltage_level -> list of node indices
+        """
+        groups: Dict[Any, List[int]] = {}
+
+        for idx, voltage in enumerate(voltages):
+            matched = None
+            for existing in groups.keys():
+                if self._voltages_compatible(voltage, existing):
+                    matched = existing
+                    break
+
+            if matched is not None:
+                groups[matched].append(idx)
+            else:
+                key = voltage if voltage is not None else 'unknown'
+                groups[key] = [idx]
+
+        return groups
+
+    @staticmethod
+    def _allocate_clusters(voltage_groups: Dict[Any, List[int]],
+                           n_clusters: int) -> Dict[Any, int]:
+        """
+        Allocate clusters proportionally to voltage groups.
+
+        Args:
+            voltage_groups: Dict mapping voltage -> node indices
+            n_clusters: Total clusters to allocate
+
+        Returns:
+            Dict mapping voltage -> number of clusters
+        """
+        total_nodes = sum(len(indices) for indices in voltage_groups.values())
+        allocation: Dict[Any, int] = {}
+
+        # Sort by size (largest first) for stable allocation
+        sorted_voltages = sorted(voltage_groups.keys(),
+                                 key=lambda v: len(voltage_groups[v]),
+                                 reverse=True)
+
+        remaining = n_clusters
+        for i, voltage in enumerate(sorted_voltages):
+            n_nodes = len(voltage_groups[voltage])
+
+            if i == len(sorted_voltages) - 1:
+                # Last group gets remaining clusters
+                allocation[voltage] = max(1, remaining)
+            else:
+                # Proportional allocation
+                proportion = n_nodes / total_nodes
+                allocated = max(1, int(round(n_clusters * proportion)))
+                allocated = min(allocated, n_nodes, remaining - (len(sorted_voltages) - i - 1))
+                allocation[voltage] = allocated
+                remaining -= allocated
+
+        # Log allocation
+        print(f"\nCluster allocation (proportional):")
+        for voltage in sorted_voltages:
+            n_nodes = len(voltage_groups[voltage])
+            n_clust = allocation[voltage]
+            ratio = n_nodes / n_clust if n_clust > 0 else 0
+            voltage_str = f"{int(voltage)} kV" if isinstance(voltage, (int, float)) else str(voltage)
+            print(f"  • {voltage_str}: {n_clust} cluster(s) for {n_nodes} nodes (~{ratio:.1f} nodes/cluster)")
+
+        return allocation
+
+    def _run_clustering(self, distance_matrix: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        Dispatch to the appropriate clustering algorithm.
+
+        Args:
+            distance_matrix: Precomputed distance matrix (n x n)
+            **kwargs: Clustering parameters
+
+        Returns:
+            Array of cluster labels for each node
+
+        Raises:
+            PartitioningError: If clustering fails.
+        """
+        if self.algorithm == 'kmedoids':
+            return self._kmedoids_clustering(distance_matrix, **kwargs)
+        else:
+            raise PartitioningError(
+                f"Unknown algorithm: {self.algorithm}",
+                strategy=self._get_strategy_name()
+            )
+
+    @staticmethod
+    def _kmedoids_clustering(distance_matrix: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        Perform K-Medoids clustering with precomputed distance matrix.
+
+        K-Medoids is robust to outliers and works naturally with precomputed
+        distance matrices, making it ideal for voltage-aware clustering.
+
+        Args:
+            distance_matrix: Precomputed distance matrix (n x n)
+            **kwargs: Clustering parameters:
+                - n_clusters: Number of clusters
+                - random_state: Random seed (default: 42)
+                - max_iter: Maximum iterations (default: 300)
+
+        Returns:
+            Array of cluster labels for each node
+
+        Raises:
+            PartitioningError: If clustering fails.
+        """
+        try:
+            n_clusters = kwargs.get('n_clusters')
+            random_state = kwargs.get('random_state', 42)
+            max_iter = kwargs.get('max_iter', 300)
+
+            kmedoids = KMedoids(
+                n_clusters=n_clusters,
+                metric='precomputed',
+                random_state=random_state,
+                max_iter=max_iter
+            )
+
+            labels = kmedoids.fit_predict(distance_matrix)
+            return labels
+
+        except Exception as e:
+            raise PartitioningError(
+                f"K-Medoids clustering failed: {e}",
+                strategy="va_geographical_kmedoids"
+            ) from e
+
+
+    # =========================================================================
+    # SHARED UTILITIES
+    # =========================================================================
 
     def _extract_node_data(self, graph: nx.Graph,
                            nodes: List[Any]) -> Tuple[np.ndarray, np.ndarray]:
@@ -208,7 +466,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             if lat is None or lon is None:
                 raise PartitioningError(
                     f"Node {node} missing latitude or longitude",
-                    strategy=f"va_geographical_{self.algorithm}",
+                    strategy=self._get_strategy_name(),
                     graph_info={'nodes': len(nodes)}
                 )
 
@@ -311,7 +569,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         else:
             raise PartitioningError(
                 f"Unknown distance metric: {self.distance_metric}",
-                strategy=f"va_geographical_{self.algorithm}"
+                strategy=self._get_strategy_name()
             )
 
     def _voltages_compatible(self, v1: Any, v2: Any) -> bool:
@@ -363,45 +621,6 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             print(f"  • {voltage}: {count} node(s)")
 
     @staticmethod
-    def _kmedoids_clustering(distance_matrix: np.ndarray, **kwargs) -> np.ndarray:
-        """
-        Perform K-Medoids clustering with precomputed distance matrix.
-
-        Args:
-            distance_matrix: Precomputed distance matrix (n x n)
-            **kwargs: Clustering parameters:
-                - n_clusters: Number of clusters
-                - random_state: Random seed (default: 42)
-                - max_iter: Maximum iterations (default: 300)
-
-        Returns:
-            Array of cluster labels for each node
-
-        Raises:
-            PartitioningError: If clustering fails.
-        """
-        try:
-            n_clusters = kwargs.get('n_clusters')
-            random_state = kwargs.get('random_state', 42)
-            max_iter = kwargs.get('max_iter', 300)
-
-            kmedoids = KMedoids(
-                n_clusters=n_clusters,
-                metric='precomputed',
-                random_state=random_state,
-                max_iter=max_iter
-            )
-
-            labels = kmedoids.fit_predict(distance_matrix)
-            return labels
-
-        except Exception as e:
-            raise PartitioningError(
-                f"K-Medoids clustering failed: {e}",
-                strategy="va_geographical_kmedoids"
-            ) from e
-
-    @staticmethod
     def _create_partition_map(nodes: List[Any],
                               labels: np.ndarray) -> Dict[int, List[Any]]:
         """
@@ -424,8 +643,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
 
         return partition_map
 
-    @staticmethod
-    def _validate_partition(partition_map: Dict[int, List[Any]],
+    def _validate_partition(self, partition_map: Dict[int, List[Any]],
                             n_nodes: int) -> None:
         """
         Validate that all nodes were assigned to clusters.
@@ -442,7 +660,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         if total_assigned != n_nodes:
             raise PartitioningError(
                 f"Partition assignment mismatch: {total_assigned} assigned vs {n_nodes} total nodes",
-                strategy="va_geographical_kmedoids"
+                strategy=self._get_strategy_name()
             )
 
     def _validate_voltage_consistency(self, graph: nx.Graph,
