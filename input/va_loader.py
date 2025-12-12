@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Tuple, Any
 
 import networkx as nx
 import pandas as pd
+from networkx import DiGraph, MultiDiGraph
 
 from exceptions import DataLoadingError
 from interfaces import DataLoadingStrategy
@@ -10,12 +11,18 @@ from interfaces import DataLoadingStrategy
 
 class VoltageAwareStrategy(DataLoadingStrategy):
     """
-    Load graph from separate CSV files for nodes, lines, transformers, and optionally DC links.
+    Load graph from separate CSV files for nodes, lines, transformers, and DC links.
 
     This strategy creates a directed graph (DiGraph or MultiDiGraph) where:
     - Nodes represent electrical buses/substations
     - Edges represent transmission lines, transformers, or DC links
     - Edge direction follows defined bus0 -> bus1 convention
+
+    DC Island Detection:
+        After loading lines and transformers (before DC links), the loader detects
+        disconnected components which represent separate DC islands. Each bus is
+        assigned a 'dc_island' attribute indicating which island it belongs to.
+        DC links then connect these islands.
 
     Edge Schema (unified for all types):
         - bus0, bus1: Source and target node IDs
@@ -40,11 +47,11 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     def validate_inputs(self, **kwargs) -> bool:
         """
-        Validate that required CSV files are provided and exist.
+        Validate that all required CSV files are provided and exist.
 
         Args:
-            **kwargs: Must include 'node_file', 'line_file', 'transformer_file'
-                      Optionally includes 'converter_file' and 'link_file' for DC links
+            **kwargs: Must include 'node_file', 'line_file', 'transformer_file',
+                      'converter_file', and 'link_file'
 
         Returns:
             True if validation passes
@@ -52,13 +59,15 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         Raises:
             DataLoadingError: If validation fails
         """
-        # Core required files
-        required_files = ['node_file', 'line_file', 'transformer_file']
+        # All files are now required
+        required_files = ['node_file', 'line_file', 'transformer_file',
+                          'converter_file', 'link_file']
         missing = [f for f in required_files if f not in kwargs or kwargs[f] is None]
 
         if missing:
             raise DataLoadingError(
-                f"Missing required parameters: {missing}",
+                f"Missing required parameters: {missing}. "
+                "All files (including converter_file and link_file) are mandatory.",
                 strategy="va_loader",
                 details={
                     'required_params': required_files,
@@ -66,7 +75,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
                 }
             )
 
-        # Check if required files exist
+        # Check if all files exist
         for param in required_files:
             file_path = Path(kwargs[param])
             if not file_path.exists():
@@ -76,56 +85,35 @@ class VoltageAwareStrategy(DataLoadingStrategy):
                     details={'missing_file': str(file_path)}
                 )
 
-        # Validate DC link files (both must be provided together or neither)
-        converter_file = kwargs.get('converter_file')
-        link_file = kwargs.get('link_file')
-
-        if (converter_file is None) != (link_file is None):
-            raise DataLoadingError(
-                "Both 'converter_file' and 'link_file' must be provided together for DC links",
-                strategy="va_loader",
-                details={
-                    'converter_file_provided': converter_file is not None,
-                    'link_file_provided': link_file is not None
-                }
-            )
-
-        # Check if optional DC link files exist when provided
-        if converter_file and not Path(converter_file).exists():
-            raise DataLoadingError(
-                f"Converter file not found: {converter_file}",
-                strategy="va_loader",
-                details={'missing_file': str(converter_file)}
-            )
-
-        if link_file and not Path(link_file).exists():
-            raise DataLoadingError(
-                f"Link file not found: {link_file}",
-                strategy="va_loader",
-                details={'missing_file': str(link_file)}
-            )
-
         return True
 
     def load(self, node_file: str, line_file: str, transformer_file: str,
-             converter_file: Optional[str] = None, link_file: Optional[str] = None,
+             converter_file: str, link_file: str,
              **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
         """
-        Load graph from CSV files: nodes, lines, transformers, and optionally DC links.
+        Load graph from CSV files: nodes, lines, transformers, and DC links.
+
+        The loading process:
+        1. Load nodes, lines, and transformers
+        2. Detect DC islands (connected components before DC links)
+        3. Assign 'dc_island' attribute to each bus
+        4. Add DC links to connect islands
+        5. Remove isolated nodes and warn user
+        6. Return fully connected graph
 
         Args:
             node_file: Path to nodes CSV file
             line_file: Path to lines CSV file
             transformer_file: Path to transformers CSV file
-            converter_file: Path to converters CSV file (optional, for DC links)
-            link_file: Path to DC links CSV file (optional, requires converter_file)
+            converter_file: Path to converters CSV file (required for DC links)
+            link_file: Path to DC links CSV file (required)
             **kwargs: Additional parameters:
                 - delimiter: CSV delimiter (default: ',')
                 - decimal: Decimal separator (default: '.')
                 - node_id_col: Column name for node IDs (auto-detected if not provided)
 
         Returns:
-            DiGraph or MultiDiGraph with combined edges
+            DiGraph or MultiDiGraph with combined edges and dc_island attributes
 
         Raises:
             DataLoadingError: If loading fails
@@ -143,12 +131,9 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             # Load and validate transformers
             transformers_df = self._load_transformers(transformer_file, delimiter, decimal)
 
-            # Load DC link data if provided
-            converters_df = None
-            links_df = None
-            if converter_file and link_file:
-                converters_df = self._load_converters(converter_file, delimiter, decimal)
-                links_df = self._load_links(link_file, delimiter, decimal)
+            # Load DC link data
+            converters_df = self._load_converters(converter_file, delimiter, decimal)
+            links_df = self._load_links(link_file, delimiter, decimal)
 
             # Get node ID column
             node_id_col = kwargs.get('node_id_col', self._detect_id_column(nodes_df))
@@ -164,21 +149,29 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             self._validate_edge_references(lines_df, valid_node_ids, "lines")
             self._validate_edge_references(transformers_df, valid_node_ids, "transformers")
 
-            # Prepare node tuples
+            # Prepare node tuples (without dc_island yet)
             node_tuples = self._prepare_node_tuples(nodes_df, node_id_col)
 
-            # Prepare edge tuples
+            # Prepare AC edge tuples (lines and transformers)
             line_tuples = self._prepare_line_tuples(lines_df)
             transformer_tuples = self._prepare_transformer_tuples(transformers_df)
+            ac_edge_tuples = line_tuples + transformer_tuples
 
-            # Prepare DC link tuples if data is available
-            dc_link_tuples = []
-            if converters_df is not None and links_df is not None:
-                dc_link_tuples = self._prepare_dc_link_tuples(
-                    converters_df, links_df, valid_node_ids
-                )
+            # Step 1: Detect DC islands before adding DC links
+            dc_island_map = self._detect_dc_islands(node_tuples, ac_edge_tuples)
 
-            all_edge_tuples = line_tuples + transformer_tuples + dc_link_tuples
+            # Update node tuples with dc_island attribute
+            node_tuples = self._add_dc_island_to_nodes(node_tuples, dc_island_map)
+
+            # Log DC island summary
+            self._log_dc_island_summary(dc_island_map)
+
+            # Prepare DC link tuples
+            dc_link_tuples = self._prepare_dc_link_tuples(
+                converters_df, links_df, valid_node_ids
+            )
+
+            all_edge_tuples = ac_edge_tuples + dc_link_tuples
 
             # Check for parallel edges
             has_parallel_edges = self._check_parallel_edges(all_edge_tuples)
@@ -187,7 +180,6 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             if has_parallel_edges:
                 graph = nx.MultiDiGraph()
                 print("MULTI-DIGRAPH DETECTED: Parallel edges found in the data.")
-                print("The loaded graph contains multiple edges between the same node pairs.")
                 print("MultiDiGraphs cannot be partitioned directly.")
                 print("Call manager.aggregate_parallel_edges() to collapse parallel edges.")
             else:
@@ -196,12 +188,18 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             graph.add_nodes_from(node_tuples)
             graph.add_edges_from(all_edge_tuples)
 
-            # Log summary
+            # Step 2: Remove isolated nodes after full graph construction
+            graph = self._remove_isolated_nodes(graph)
+
+            # Log final summary
             n_lines = len(line_tuples)
             n_trafos = len(transformer_tuples)
             n_dc_links = len(dc_link_tuples)
-            print(f"Loaded network: {len(node_tuples)} nodes, "
+            print(f"\nLoaded network: {graph.number_of_nodes()} nodes, "
                   f"{n_lines} lines, {n_trafos} transformers, {n_dc_links} DC links")
+
+            # Verify final graph connectivity
+            self._verify_final_connectivity(graph)
 
             return graph
 
@@ -216,6 +214,130 @@ class VoltageAwareStrategy(DataLoadingStrategy):
                 f"Unexpected error loading voltage-aware CSV files: {e}",
                 strategy="va_loader"
             ) from e
+
+    # =========================================================================
+    # DC Island Detection Methods
+    # =========================================================================
+
+    @staticmethod
+    def _detect_dc_islands(node_tuples: List[Tuple[Any, Dict]],
+                           ac_edge_tuples: List[Tuple[Any, Any, Dict]]) -> Dict[Any, int]:
+        """
+        Detect DC islands by finding connected components before DC links are added.
+
+        Each connected component of lines and transformers represents a separate
+        DC island (AC network that will be connected via DC links).
+
+        Args:
+            node_tuples: List of (node_id, attributes) tuples
+            ac_edge_tuples: List of (from, to, attributes) tuples for lines and trafos
+
+        Returns:
+            Dictionary mapping node_id -> dc_island_id
+        """
+        # Create temporary undirected graph for component detection
+        temp_graph = nx.Graph()
+
+        # Add all nodes
+        for node_id, _ in node_tuples:
+            temp_graph.add_node(node_id)
+
+        # Add AC edges (lines and transformers only)
+        for from_node, to_node, _ in ac_edge_tuples:
+            temp_graph.add_edge(from_node, to_node)
+
+        # Find connected components
+        components = list(nx.connected_components(temp_graph))
+
+        # Create mapping: node_id -> dc_island_id
+        dc_island_map: Dict[Any, int] = {}
+        for island_id, component in enumerate(components):
+            for node_id in component:
+                dc_island_map[node_id] = island_id
+
+        return dc_island_map
+
+    @staticmethod
+    def _add_dc_island_to_nodes(node_tuples: List[Tuple[Any, Dict]],
+                                dc_island_map: Dict[Any, int]) -> List[Tuple[Any, Dict]]:
+        """
+        Add dc_island attribute to node tuples.
+
+        Args:
+            node_tuples: Original node tuples
+            dc_island_map: Mapping of node_id -> dc_island_id
+
+        Returns:
+            Updated node tuples with dc_island attribute
+        """
+        updated_tuples = []
+        for node_id, attrs in node_tuples:
+            attrs_copy = attrs.copy()
+            attrs_copy['dc_island'] = dc_island_map.get(node_id, -1)
+            updated_tuples.append((node_id, attrs_copy))
+        return updated_tuples
+
+    @staticmethod
+    def _log_dc_island_summary(dc_island_map: Dict[Any, int]) -> None:
+        """Log summary of detected DC islands."""
+        # Count nodes per island
+        island_counts: Dict[int, int] = {}
+        for island_id in dc_island_map.values():
+            island_counts[island_id] = island_counts.get(island_id, 0) + 1
+
+        n_islands = len(island_counts)
+        print(f"Found {n_islands} DC island(s)")
+
+    # =========================================================================
+    # Isolated Node Removal Methods
+    # =========================================================================
+
+    @staticmethod
+    def _remove_isolated_nodes(graph: nx.DiGraph | nx.MultiDiGraph
+                               ) -> DiGraph | MultiDiGraph:
+        """
+        Remove isolated nodes (nodes with no connections) from the graph.
+
+        Args:
+            graph: The graph to clean
+
+        Returns:
+            Tuple of (cleaned graph, list of removed node IDs)
+        """
+        # Find isolated nodes (degree 0 in undirected view)
+        isolated_nodes = list(nx.isolates(graph))
+
+        if isolated_nodes:
+            print(f"\nWARNING: Found {len(isolated_nodes)} isolated node(s) with no connections.")
+            print("These nodes will be removed from the graph.")
+            graph.remove_nodes_from(isolated_nodes)
+        return graph
+
+    @staticmethod
+    def _verify_final_connectivity(graph: nx.DiGraph | nx.MultiDiGraph) -> None:
+        """
+        Verify the final graph connectivity and report status.
+
+        Args:
+            graph: The final graph to verify
+        """
+        # Convert to undirected for connectivity check
+        undirected = graph.to_undirected()
+        n_components = nx.number_connected_components(undirected)
+
+        if n_components == 1:
+            print("Final graph is fully connected (single component)")
+        else:
+            print(f"Final graph has {n_components} disconnected component(s)")
+            print("This may indicate missing DC links or data issues.")
+
+            # Show component sizes
+            components = sorted(nx.connected_components(undirected),
+                                key=len, reverse=True)
+            for i, comp in enumerate(components[:5]):
+                print(f"  • Component {i}: {len(comp)} node(s)")
+            if len(components) > 5:
+                print(f"  ... and {len(components) - 5} more component(s)")
 
     # =========================================================================
     # File Loading Methods
