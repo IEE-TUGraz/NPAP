@@ -447,7 +447,16 @@ class NetworkPlotter:
                 color=colors,
                 colorscale=config.cluster_colorscale,
                 showscale=True,
-                colorbar=dict(title="Cluster")
+                colorbar=dict(
+                    title="Clusters",
+                    title_font=dict(color='#008080', size=16, family='Arial, sans-serif'),
+                    tickfont=dict(color='#008080', size=14, family='Arial, sans-serif'),
+                    x=0.99,
+                    xanchor="right",
+                    y=0.5,
+                    yanchor="middle",
+                    len=0.9
+                )
             )
         else:
             # Uniform coloring: single color for all nodes
@@ -494,7 +503,7 @@ class NetworkPlotter:
                 size=20,
                 family='Arial, sans-serif'
             ),
-            title_y=0.995,
+            title_y=0.994,
             title_x=0.5,
             title_xanchor='center',
 
