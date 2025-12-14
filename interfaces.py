@@ -8,6 +8,13 @@ import networkx as nx
 from utils import validate_required_attributes
 
 
+class EdgeType(Enum):
+    """Types of edges in the voltage-aware strategies"""
+    LINE = "line"
+    TRAFO = "trafo"
+    DC_LINK = "dc_link"
+
+
 @dataclass
 class PartitionResult:
     """Enhanced partition result with metadata"""

@@ -6,6 +6,8 @@ import networkx as nx
 import plotly.graph_objects as go
 import plotly.io as pio
 
+from interfaces import EdgeType
+
 
 class PlotStyle(Enum):
     """
@@ -148,11 +150,6 @@ class NetworkPlotter:
     3. Figure assembly (layout, styling)
     """
 
-    # Edge type constants matching the data model
-    EDGE_TYPE_LINE = 'line'
-    EDGE_TYPE_TRAFO = 'trafo'
-    EDGE_TYPE_DC_LINK = 'dc_link'
-
     def __init__(self, graph: nx.DiGraph,
                  partition_map: Optional[Dict[int, List[Any]]] = None):
         """
@@ -211,7 +208,8 @@ class NetworkPlotter:
                 node_to_cluster[node] = cluster_id
         return node_to_cluster
 
-    def _should_show_edge_type(self, edge_type: str, config: PlotConfig) -> bool:
+    @staticmethod
+    def _should_show_edge_type(edge_type: str, config: PlotConfig) -> bool:
         """
         Determine if an edge type should be displayed based on configuration.
 
@@ -223,13 +221,14 @@ class NetworkPlotter:
             True if this edge type should be displayed
         """
         visibility_map = {
-            self.EDGE_TYPE_LINE: config.show_lines,
-            self.EDGE_TYPE_TRAFO: config.show_trafos,
-            self.EDGE_TYPE_DC_LINK: config.show_dc_links,
+            EdgeType.LINE.value: config.show_lines,
+            EdgeType.TRAFO.value: config.show_trafos,
+            EdgeType.DC_LINK.value: config.show_dc_links,
         }
         return visibility_map.get(edge_type, True)
 
-    def _categorize_edge(self, edge_data: dict, config: PlotConfig) -> Tuple[str, str]:
+    @staticmethod
+    def _categorize_edge(edge_data: dict, config: PlotConfig) -> Tuple[str, str]:
         """
         Determine edge type and voltage category for grouping.
 
@@ -244,14 +243,14 @@ class NetworkPlotter:
         Returns:
             Tuple of (group_key, voltage_category)
         """
-        edge_type = edge_data.get('type', self.EDGE_TYPE_LINE)
+        edge_type = edge_data.get('type', EdgeType.LINE.value)
 
-        if edge_type == self.EDGE_TYPE_LINE:
+        if edge_type == EdgeType.LINE.value:
             # Classify lines by voltage: high voltage (transmission) vs low voltage
             primary_v = edge_data.get('primary_voltage', 0) or 0
             voltage_category = "high" if primary_v > config.line_voltage_threshold else "low"
             group_key = f"line_{voltage_category}"
-        elif edge_type == self.EDGE_TYPE_TRAFO:
+        elif edge_type == EdgeType.TRAFO.value:
             voltage_category = "trafo"
             group_key = "trafo"
         else:  # DC Link
@@ -285,7 +284,7 @@ class NetworkPlotter:
             if u not in self._node_coords or v not in self._node_coords:
                 continue
 
-            edge_type = data.get('type', self.EDGE_TYPE_LINE)
+            edge_type = data.get('type', EdgeType.LINE.value)
 
             # Respect display toggles from configuration
             if not self._should_show_edge_type(edge_type, config):

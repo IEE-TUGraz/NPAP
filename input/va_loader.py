@@ -6,7 +6,7 @@ import pandas as pd
 from networkx import DiGraph, MultiDiGraph
 
 from exceptions import DataLoadingError
-from interfaces import DataLoadingStrategy
+from interfaces import DataLoadingStrategy, EdgeType
 
 
 class VoltageAwareStrategy(DataLoadingStrategy):
@@ -33,12 +33,6 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         - Other type-specific attributes
     """
 
-    # Edge type constants
-    EDGE_TYPE_LINE = 'line'
-    EDGE_TYPE_TRAFO = 'trafo'
-    EDGE_TYPE_DC_LINK = 'dc_link'
-
-    # Required columns for each file type
     REQUIRED_NODE_COLUMNS = ['bus_id']
     REQUIRED_LINE_COLUMNS = ['bus0', 'bus1', 'x']
     REQUIRED_TRANSFORMER_COLUMNS = ['bus0', 'bus1', 'x', 'primary_voltage', 'secondary_voltage']
@@ -496,7 +490,8 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             for _, row in nodes_df.iterrows()
         ]
 
-    def _prepare_line_tuples(self, lines_df: pd.DataFrame) -> List[Tuple[Any, Any, Dict]]:
+    @staticmethod
+    def _prepare_line_tuples(lines_df: pd.DataFrame) -> List[Tuple[Any, Any, Dict]]:
         """
         Prepare line edge tuples with unified schema.
 
@@ -511,7 +506,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             voltage = row.get('line_voltage', row.get('voltage', 0))
 
             attrs = {
-                'type': self.EDGE_TYPE_LINE,
+                'type': EdgeType.LINE.value,
                 'primary_voltage': voltage,
                 'secondary_voltage': voltage,  # Same voltage for lines
             }
@@ -526,7 +521,8 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
         return edge_tuples
 
-    def _prepare_transformer_tuples(self, transformers_df: pd.DataFrame) -> List[Tuple[Any, Any, Dict]]:
+    @staticmethod
+    def _prepare_transformer_tuples(transformers_df: pd.DataFrame) -> List[Tuple[Any, Any, Dict]]:
         """
         Prepare transformer edge tuples with unified schema.
 
@@ -538,7 +534,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
         for _, row in transformers_df.iterrows():
             attrs = {
-                'type': self.EDGE_TYPE_TRAFO,
+                'type': EdgeType.TRAFO.value,
                 'primary_voltage': row['primary_voltage'],
                 'secondary_voltage': row['secondary_voltage'],
             }
@@ -554,7 +550,8 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
         return edge_tuples
 
-    def _prepare_dc_link_tuples(self, converters_df: pd.DataFrame, links_df: pd.DataFrame,
+    @staticmethod
+    def _prepare_dc_link_tuples(converters_df: pd.DataFrame, links_df: pd.DataFrame,
                                 valid_node_ids: set) -> List[Tuple[Any, Any, Dict]]:
         """
         Prepare DC link edge tuples by resolving converter connections.
@@ -616,7 +613,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
             # Build edge attributes
             attrs = {
-                'type': self.EDGE_TYPE_DC_LINK,
+                'type': EdgeType.DC_LINK.value,
                 'primary_voltage': link_voltage,
                 'secondary_voltage': link_voltage,  # Same voltage for DC links
                 'link_id': link_id,
