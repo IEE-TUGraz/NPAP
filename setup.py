@@ -15,5 +15,6 @@ setup(
         "plotly",
         "scikit-learn",
         "scikit-learn-extra",
+        "scipy"
     ],
 )
