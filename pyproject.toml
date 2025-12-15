@@ -36,3 +36,13 @@ include = ["npap"]
 [tool.setuptools_scm]
 version_scheme = "post-release"
 local_scheme = "node-and-date"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov", # Optional: good for future coverage reports
+]
+dev = [
+    "black", # formatting
+    "ruff", # linting
+]
