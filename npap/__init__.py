@@ -6,8 +6,14 @@ power systems. The system operates on NetworkX graphs and implements a strategy 
 extensibility for new partitioning algorithms, aggregation methods, and physical constraint handling.
 """
 
-__version__ = "0.1.0"
 __author__ = "Marco Antonio Arnaiz Montero"
+
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("npap")
+except PackageNotFoundError:
+    __version__ = "unknown"
 
 # Core components
 from npap.managers import PartitionAggregatorManager
