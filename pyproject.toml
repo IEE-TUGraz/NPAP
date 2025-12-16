@@ -46,3 +46,8 @@ dev = [
     "black", # formatting
     "ruff", # linting
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"

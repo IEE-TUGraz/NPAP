@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  smoke-test:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,10 +25,19 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install the package in editable mode along with pytest
           pip install -e .[test]
 
-      - name: Run Smoke Tests
+      - name: Run Tests
         run: |
-          # Only run the specific smoke test file, ignoring API examples
-          pytest npap/tests/test_smoke.py -v
+          pytest test/ -v --tb=short
+
+      - name: Run Tests with Coverage
+        run: |
+          pytest test/ -v --cov=npap --cov-report=xml --cov-report=term-missing
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.12'
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
