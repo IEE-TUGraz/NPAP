@@ -700,7 +700,8 @@ class PartitionAggregatorManager:
         Execute complete workflow without storing intermediates.
 
         If a MultiDiGraph is loaded, parallel edges will be automatically aggregated
-        before partitioning.
+        before partitioning. If a voltage-aware partitioning strategy is selected,
+        voltage levels will be grouped first in 220kV and 380kV voltage levels.
 
         Args:
             data_strategy: Data loading strategy name
@@ -735,6 +736,10 @@ class PartitionAggregatorManager:
         if isinstance(self._current_graph, nx.MultiDiGraph):
             print("→ MultiDiGraph detected in workflow. Auto-aggregating parallel edges...")
             self.aggregate_parallel_edges(**parallel_edge_params)
+
+        # For voltage-aware strategies, group voltages first
+        if partition_strategy.startswith('va_'):
+            self.group_by_voltage_levels([220, 380])
 
         # Step 3: Partition
         partition_result = self.partition(partition_strategy, **partition_params)
