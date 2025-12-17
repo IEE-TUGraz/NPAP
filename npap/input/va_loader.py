@@ -53,7 +53,6 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         Raises:
             DataLoadingError: If validation fails
         """
-        # All files are now required
         required_files = ['node_file', 'line_file', 'transformer_file',
                           'converter_file', 'link_file']
         missing = [f for f in required_files if f not in kwargs or kwargs[f] is None]
@@ -253,16 +252,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     @staticmethod
     def _add_dc_island_to_nodes(node_tuples: List[Tuple[Any, Dict]],
                                 dc_island_map: Dict[Any, int]) -> List[Tuple[Any, Dict]]:
-        """
-        Add dc_island attribute to node tuples.
-
-        Args:
-            node_tuples: Original node tuples
-            dc_island_map: Mapping of node_id -> dc_island_id
-
-        Returns:
-            Updated node tuples with dc_island attribute
-        """
+        """Add dc_island attribute to node tuples."""
         updated_tuples = []
         for node_id, attrs in node_tuples:
             attrs_copy = attrs.copy()
@@ -273,7 +263,6 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     @staticmethod
     def _log_dc_island_summary(dc_island_map: Dict[Any, int]) -> None:
         """Log summary of detected DC islands."""
-        # Count nodes per island
         island_counts: Dict[int, int] = {}
         for island_id in dc_island_map.values():
             island_counts[island_id] = island_counts.get(island_id, 0) + 1
@@ -286,18 +275,8 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     # =========================================================================
 
     @staticmethod
-    def _remove_isolated_nodes(graph: nx.DiGraph | nx.MultiDiGraph
-                               ) -> DiGraph | MultiDiGraph:
-        """
-        Remove isolated nodes (nodes with no connections) from the graph.
-
-        Args:
-            graph: The graph to clean
-
-        Returns:
-            Tuple of (cleaned graph, list of removed node IDs)
-        """
-        # Find isolated nodes (degree 0 in undirected view)
+    def _remove_isolated_nodes(graph: nx.DiGraph | nx.MultiDiGraph) -> DiGraph | MultiDiGraph:
+        """Remove isolated nodes (nodes with no connections) from the graph."""
         isolated_nodes = list(nx.isolates(graph))
 
         if isolated_nodes:
@@ -308,13 +287,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _verify_final_connectivity(graph: nx.DiGraph | nx.MultiDiGraph) -> None:
-        """
-        Verify the final graph connectivity and report status.
-
-        Args:
-            graph: The final graph to verify
-        """
-        # Convert to undirected for connectivity check
+        """Verify the final graph connectivity and report status."""
         undirected = graph.to_undirected()
         n_components = nx.number_connected_components(undirected)
 
@@ -354,7 +327,6 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             print("Warning: Lines file is empty. Proceeding with other edge types.")
             return pd.DataFrame(columns=self.REQUIRED_LINE_COLUMNS)
 
-        # Validate required columns
         missing_cols = [col for col in self.REQUIRED_LINE_COLUMNS if col not in lines_df.columns]
         if missing_cols:
             raise DataLoadingError(
@@ -373,7 +345,6 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             print("Warning: Transformers file is empty. Proceeding with other edge types.")
             return pd.DataFrame(columns=self.REQUIRED_TRANSFORMER_COLUMNS)
 
-        # Validate required columns
         missing_cols = [col for col in self.REQUIRED_TRANSFORMER_COLUMNS
                         if col not in transformers_df.columns]
         if missing_cols:
@@ -383,7 +354,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
                 details={'available_columns': list(transformers_df.columns)}
             )
 
-        # Validate voltage values for transformers
+        # Validate voltage values
         for idx, row in transformers_df.iterrows():
             primary_v = row.get('primary_voltage', 0)
             secondary_v = row.get('secondary_voltage', 0)
@@ -415,7 +386,6 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             print("Warning: Converters file is empty. No DC links will be created.")
             return pd.DataFrame(columns=self.REQUIRED_CONVERTER_COLUMNS)
 
-        # Validate required columns
         missing_cols = [col for col in self.REQUIRED_CONVERTER_COLUMNS
                         if col not in converters_df.columns]
         if missing_cols:
@@ -435,7 +405,6 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             print("Warning: Links file is empty. No DC links will be created.")
             return pd.DataFrame(columns=self.REQUIRED_LINK_COLUMNS)
 
-        # Validate required columns
         missing_cols = [col for col in self.REQUIRED_LINK_COLUMNS
                         if col not in links_df.columns]
         if missing_cols:
@@ -491,17 +460,10 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _prepare_line_tuples(lines_df: pd.DataFrame) -> List[Tuple[Any, Any, Dict]]:
-        """
-        Prepare line edge tuples with unified schema.
-
-        Lines have:
-        - type = 'line'
-        - primary_voltage == secondary_voltage (same voltage level)
-        """
+        """Prepare line edge tuples with unified schema."""
         edge_tuples = []
 
         for _, row in lines_df.iterrows():
-            # Get voltage (check multiple possible column names)
             voltage = row.get('line_voltage', row.get('voltage', 0))
 
             attrs = {
@@ -522,13 +484,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _prepare_transformer_tuples(transformers_df: pd.DataFrame) -> List[Tuple[Any, Any, Dict]]:
-        """
-        Prepare transformer edge tuples with unified schema.
-
-        Transformers have:
-        - type = 'trafo'
-        - primary_voltage and secondary_voltage (typically different)
-        """
+        """Prepare transformer edge tuples with unified schema."""
         edge_tuples = []
 
         for _, row in transformers_df.iterrows():
@@ -552,27 +508,17 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     @staticmethod
     def _prepare_dc_link_tuples(converters_df: pd.DataFrame, links_df: pd.DataFrame,
                                 valid_node_ids: set) -> List[Tuple[Any, Any, Dict]]:
-        """
-        Prepare DC link edge tuples by resolving converter connections.
-
-        DC links connect two AC buses through converters:
-        - Link bus0/bus1 reference converter bus0 values
-        - Converter bus1 is the actual AC network bus
-
-        DC links have:
-        - type = 'dc_link'
-        - primary_voltage == secondary_voltage (DC voltage level)
-        """
+        """Prepare DC link edge tuples by resolving converter connections."""
         if converters_df.empty or links_df.empty:
             return []
 
-        # Build converter lookup: converter_bus0 -> converter data
+        # Build converter lookup
         converter_lookup: Dict[Any, Dict] = {}
         for _, row in converters_df.iterrows():
             converter_bus0 = row['bus0']
             converter_lookup[converter_bus0] = {
                 'converter_id': row['converter_id'],
-                'ac_bus': row['bus1'],  # The AC network bus
+                'ac_bus': row['bus1'],
                 'dc_voltage': row['voltage'],
                 'p_nom': row.get('p_nom', None)
             }
