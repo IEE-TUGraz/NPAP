@@ -6,6 +6,7 @@ import numpy as np
 
 from npap.exceptions import PartitioningError
 from npap.interfaces import PartitioningStrategy
+from npap.logging import log_debug, log_info, LogCategory
 from npap.utils import (
     with_runtime_config,
     create_partition_map, validate_partition,
@@ -95,6 +96,11 @@ class GeographicalPartitioning(PartitioningStrategy):
                 f"Supported: {', '.join(self.SUPPORTED_DISTANCE_METRICS)}"
             )
 
+        log_debug(
+            f"Initialized GeographicalPartitioning: algorithm={algorithm}, metric={distance_metric}",
+            LogCategory.PARTITIONING
+        )
+
     @property
     def required_attributes(self) -> Dict[str, List[str]]:
         """Required node attributes for geographical partitioning."""
@@ -135,10 +141,19 @@ class GeographicalPartitioning(PartitioningStrategy):
         try:
             # Get effective config (injected by decorator)
             effective_config = kwargs.get('_effective_config', self.config)
+            n_clusters = kwargs.get('n_clusters')
+
+            log_info(
+                f"Starting geographical partitioning: {self.algorithm}, "
+                f"n_clusters={n_clusters}, metric={self.distance_metric}",
+                LogCategory.PARTITIONING
+            )
 
             # Extract coordinates
             nodes = list(graph.nodes())
             coordinates = self._extract_coordinates(graph, nodes)
+
+            log_debug(f"Extracted coordinates for {len(nodes)} nodes", LogCategory.PARTITIONING)
 
             # Perform clustering
             labels = self._run_clustering(coordinates, effective_config, **kwargs)
@@ -146,6 +161,11 @@ class GeographicalPartitioning(PartitioningStrategy):
             # Create and validate partition
             partition_map = create_partition_map(nodes, labels)
             validate_partition(partition_map, len(nodes), self._get_strategy_name())
+
+            log_info(
+                f"Geographical partitioning complete: {len(partition_map)} clusters",
+                LogCategory.PARTITIONING
+            )
 
             return partition_map
 
@@ -217,6 +237,7 @@ class GeographicalPartitioning(PartitioningStrategy):
                 strategy=self._get_strategy_name()
             )
 
+        log_debug(f"Running K-means with {n_clusters} clusters", LogCategory.PARTITIONING)
         return run_kmeans(
             coordinates,
             n_clusters,
@@ -235,7 +256,10 @@ class GeographicalPartitioning(PartitioningStrategy):
                 strategy=self._get_strategy_name()
             )
 
-        # Calculate distance matrix using utility function
+        log_debug(
+            f"Running K-medoids with {n_clusters} clusters, metric={self.distance_metric}",
+            LogCategory.PARTITIONING
+        )
         distance_matrix = compute_geographical_distances(coordinates, self.distance_metric)
 
         return run_kmedoids(distance_matrix, n_clusters)
@@ -251,7 +275,7 @@ class GeographicalPartitioning(PartitioningStrategy):
                 strategy=self._get_strategy_name()
             )
 
-        # Calculate distance matrix using utility function
+        log_debug(f"Running DBSCAN with eps={eps}, min_samples={min_samples}", LogCategory.PARTITIONING)
         distance_matrix = compute_geographical_distances(coordinates, self.distance_metric)
 
         return run_dbscan(distance_matrix, eps, min_samples)
@@ -268,6 +292,11 @@ class GeographicalPartitioning(PartitioningStrategy):
             )
 
         linkage = config.hierarchical_linkage
+
+        log_debug(
+            f"Running hierarchical clustering with {n_clusters} clusters, linkage={linkage}",
+            LogCategory.PARTITIONING
+        )
 
         # Ward linkage only works with Euclidean distance on raw features
         if linkage == 'ward':
@@ -293,7 +322,10 @@ class GeographicalPartitioning(PartitioningStrategy):
         """Perform HDBSCAN clustering on geographical coordinates."""
         min_cluster_size = kwargs.get('min_cluster_size', 5)
 
-        # Convert to radians for both metrics (HDBSCAN handles this)
+        log_debug(
+            f"Running HDBSCAN with min_cluster_size={min_cluster_size}, metric={self.distance_metric}",
+            LogCategory.PARTITIONING
+        )
         coords_rad = np.radians(coordinates)
 
         return run_hdbscan(coords_rad, min_cluster_size, self.distance_metric)
