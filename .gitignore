@@ -14,6 +14,9 @@ npap.egg-info
 # Data folders
 /npap/data
 
+# Distribution files
+/dist
+
 # Coverage files
 test/htmlcov
 .coverage
