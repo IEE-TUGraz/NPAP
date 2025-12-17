@@ -6,6 +6,7 @@ import numpy as np
 
 from npap.exceptions import PartitioningError
 from npap.interfaces import PartitioningStrategy
+from npap.logging import log_debug, log_info, log_warning, LogCategory
 from npap.utils import (
     with_runtime_config,
     create_partition_map, validate_partition,
@@ -140,6 +141,12 @@ class VAGeographicalPartitioning(PartitioningStrategy):
                 "Note: 'ward' linkage is not supported with precomputed distance matrices."
             )
 
+        log_debug(
+            f"Initialized VAGeographicalPartitioning: algorithm={algorithm}, "
+            f"metric={distance_metric}, proportional={self.config.proportional_clustering}",
+            LogCategory.PARTITIONING
+        )
+
     @property
     def required_attributes(self) -> Dict[str, List[str]]:
         """Required node attributes for voltage-aware geographical partitioning."""
@@ -212,14 +219,23 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             # Get unique groups summary for validation
             n_groups = self._count_unique_groups(dc_islands, voltages, effective_config)
 
-            # Warn if n_clusters < groups (some groups might be forced together)
-            if n_clusters < n_groups:
-                print(f"Warning: Requested {n_clusters} clusters but found {n_groups} "
-                      f"distinct (dc_island, voltage_level) groups. Some groups may share clusters, "
-                      f"but infinite distance constraints will be respected.")
-
             # Log summary
-            self._log_group_summary(dc_islands, voltages)
+            self._log_group_summary(dc_islands, voltages, n_groups)
+
+            if n_clusters < n_groups:
+                log_warning(
+                    f"Requested {n_clusters} clusters but found {n_groups} "
+                    f"distinct (dc_island, voltage_level) groups. Some groups may share clusters, "
+                    f"but infinite distance constraints will be respected.",
+                    LogCategory.PARTITIONING,
+                    warn_user=False
+                )
+
+            log_info(
+                f"Starting VA geographical partitioning: {self.algorithm}, "
+                f"n_clusters={n_clusters}, groups={n_groups}",
+                LogCategory.PARTITIONING
+            )
 
             # Choose clustering mode based on configuration
             if effective_config.proportional_clustering:
@@ -236,6 +252,11 @@ class VAGeographicalPartitioning(PartitioningStrategy):
 
             # Validate DC island and voltage consistency
             self._validate_cluster_consistency(graph, partition_map, effective_config)
+
+            log_info(
+                f"VA geographical partitioning complete: {len(partition_map)} clusters",
+                LogCategory.PARTITIONING
+            )
 
             return partition_map
 
@@ -269,7 +290,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         Returns:
             Partition mapping
         """
-        # Build DC island and voltage-aware distance matrix
+        log_debug("Using standard partitioning mode", LogCategory.PARTITIONING)
+
         distance_matrix = self._build_aware_distance_matrix(
             coordinates, voltages, dc_islands, config
         )
@@ -298,6 +320,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         Returns:
             Partition mapping
         """
+        log_debug("Using proportional partitioning mode", LogCategory.PARTITIONING)
+
         n_clusters = kwargs.get('n_clusters')
 
         # Group nodes by (dc_island, voltage)
@@ -306,7 +330,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         # Allocate clusters proportionally
         allocation = self._allocate_clusters(groups, n_clusters)
 
-        # Partition each group
+        log_debug(f"Cluster allocation: {allocation}", LogCategory.PARTITIONING)
+
         partition_map: Dict[int, List[Any]] = {}
         cluster_offset = 0
 
@@ -558,21 +583,24 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         # Initialize distance matrix with infinite distances
         distance_matrix = np.full((n_nodes, n_nodes), config.infinite_distance)
 
-        # Fill in distances for compatible pairs (same DC island AND same voltage)
+        compatible_pairs = 0
         for i in range(n_nodes):
-            distance_matrix[i, i] = 0.0  # Diagonal is always zero
+            distance_matrix[i, i] = 0.0
 
             for j in range(i + 1, n_nodes):
                 # Check DC island compatibility first (primary constraint)
                 if not self._islands_compatible(dc_islands[i], dc_islands[j]):
-                    continue  # Keep infinite distance
+                    continue
 
                 if not self._voltages_compatible(voltages[i], voltages[j], config):
-                    continue  # Keep infinite distance
+                    continue
 
                 # Both constraints satisfied - use geographical distance
                 distance_matrix[i, j] = geo_distances[i, j]
-                distance_matrix[j, i] = geo_distances[i, j]  # Symmetric
+                distance_matrix[j, i] = geo_distances[i, j]
+                compatible_pairs += 1
+
+        log_debug(f"Built aware distance matrix: {compatible_pairs} compatible pairs", LogCategory.PARTITIONING)
 
         return distance_matrix
 
@@ -627,37 +655,16 @@ class VAGeographicalPartitioning(PartitioningStrategy):
     # =========================================================================
 
     @staticmethod
-    def _log_group_summary(dc_islands: np.ndarray, voltages: np.ndarray) -> None:
-        """
-        Log summary of (dc_island, voltage_level) groups found in the network.
-
-        Args:
-            dc_islands: Array of DC island IDs
-            voltages: Array of voltage values
-        """
-        # Count nodes per group
-        group_counts: Dict[Tuple[Any, str], int] = {}
-
-        for i in range(len(dc_islands)):
-            dc_island = dc_islands[i]
-            v = voltages[i]
-
-            if v is None:
-                voltage_str = 'Unknown'
-            elif isinstance(v, (int, float)):
-                voltage_str = f"{int(round(v))} kV"
-            else:
-                voltage_str = str(v)
-
-            key = (dc_island, voltage_str)
-            group_counts[key] = group_counts.get(key, 0) + 1
-
-        n_groups = len(group_counts)
+    def _log_group_summary(dc_islands: np.ndarray, voltages: np.ndarray, n_groups: int) -> None:
+        """Log summary of (dc_island, voltage_level) groups found."""
         n_islands = len(set(dc_islands))
         n_voltages = len(set(voltages))
 
-        print(f"\nVoltage-aware partitioning with DC island support:")
-        print(f"  {n_islands} DC island(s), {n_voltages} voltage level(s) → {n_groups} group(s)")
+        log_info(
+            f"Voltage-aware partitioning: {n_islands} DC island(s), "
+            f"{n_voltages} voltage level(s) -> {n_groups} group(s)",
+            LogCategory.PARTITIONING
+        )
 
     def _validate_cluster_consistency(self, graph: nx.Graph,
                                       partition_map: Dict[int, List[Any]],
@@ -700,10 +707,17 @@ class VAGeographicalPartitioning(PartitioningStrategy):
 
             # Check for DC island mixing
             if len(dc_islands_in_cluster) > 1:
-                print(f"WARNING: Cluster {cluster_id} contains nodes from multiple DC islands: "
-                      f"{dc_islands_in_cluster}. This should not happen with infinite distances.")
+                log_warning(
+                    f"Cluster {cluster_id} contains nodes from multiple DC islands: "
+                    f"{dc_islands_in_cluster}. This should not happen with infinite distances.",
+                    LogCategory.PARTITIONING,
+                    warn_user=False
+                )
 
             # Check for voltage mixing
             if len(voltages_in_cluster) > 1:
-                print(f"Warning: Cluster {cluster_id} contains multiple voltage levels: "
-                      f"{voltages_in_cluster}.")
+                log_warning(
+                    f"Cluster {cluster_id} contains multiple voltage levels: {voltages_in_cluster}.",
+                    LogCategory.PARTITIONING,
+                    warn_user=False
+                )
