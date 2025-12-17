@@ -2,6 +2,7 @@ import networkx as nx
 
 from npap.exceptions import DataLoadingError
 from npap.interfaces import DataLoadingStrategy
+from npap.logging import log_debug, log_info, log_warning, LogCategory
 
 
 class NetworkXDirectStrategy(DataLoadingStrategy):
@@ -30,6 +31,7 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
                 strategy="networkx_direct"
             )
 
+        log_debug(f"Validated NetworkX graph: {type(graph).__name__}", LogCategory.INPUT)
         return True
 
     def load(self, graph: nx.Graph, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
@@ -56,22 +58,28 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
             bidirectional = kwargs.get('bidirectional', True)
 
             if isinstance(graph, nx.MultiDiGraph):
-                # Already a MultiDiGraph - create copy
-                print("MULTI-DIGRAPH DETECTED: Input is already a MultiDiGraph.")
-                print("Call manager.aggregate_parallel_edges() to collapse parallel edges.")
+                log_debug("Input is already a MultiDiGraph, creating copy", LogCategory.INPUT)
+                log_warning(
+                    "Parallel edges detected in input MultiDiGraph. "
+                    "Call manager.aggregate_parallel_edges() to collapse parallel edges before partitioning.",
+                    LogCategory.INPUT
+                )
 
                 result = nx.MultiDiGraph()
                 result.add_nodes_from(graph.nodes(data=True))
                 result.add_edges_from(graph.edges(data=True, keys=True))
 
             elif isinstance(graph, nx.DiGraph):
-                # Already directed - create copy
+                log_debug("Input is DiGraph, creating copy", LogCategory.INPUT)
                 result = graph.copy()
 
             elif isinstance(graph, nx.MultiGraph):
-                # Convert MultiGraph to MultiDiGraph
-                print("MULTI-DIGRAPH DETECTED: Converting MultiGraph to MultiDiGraph.")
-                print("Call manager.aggregate_parallel_edges() to collapse parallel edges.")
+                log_debug("Converting MultiGraph to MultiDiGraph", LogCategory.INPUT)
+                log_warning(
+                    "Parallel edges detected in input MultiGraph. "
+                    "Call manager.aggregate_parallel_edges() to collapse parallel edges before partitioning.",
+                    LogCategory.INPUT
+                )
 
                 result = nx.MultiDiGraph()
                 result.add_nodes_from(graph.nodes(data=True))
@@ -83,7 +91,7 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
                         result.add_edge(v, u, key=key, **data)
 
             else:
-                # Convert Graph to DiGraph
+                log_debug("Converting Graph to DiGraph", LogCategory.INPUT)
                 result = nx.DiGraph()
                 result.add_nodes_from(graph.nodes(data=True))
 
@@ -93,15 +101,21 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
                     if bidirectional:
                         result.add_edge(v, u, **data)
 
-            # Validate the resulting graph
             if len(list(result.nodes())) == 0:
                 raise DataLoadingError(
                     "Graph has no nodes after processing",
                     strategy="networkx_direct"
                 )
 
+            log_info(
+                f"Loaded graph from NetworkX: {result.number_of_nodes()} nodes, {result.number_of_edges()} edges",
+                LogCategory.INPUT
+            )
+
             return result
 
+        except DataLoadingError:
+            raise
         except Exception as e:
             raise DataLoadingError(
                 f"Error processing NetworkX graph: {e}",
