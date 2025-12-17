@@ -36,22 +36,7 @@ class SimpleTopologyStrategy(TopologyStrategy):
                 aggregated.add_node(cluster_id)
 
             # Step 2: Create edges only where connections exist
-            # For directed graphs, check both directions separately
-            for cluster1, cluster2 in itertools.permutations(partition_map.keys(), 2):
-                nodes1 = partition_map[cluster1]
-                nodes2 = partition_map[cluster2]
-
-                # Check if there are any directed edges from cluster1 to cluster2
-                if self._clusters_connected_directed(graph, nodes1, nodes2):
-                    aggregated.add_edge(cluster1, cluster2)
-
-            # Also check for self-loops within clusters
-            for cluster_id in partition_map.keys():
-                nodes = partition_map[cluster_id]
-                if self._has_internal_edges(graph, nodes):
-                    # Create self-loop if there are internal edges (optional)
-                    # aggregated.add_edge(cluster_id, cluster_id)
-                    pass
+            _create_edges_with_existing_connection(partition_map, graph, aggregated)
 
             return aggregated
 
@@ -60,26 +45,6 @@ class SimpleTopologyStrategy(TopologyStrategy):
                 f"Failed to create simple topology: {e}",
                 strategy="simple_topology"
             ) from e
-
-    @staticmethod
-    def _clusters_connected_directed(graph: nx.DiGraph,
-                                     source_nodes: List[Any],
-                                     target_nodes: List[Any]) -> bool:
-        """Return True if any directed edge exists from source_nodes to target_nodes."""
-        for n1 in source_nodes:
-            for n2 in target_nodes:
-                if graph.has_edge(n1, n2):
-                    return True
-        return False
-
-    @staticmethod
-    def _has_internal_edges(graph: nx.DiGraph, nodes: List[Any]) -> bool:
-        """Return True if there are any edges within the same cluster."""
-        for n1 in nodes:
-            for n2 in nodes:
-                if n1 != n2 and graph.has_edge(n1, n2):
-                    return True
-        return False
 
     @property
     def can_create_new_edges(self) -> bool:
@@ -127,13 +92,7 @@ class ElectricalTopologyStrategy(TopologyStrategy):
                     aggregated.add_edge(cluster1, cluster2)
 
             elif self.initial_connectivity == "existing":
-                # Only create edges where connections exist (respecting direction)
-                for cluster1, cluster2 in itertools.permutations(partition_map.keys(), 2):
-                    nodes1 = partition_map[cluster1]
-                    nodes2 = partition_map[cluster2]
-
-                    if self._clusters_connected_directed(graph, nodes1, nodes2):
-                        aggregated.add_edge(cluster1, cluster2)
+                _create_edges_with_existing_connection(partition_map, graph, aggregated)
 
             else:
                 raise ValueError(f"Unknown connectivity mode: {self.initial_connectivity}")
@@ -146,21 +105,39 @@ class ElectricalTopologyStrategy(TopologyStrategy):
                 strategy="electrical_topology"
             ) from e
 
-    @staticmethod
-    def _clusters_connected_directed(graph: nx.DiGraph,
-                                     source_nodes: List[Any],
-                                     target_nodes: List[Any]) -> bool:
-        """Return True if any directed edge exists from source_nodes to target_nodes."""
-        for n1 in source_nodes:
-            for n2 in target_nodes:
-                if graph.has_edge(n1, n2):
-                    return True
-        return False
-
     @property
     def can_create_new_edges(self) -> bool:
-        """Electrical topology may create new edges depending on connectivity mode"""
+        """Electrical topology may create new edges depending on connectivity mode."""
         return self.initial_connectivity == "full"
+
+
+def _clusters_connected_directed(graph: nx.DiGraph,
+                                 source_nodes: List[Any],
+                                 target_nodes: List[Any]) -> bool:
+    """Return True if any directed edge exists from source_nodes to target_nodes."""
+    for n1 in source_nodes:
+        for n2 in target_nodes:
+            if graph.has_edge(n1, n2):
+                return True
+    return False
+
+
+def _create_edges_with_existing_connection(partition_map: Dict[int, List[Any]],
+                                           graph: nx.DiGraph, aggregated: nx.DiGraph) -> None:
+    """Create edges in aggregated graph where original connections exist."""
+    edge_count = 0
+    for cluster1, cluster2 in itertools.permutations(partition_map.keys(), 2):
+        nodes1 = partition_map[cluster1]
+        nodes2 = partition_map[cluster2]
+
+        if _clusters_connected_directed(graph, nodes1, nodes2):
+            aggregated.add_edge(cluster1, cluster2)
+            edge_count += 1
+
+    log_debug(
+        f"ElectricalTopology (existing): {len(partition_map)} nodes, {edge_count} edges",
+        LogCategory.AGGREGATION
+    )
 
 
 # ============================================================================
