@@ -7,6 +7,7 @@ from npap.exceptions import AggregationError
 from npap.interfaces import (
     TopologyStrategy, NodePropertyStrategy, EdgePropertyStrategy
 )
+from npap.logging import log_debug, LogCategory
 
 
 # ============================================================================
@@ -88,16 +89,26 @@ class ElectricalTopologyStrategy(TopologyStrategy):
             if self.initial_connectivity == "full":
                 for cluster1, cluster2 in itertools.permutations(partition_map.keys(), 2):
                     aggregated.add_edge(cluster1, cluster2)
+                log_debug(
+                    f"ElectricalTopology (full): {len(partition_map)} nodes, "
+                    f"{aggregated.number_of_edges()} edges",
+                    LogCategory.AGGREGATION
+                )
 
             elif self.initial_connectivity == "existing":
                 _create_edges_with_existing_connection(partition_map, graph, aggregated)
 
             else:
-                raise ValueError(f"Unknown connectivity mode: {self.initial_connectivity}")
+                raise AggregationError(
+                    f"Unknown connectivity mode: {self.initial_connectivity}",
+                    strategy="electrical_topology"
+                )
 
             return aggregated
 
         except Exception as e:
+            if isinstance(e, AggregationError):
+                raise
             raise AggregationError(
                 f"Failed to create electrical topology: {e}",
                 strategy="electrical_topology"
