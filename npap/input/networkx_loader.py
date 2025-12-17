@@ -5,10 +5,10 @@ from npap.interfaces import DataLoadingStrategy
 
 
 class NetworkXDirectStrategy(DataLoadingStrategy):
-    """Use NetworkX graph directly, converting to directed graph"""
+    """Use NetworkX graph directly, converting to directed graph."""
 
     def validate_inputs(self, **kwargs) -> bool:
-        """Validate that a NetworkX graph is provided"""
+        """Validate that a NetworkX graph is provided."""
         if 'graph' not in kwargs:
             raise DataLoadingError(
                 "Missing required parameter: graph",
@@ -24,7 +24,6 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
                 details={'provided_type': str(type(graph))}
             )
 
-        # Additional validation
         if len(list(graph.nodes())) == 0:
             raise DataLoadingError(
                 "Provided graph has no nodes",
