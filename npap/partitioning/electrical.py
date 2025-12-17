@@ -1,4 +1,3 @@
-import warnings
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -8,6 +7,7 @@ from scipy import sparse
 
 from npap.exceptions import PartitioningError
 from npap.interfaces import PartitioningStrategy
+from npap.logging import log_debug, log_info, log_warning, LogCategory
 from npap.utils import (
     with_runtime_config,
     create_partition_map, validate_partition,
@@ -95,6 +95,11 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                 f"Supported: {', '.join(self.SUPPORTED_ALGORITHMS)}"
             )
 
+        log_debug(
+            f"Initialized ElectricalDistancePartitioning: algorithm={algorithm}",
+            LogCategory.PARTITIONING
+        )
+
     @property
     def required_attributes(self) -> Dict[str, List[str]]:
         """Required attributes for electrical distance partitioning."""
@@ -143,6 +148,14 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             self._validate_network_connectivity(graph)
 
             n_clusters = kwargs.get('n_clusters')
+
+            log_info(
+                f"Starting electrical distance partitioning: {self.algorithm}, n_clusters={n_clusters}",
+                LogCategory.PARTITIONING
+            )
+
+            self._validate_network_connectivity(graph)
+
             if n_clusters is None or n_clusters <= 0:
                 raise PartitioningError(
                     "Electrical distance partitioning requires a positive 'n_clusters' parameter.",
@@ -159,16 +172,22 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                 )
 
             # Calculate electrical distance matrix
+            log_debug("Computing electrical distance matrix", LogCategory.PARTITIONING)
             distance_matrix = self._calculate_electrical_distance_matrix(
                 graph, nodes, effective_config, effective_slack
             )
 
-            # Perform clustering using utility functions
+            # Perform clustering
             labels = self._run_clustering(distance_matrix, **kwargs)
 
-            # Create and validate partition using utility functions
+            # Create and validate partition
             partition_map = create_partition_map(nodes, labels)
             validate_partition(partition_map, n_nodes, self._get_strategy_name())
+
+            log_info(
+                f"Electrical partitioning complete: {len(partition_map)} clusters",
+                LogCategory.PARTITIONING
+            )
 
             return partition_map
 
@@ -188,9 +207,10 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         max_iter = kwargs.get('max_iter', 300)
 
         if self.algorithm == 'kmeans':
-            # K-means uses distance matrix rows as feature vectors
+            log_debug(f"Running K-means on distance matrix", LogCategory.PARTITIONING)
             return run_kmeans(distance_matrix, n_clusters, random_state, max_iter)
         elif self.algorithm == 'kmedoids':
+            log_debug(f"Running K-medoids on distance matrix", LogCategory.PARTITIONING)
             return run_kmedoids(distance_matrix, n_clusters)
         else:
             raise PartitioningError(
@@ -248,11 +268,13 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             PartitioningError: If distance matrix calculation fails
         """
         selected_slack = self._select_slack_bus(graph, nodes, slack_bus)
+        log_debug(f"Selected slack bus: {selected_slack}", LogCategory.PARTITIONING)
 
         # Build susceptance matrix
         B_matrix, active_nodes = self._build_susceptance_matrix(
             graph, nodes, selected_slack, config
         )
+        log_debug(f"Built B matrix: shape {B_matrix.shape}", LogCategory.PARTITIONING)
 
         # Invert susceptance matrix
         B_inv = self._invert_susceptance_matrix(B_matrix)
@@ -341,6 +363,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             use_sparse = config.use_sparse and n_active > config.sparse_threshold
 
             if use_sparse:
+                log_debug(f"Using sparse matrix operations (n_active={n_active})", LogCategory.PARTITIONING)
                 B_matrix = self._compute_B_matrix_sparse(K_sba, susceptances)
             else:
                 B_matrix = self._compute_B_matrix_dense(K_sba, susceptances)
@@ -394,10 +417,10 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
 
         # Emit single warning if any zero reactance edges found
         if zero_reactance_count > 0:
-            warnings.warn(
+            log_warning(
                 f"{zero_reactance_count} edge(s) have zero reactance. "
                 f"Using replacement value: {config.zero_reactance_replacement}",
-                UserWarning
+                LogCategory.PARTITIONING
             )
 
         return edges, np.array(susceptances)
@@ -514,10 +537,10 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             # Check condition number for numerical stability
             cond = np.linalg.cond(B_matrix)
             if cond > self.config.condition_number_threshold:
-                warnings.warn(
+                log_warning(
                     f"B matrix has high condition number ({cond:.2e}). "
                     "Results may be numerically unstable.",
-                    UserWarning
+                    LogCategory.PARTITIONING
                 )
 
             B_inv = np.linalg.inv(B_matrix)
@@ -567,10 +590,10 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         if np.any(significant_negatives):
             n_significant = np.sum(significant_negatives)
             min_val = np.min(distance_squared[significant_negatives])
-            warnings.warn(
+            log_warning(
                 f"{n_significant} distance² values significantly negative "
                 f"(min: {min_val:.2e}). Setting to zero.",
-                UserWarning
+                LogCategory.PARTITIONING
             )
 
         distance_squared = np.maximum(distance_squared, 0.0)
@@ -636,10 +659,10 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                 avg_distance = np.mean(valid_distances)
             else:
                 avg_distance = config.slack_distance_fallback
-                warnings.warn(
+                log_warning(
                     f"All electrical distances are zero. "
                     f"Using default distance {avg_distance} for slack bus.",
-                    UserWarning
+                    LogCategory.PARTITIONING
                 )
 
             # Set slack bus distances
