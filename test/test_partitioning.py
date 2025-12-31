@@ -3,7 +3,7 @@ Test suite for partitioning strategies.
 
 Tests cover:
 - GeographicalPartitioning (all algorithms and distance metrics)
-- ElectricalDistancePartitioning (kmeans, kmedoids)
+- ElectricalDistancePartitioning (kmeans, kmedoids, PTDF-based distance, DC island isolation)
 - VAGeographicalPartitioning (with DC island and voltage awareness)
 """
 
@@ -266,8 +266,18 @@ class TestElectricalDistancePartitioning:
         strategy = ElectricalDistancePartitioning()
         assert 'x' in strategy.required_attributes['edges']
 
+    def test_init_custom_dc_island_attr(self):
+        """Test initialization with custom dc_island attribute name."""
+        strategy = ElectricalDistancePartitioning(dc_island_attr='my_island')
+        assert strategy.dc_island_attr == 'my_island'
+
+    def test_init_default_dc_island_attr(self):
+        """Test that default dc_island attribute is 'dc_island'."""
+        strategy = ElectricalDistancePartitioning()
+        assert strategy.dc_island_attr == 'dc_island'
+
     # -------------------------------------------------------------------------
-    # Basic Partition Tests
+    # Basic Partition Tests (with dc_island attribute)
     # -------------------------------------------------------------------------
 
     def test_kmeans_basic_partition(self, electrical_graph):
@@ -297,14 +307,85 @@ class TestElectricalDistancePartitioning:
         assert all_nodes_assigned(partition, list(electrical_graph.nodes()))
 
     # -------------------------------------------------------------------------
+    # DC Island Isolation Tests
+    # -------------------------------------------------------------------------
+
+    def test_dc_island_isolation_respects_boundaries(self, multi_island_electrical_graph):
+        """Test that partitioning respects DC island boundaries."""
+        strategy = ElectricalDistancePartitioning(algorithm='kmedoids')
+        partition = strategy.partition(multi_island_electrical_graph, n_clusters=2, random_state=42)
+
+        # Nodes 0, 1, 2 are in DC island 0
+        # Nodes 3, 4, 5 are in DC island 1
+        # They should NEVER be in the same cluster
+        for i in [0, 1, 2]:
+            for j in [3, 4, 5]:
+                assert nodes_in_different_clusters(partition, i, j), \
+                    f"Nodes {i} and {j} should be in different clusters (different DC islands)"
+
+    def test_dc_island_isolation_with_more_clusters(self, multi_island_electrical_graph):
+        """Test DC island isolation with more clusters than islands."""
+        strategy = ElectricalDistancePartitioning(algorithm='kmedoids')
+        partition = strategy.partition(multi_island_electrical_graph, n_clusters=4, random_state=42)
+
+        assert all_nodes_assigned(partition, list(multi_island_electrical_graph.nodes()))
+        assert len(partition) == 4
+
+        # DC island boundaries should still be respected
+        for i in [0, 1, 2]:
+            for j in [3, 4, 5]:
+                assert nodes_in_different_clusters(partition, i, j)
+
+    def test_dc_island_isolation_kmeans(self, multi_island_electrical_graph):
+        """Test DC island isolation with K-Means algorithm."""
+        strategy = ElectricalDistancePartitioning(algorithm='kmeans')
+        partition = strategy.partition(multi_island_electrical_graph, n_clusters=2, random_state=42)
+
+        # DC island boundaries should be respected
+        for i in [0, 1, 2]:
+            for j in [3, 4, 5]:
+                assert nodes_in_different_clusters(partition, i, j)
+
+    # -------------------------------------------------------------------------
+    # Missing dc_island Attribute Tests
+    # -------------------------------------------------------------------------
+
+    def test_missing_dc_island_raises_helpful_error(self, electrical_graph_no_dc_island):
+        """Test that missing dc_island attribute raises ValidationError with helpful message."""
+        strategy = ElectricalDistancePartitioning()
+
+        with pytest.raises(ValidationError) as exc_info:
+            strategy.partition(electrical_graph_no_dc_island, n_clusters=2)
+
+        # Check that error message is helpful
+        error_msg = str(exc_info.value)
+        assert 'dc_island' in error_msg
+        assert 'va_loader' in error_msg
+
+    def test_missing_dc_island_with_custom_attr_name(self):
+        """Test that missing custom dc_island attribute raises appropriate error."""
+        G = nx.DiGraph()
+        G.add_node(0, lat=0.0, lon=0.0, dc_island=0)  # Has dc_island but not custom attr
+        G.add_node(1, lat=1.0, lon=0.0, dc_island=0)
+        G.add_edge(0, 1, x=0.1)
+
+        strategy = ElectricalDistancePartitioning(dc_island_attr='custom_island')
+
+        with pytest.raises(ValidationError) as exc_info:
+            strategy.partition(G, n_clusters=1)
+
+        error_msg = str(exc_info.value)
+        assert 'custom_island' in error_msg
+
+    # -------------------------------------------------------------------------
     # Validation Tests
     # -------------------------------------------------------------------------
 
     def test_disconnected_graph_raises_error(self):
         """Test that disconnected graph raises PartitioningError."""
         G = nx.DiGraph()
-        G.add_node(0, lat=0.0, lon=0.0)
-        G.add_node(1, lat=1.0, lon=1.0)
+        G.add_node(0, lat=0.0, lon=0.0, dc_island=0)
+        G.add_node(1, lat=1.0, lon=1.0, dc_island=0)
         # No edges - disconnected
 
         strategy = ElectricalDistancePartitioning()
@@ -315,8 +396,8 @@ class TestElectricalDistancePartitioning:
     def test_missing_reactance_raises_error(self):
         """Test that missing reactance attribute raises ValidationError."""
         G = nx.DiGraph()
-        G.add_node(0)
-        G.add_node(1)
+        G.add_node(0, dc_island=0)
+        G.add_node(1, dc_island=0)
         G.add_edge(0, 1, length=100)  # Missing 'x' attribute
 
         strategy = ElectricalDistancePartitioning()
@@ -324,12 +405,11 @@ class TestElectricalDistancePartitioning:
         with pytest.raises(ValidationError):
             strategy.partition(G, n_clusters=1)
 
-    @pytest.mark.filterwarnings("ignore:All electrical distances are zero")
-    def test_zero_reactance_warning(self, capsys):
+    def test_zero_reactance_warning(self):
         """Test that zero reactance edges produce a warning."""
         G = nx.DiGraph()
-        G.add_node(0)
-        G.add_node(1)
+        G.add_node(0, dc_island=0)
+        G.add_node(1, dc_island=0)
         G.add_edge(0, 1, x=0.0)  # Zero reactance
 
         strategy = ElectricalDistancePartitioning()
@@ -372,6 +452,18 @@ class TestElectricalDistancePartitioning:
         )
 
         assert all_nodes_assigned(partition, list(electrical_graph.nodes()))
+
+    def test_infinite_distance_config(self, multi_island_electrical_graph):
+        """Test that infinite_distance config is used for DC island isolation."""
+        config = ElectricalDistanceConfig(infinite_distance=1e6)
+        strategy = ElectricalDistancePartitioning(config=config)
+
+        partition = strategy.partition(multi_island_electrical_graph, n_clusters=2, random_state=42)
+
+        # DC island boundaries should still be respected
+        for i in [0, 1, 2]:
+            for j in [3, 4, 5]:
+                assert nodes_in_different_clusters(partition, i, j)
 
 
 # =============================================================================
