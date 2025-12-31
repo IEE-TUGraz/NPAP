@@ -97,19 +97,21 @@ def electrical_graph() -> nx.DiGraph:
 
     Nodes 1,2 have low reactance to 0 (electrically close)
     Nodes 3,4 have high reactance to 0 (electrically far)
+
+    All nodes are in the same DC island (dc_island=0).
     """
     G = nx.DiGraph()
 
     # Central node
-    G.add_node(0, lat=0.0, lon=0.0)
+    G.add_node(0, lat=0.0, lon=0.0, dc_island=0)
 
     # Electrically close nodes (low reactance)
-    G.add_node(1, lat=1.0, lon=0.0)
-    G.add_node(2, lat=0.0, lon=1.0)
+    G.add_node(1, lat=1.0, lon=0.0, dc_island=0)
+    G.add_node(2, lat=0.0, lon=1.0, dc_island=0)
 
     # Electrically far nodes (high reactance)
-    G.add_node(3, lat=-1.0, lon=0.0)
-    G.add_node(4, lat=0.0, lon=-1.0)
+    G.add_node(3, lat=-1.0, lon=0.0, dc_island=0)
+    G.add_node(4, lat=0.0, lon=-1.0, dc_island=0)
 
     # Low reactance edges (close)
     G.add_edge(0, 1, x=0.01)
@@ -122,6 +124,71 @@ def electrical_graph() -> nx.DiGraph:
     # Cross connections for connectivity
     G.add_edge(1, 2, x=0.02)
     G.add_edge(3, 4, x=0.5)
+
+    return G
+
+
+@pytest.fixture
+def multi_island_electrical_graph() -> nx.DiGraph:
+    """
+    Graph with two separate DC islands for testing DC island isolation.
+
+    DC Island 0: nodes 0, 1, 2 (connected via low reactance)
+    DC Island 1: nodes 3, 4, 5 (connected via low reactance)
+
+    The two islands are connected by a DC link (edge 2->3), making the graph
+    connected for PTDF calculation. However, the dc_island attribute ensures
+    nodes from different islands get infinite electrical distance and thus
+    are never clustered together.
+
+    This fixture tests that nodes in different DC islands are never clustered together.
+    """
+    G = nx.DiGraph()
+
+    # DC Island 0 - nodes near origin
+    G.add_node(0, lat=0.0, lon=0.0, dc_island=0)
+    G.add_node(1, lat=0.5, lon=0.5, dc_island=0)
+    G.add_node(2, lat=0.3, lon=0.8, dc_island=0)
+
+    # DC Island 1 - nodes far from origin
+    G.add_node(3, lat=10.0, lon=10.0, dc_island=1)
+    G.add_node(4, lat=10.5, lon=10.5, dc_island=1)
+    G.add_node(5, lat=10.3, lon=10.8, dc_island=1)
+
+    # Edges within DC Island 0
+    G.add_edge(0, 1, x=0.1)
+    G.add_edge(1, 2, x=0.15)
+    G.add_edge(0, 2, x=0.12)
+
+    # Edges within DC Island 1
+    G.add_edge(3, 4, x=0.08)
+    G.add_edge(4, 5, x=0.12)
+    G.add_edge(3, 5, x=0.1)
+
+    # DC link connecting the islands
+    G.add_edge(2, 3, x=0.5, type='dc_link')
+
+    return G
+
+
+@pytest.fixture
+def electrical_graph_no_dc_island() -> nx.DiGraph:
+    """
+    Graph without dc_island attribute for testing error handling.
+
+    This fixture tests that appropriate error messages are shown
+    when dc_island attribute is missing.
+    """
+    G = nx.DiGraph()
+
+    # Nodes WITHOUT dc_island attribute
+    G.add_node(0, lat=0.0, lon=0.0)
+    G.add_node(1, lat=1.0, lon=0.0)
+    G.add_node(2, lat=0.0, lon=1.0)
+
+    G.add_edge(0, 1, x=0.1)
+    G.add_edge(1, 2, x=0.15)
+    G.add_edge(0, 2, x=0.12)
 
     return G
 
