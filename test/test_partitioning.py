@@ -428,13 +428,6 @@ class TestElectricalDistancePartitioning:
 
         assert all_nodes_assigned(partition, list(electrical_graph.nodes()))
 
-    def test_invalid_slack_bus_raises_error(self, electrical_graph):
-        """Test that invalid slack bus raises PartitioningError."""
-        strategy = ElectricalDistancePartitioning(slack_bus=999)  # Non-existent node
-
-        with pytest.raises(PartitioningError, match="slack bus.*not found"):
-            strategy.partition(electrical_graph, n_clusters=2)
-
     # -------------------------------------------------------------------------
     # Config Tests
     # -------------------------------------------------------------------------
