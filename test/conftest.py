@@ -13,6 +13,7 @@ import pytest
 # BASIC TEST GRAPHS
 # =============================================================================
 
+
 @pytest.fixture
 def simple_digraph() -> nx.DiGraph:
     """
@@ -166,7 +167,7 @@ def multi_island_electrical_graph() -> nx.DiGraph:
     G.add_edge(3, 5, x=0.1)
 
     # DC link connecting the islands
-    G.add_edge(2, 3, x=0.5, type='dc_link')
+    G.add_edge(2, 3, x=0.5, type="dc_link")
 
     return G
 
@@ -216,15 +217,23 @@ def voltage_aware_graph() -> nx.DiGraph:
     G.add_node(5, lat=5.3, lon=5.8, voltage=380.0, dc_island=1)
 
     # Edges within DC Island 0
-    G.add_edge(0, 1, x=0.1, type='line', primary_voltage=220.0, secondary_voltage=220.0)
-    G.add_edge(1, 2, x=0.15, type='line', primary_voltage=220.0, secondary_voltage=220.0)
+    G.add_edge(0, 1, x=0.1, type="line", primary_voltage=220.0, secondary_voltage=220.0)
+    G.add_edge(
+        1, 2, x=0.15, type="line", primary_voltage=220.0, secondary_voltage=220.0
+    )
 
     # Edges within DC Island 1
-    G.add_edge(3, 4, x=0.08, type='line', primary_voltage=380.0, secondary_voltage=380.0)
-    G.add_edge(4, 5, x=0.12, type='line', primary_voltage=380.0, secondary_voltage=380.0)
+    G.add_edge(
+        3, 4, x=0.08, type="line", primary_voltage=380.0, secondary_voltage=380.0
+    )
+    G.add_edge(
+        4, 5, x=0.12, type="line", primary_voltage=380.0, secondary_voltage=380.0
+    )
 
     # DC Link connecting the islands (would be added after island detection in real use)
-    G.add_edge(2, 3, x=0.5, type='dc_link', primary_voltage=400.0, secondary_voltage=400.0)
+    G.add_edge(
+        2, 3, x=0.5, type="dc_link", primary_voltage=400.0, secondary_voltage=400.0
+    )
 
     return G
 
@@ -252,13 +261,17 @@ def mixed_voltage_graph() -> nx.DiGraph:
     G.add_node(3, lat=1.5, lon=1.5, voltage=380.0, dc_island=0)
 
     # 220kV lines
-    G.add_edge(0, 1, x=0.1, type='line', primary_voltage=220.0, secondary_voltage=220.0)
+    G.add_edge(0, 1, x=0.1, type="line", primary_voltage=220.0, secondary_voltage=220.0)
 
     # 380kV lines
-    G.add_edge(2, 3, x=0.08, type='line', primary_voltage=380.0, secondary_voltage=380.0)
+    G.add_edge(
+        2, 3, x=0.08, type="line", primary_voltage=380.0, secondary_voltage=380.0
+    )
 
     # Transformer 220kV -> 380kV
-    G.add_edge(1, 2, x=0.05, type='trafo', primary_voltage=220.0, secondary_voltage=380.0)
+    G.add_edge(
+        1, 2, x=0.05, type="trafo", primary_voltage=220.0, secondary_voltage=380.0
+    )
 
     return G
 
@@ -266,6 +279,7 @@ def mixed_voltage_graph() -> nx.DiGraph:
 # =============================================================================
 # MULTIGRAPH FIXTURES
 # =============================================================================
+
 
 @pytest.fixture
 def parallel_edge_multigraph() -> nx.MultiDiGraph:
@@ -303,6 +317,7 @@ def parallel_edge_multigraph() -> nx.MultiDiGraph:
 # PARTITION RESULT FIXTURES
 # =============================================================================
 
+
 @pytest.fixture
 def simple_partition_map() -> dict:
     """
@@ -311,10 +326,7 @@ def simple_partition_map() -> dict:
     Cluster 0: nodes [0, 2] (left column)
     Cluster 1: nodes [1, 3] (right column)
     """
-    return {
-        0: [0, 2],
-        1: [1, 3]
-    }
+    return {0: [0, 2], 1: [1, 3]}
 
 
 @pytest.fixture
@@ -324,17 +336,13 @@ def single_node_partition_map() -> dict:
 
     Used for testing edge cases.
     """
-    return {
-        0: [0],
-        1: [1],
-        2: [2],
-        3: [3]
-    }
+    return {0: [0], 1: [1], 2: [2], 3: [3]}
 
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
 
 def nodes_in_same_cluster(partition_map: dict, node_a, node_b) -> bool:
     """Check if two nodes are in the same cluster."""

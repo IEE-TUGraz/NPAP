@@ -78,7 +78,7 @@ def _simple_mode() -> AggregationProfile:
         edge_properties={},  # Will use defaults
         default_node_strategy="sum",
         default_edge_strategy="sum",
-        warn_on_defaults=False  # Simple mode uses defaults by design
+        warn_on_defaults=False,  # Simple mode uses defaults by design
     )
 
 
@@ -101,13 +101,10 @@ def _geographical_mode() -> AggregationProfile:
         node_properties={
             "lat": "average",  # similar to middle point
             "lon": "average",  # similar to middle point
-            "base_voltage": "average"
+            "base_voltage": "average",
         },
-        edge_properties={
-            "p_max": "sum",
-            "x": "average"
-        },
+        edge_properties={"p_max": "sum", "x": "average"},
         default_node_strategy="average",
         default_edge_strategy="average",
-        warn_on_defaults=True
+        warn_on_defaults=True,
     )

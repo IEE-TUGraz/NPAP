@@ -10,6 +10,7 @@ from npap.utils import validate_required_attributes
 
 class EdgeType(Enum):
     """Types of edges in the voltage-aware strategies"""
+
     LINE = "line"
     TRAFO = "trafo"
     DC_LINK = "dc_link"
@@ -18,6 +19,7 @@ class EdgeType(Enum):
 @dataclass
 class PartitionResult:
     """Enhanced partition result with metadata"""
+
     mapping: Dict[int, List[Any]]  # cluster_id -> list of node_ids
     original_graph_hash: str  # validation hash of original graph
     strategy_name: str  # which strategy was used
@@ -27,6 +29,7 @@ class PartitionResult:
 
 class AggregationMode(Enum):
     """Pre-defined aggregation modes for common use cases"""
+
     SIMPLE = "simple"  # Sum/avg everything, simple topology
     GEOGRAPHICAL = "geographical"  # Average coordinates, sum other properties
     DC_KRON = "dc_kron"  # Kron reduction for DC networks
@@ -43,16 +46,25 @@ class AggregationProfile:
     2. Physical: Electrical laws that must be preserved (operates on coupled properties)
     3. Statistical: Simple operations on independent properties
     """
+
     # Topology: How graph structure is reduced
     topology_strategy: str = "simple"  # "simple", "electrical", etc.
 
     # Physical aggregation (operates on coupled electrical properties)
-    physical_strategy: Optional[str] = None  # "kron_reduction", "equivalent_impedance", "ptdf", etc.
-    physical_properties: List[str] = field(default_factory=list)  # ["reactance", "resistance"]
-    physical_parameters: Dict[str, Any] = field(default_factory=dict)  # Additional params for physical strategies
+    physical_strategy: Optional[str] = (
+        None  # "kron_reduction", "equivalent_impedance", "ptdf", etc.
+    )
+    physical_properties: List[str] = field(
+        default_factory=list
+    )  # ["reactance", "resistance"]
+    physical_parameters: Dict[str, Any] = field(
+        default_factory=dict
+    )  # Additional params for physical strategies
 
     # Statistical aggregation (independent properties)
-    node_properties: Dict[str, str] = field(default_factory=dict)  # {demand: "sum", name: "first"}
+    node_properties: Dict[str, str] = field(
+        default_factory=dict
+    )  # {demand: "sum", name: "first"}
     edge_properties: Dict[str, str] = field(default_factory=dict)  # {length: "average"}
 
     # Defaults for unspecified properties
@@ -105,8 +117,9 @@ class TopologyStrategy(ABC):
     """
 
     @abstractmethod
-    def create_topology(self, graph: nx.DiGraph,
-                        partition_map: Dict[int, List[Any]]) -> nx.DiGraph:
+    def create_topology(
+        self, graph: nx.DiGraph, partition_map: Dict[int, List[Any]]
+    ) -> nx.DiGraph:
         """
         Create aggregated graph structure (nodes + edges, no properties yet)
 
@@ -125,7 +138,9 @@ class TopologyStrategy(ABC):
         return False
 
     @staticmethod
-    def _clusters_connected(graph: nx.DiGraph, nodes1: List[Any], nodes2: List[Any]) -> bool:
+    def _clusters_connected(
+        graph: nx.DiGraph, nodes1: List[Any], nodes2: List[Any]
+    ) -> bool:
         """
         Return True if any edge exists between nodes in nodes1 and nodes2.
 
@@ -139,9 +154,9 @@ class TopologyStrategy(ABC):
         return False
 
     @staticmethod
-    def _clusters_connected_directed(graph: nx.DiGraph,
-                                     source_nodes: List[Any],
-                                     target_nodes: List[Any]) -> bool:
+    def _clusters_connected_directed(
+        graph: nx.DiGraph, source_nodes: List[Any], target_nodes: List[Any]
+    ) -> bool:
         """Return True if any directed edge exists from source_nodes to target_nodes."""
         for n1 in source_nodes:
             for n2 in target_nodes:
@@ -160,11 +175,14 @@ class PhysicalAggregationStrategy(ABC):
     """
 
     @abstractmethod
-    def aggregate(self, original_graph: nx.DiGraph,
-                  partition_map: Dict[int, List[Any]],
-                  topology_graph: nx.DiGraph,
-                  properties: List[str],
-                  parameters: Dict[str, Any] = None) -> nx.DiGraph:
+    def aggregate(
+        self,
+        original_graph: nx.DiGraph,
+        partition_map: Dict[int, List[Any]],
+        topology_graph: nx.DiGraph,
+        properties: List[str],
+        parameters: Dict[str, Any] = None,
+    ) -> nx.DiGraph:
         """
         Apply physical aggregation to the topology graph
 
@@ -212,7 +230,9 @@ class NodePropertyStrategy(ABC):
     """Interface for node property aggregation strategies"""
 
     @abstractmethod
-    def aggregate_property(self, graph: nx.DiGraph, nodes: List[Any], property_name: str) -> Any:
+    def aggregate_property(
+        self, graph: nx.DiGraph, nodes: List[Any], property_name: str
+    ) -> Any:
         """Aggregate a specific property across nodes"""
         pass
 
@@ -221,11 +241,13 @@ class EdgePropertyStrategy(ABC):
     """Interface for edge property aggregation strategies"""
 
     @abstractmethod
-    def aggregate_property(self, original_edges: List[Dict[str, Any]], property_name: str) -> Any:
+    def aggregate_property(
+        self, original_edges: List[Dict[str, Any]], property_name: str
+    ) -> Any:
         """Aggregate a specific property across edges"""
         pass
 
     @property
     def required_attributes(self) -> Dict[str, List[str]]:
         """Required attributes for this property strategy"""
-        return {'nodes': [], 'edges': []}
+        return {"nodes": [], "edges": []}

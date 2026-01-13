@@ -17,6 +17,7 @@ class PlotStyle(Enum):
     VOLTAGE_AWARE: Edges colored by type and voltage level (recommended for power systems)
     CLUSTERED: Nodes colored by cluster assignment (requires prior partitioning)
     """
+
     SIMPLE = "simple"
     VOLTAGE_AWARE = "voltage_aware"
     CLUSTERED = "clustered"
@@ -31,6 +32,7 @@ class PlotConfig:
     visualization without modifying code. All parameters have sensible defaults
     optimized for power system networks.
     """
+
     # === Display Toggles ===
     show_lines: bool = True
     show_trafos: bool = True
@@ -79,6 +81,7 @@ class EdgeGroup:
     Plotly renders this faster, and the user experience is
     significantly improved for networks with thousands of edges.
     """
+
     edge_type: str  # 'line', 'trafo', or 'dc_link'
     voltage_category: str  # 'high', 'low', 'trafo', or 'dc_link'
     lats: List[Optional[float]] = field(default_factory=list)
@@ -150,8 +153,9 @@ class NetworkPlotter:
     3. Figure assembly (layout, styling)
     """
 
-    def __init__(self, graph: nx.DiGraph,
-                 partition_map: Optional[Dict[int, List[Any]]] = None):
+    def __init__(
+        self, graph: nx.DiGraph, partition_map: Optional[Dict[int, List[Any]]] = None
+    ):
         """
         Initialize plotter with network data.
 
@@ -163,7 +167,9 @@ class NetworkPlotter:
         self._partition_map = partition_map
 
         # Pre-compute reverse mapping for O(1) cluster lookups during node coloring
-        self._node_to_cluster = self._build_node_to_cluster_map() if partition_map else None
+        self._node_to_cluster = (
+            self._build_node_to_cluster_map() if partition_map else None
+        )
 
         # Cache all coordinates once for performance (avoids repeated dict lookups)
         self._node_coords = self._extract_node_coordinates()
@@ -181,8 +187,8 @@ class NetworkPlotter:
         """
         coords = {}
         for node, data in self._graph.nodes(data=True):
-            lat = data.get('lat')
-            lon = data.get('lon')
+            lat = data.get("lat")
+            lon = data.get("lon")
             # Only cache nodes with valid coordinates (skip nodes without geolocation)
             if lat is not None and lon is not None:
                 coords[node] = (lat, lon)
@@ -243,12 +249,14 @@ class NetworkPlotter:
         Returns:
             Tuple of (group_key, voltage_category)
         """
-        edge_type = edge_data.get('type', EdgeType.LINE.value)
+        edge_type = edge_data.get("type", EdgeType.LINE.value)
 
         if edge_type == EdgeType.LINE.value:
             # Classify lines by voltage: high voltage (transmission) vs low voltage
-            primary_v = edge_data.get('primary_voltage', 0) or 0
-            voltage_category = "high" if primary_v > config.line_voltage_threshold else "low"
+            primary_v = edge_data.get("primary_voltage", 0) or 0
+            voltage_category = (
+                "high" if primary_v > config.line_voltage_threshold else "low"
+            )
             group_key = f"line_{voltage_category}"
         elif edge_type == EdgeType.TRAFO.value:
             voltage_category = "trafo"
@@ -284,7 +292,7 @@ class NetworkPlotter:
             if u not in self._node_coords or v not in self._node_coords:
                 continue
 
-            edge_type = data.get('type', EdgeType.LINE.value)
+            edge_type = data.get("type", EdgeType.LINE.value)
 
             # Respect display toggles from configuration
             if not self._should_show_edge_type(edge_type, config):
@@ -296,8 +304,7 @@ class NetworkPlotter:
             # Create group on first encounter
             if group_key not in groups:
                 groups[group_key] = EdgeGroup(
-                    edge_type=edge_type,
-                    voltage_category=voltage_category
+                    edge_type=edge_type, voltage_category=voltage_category
                 )
 
             # Add edge coordinates to the group using None-separation
@@ -313,7 +320,9 @@ class NetworkPlotter:
 
         return groups
 
-    def _build_edge_traces_voltage_aware(self, config: PlotConfig) -> List[go.Scattermapbox]:
+    def _build_edge_traces_voltage_aware(
+        self, config: PlotConfig
+    ) -> List[go.Scattermapbox]:
         """
         Build edge traces grouped by type and voltage category.
 
@@ -342,10 +351,10 @@ class NetworkPlotter:
             trace = go.Scattermapbox(
                 lon=group.lons,
                 lat=group.lats,
-                mode='lines',
+                mode="lines",
                 line=dict(width=config.edge_width, color=color),
                 name=f"{name} ({group.count})",  # Include count for user insight
-                hoverinfo='name',
+                hoverinfo="name",
                 legendgroup=group_key,
             )
             traces.append(trace)
@@ -384,15 +393,16 @@ class NetworkPlotter:
         trace = go.Scattermapbox(
             lon=lons,
             lat=lats,
-            mode='lines',
-            line=dict(width=config.edge_width, color='#888'),
-            hoverinfo='none',
-            name='Transmission Lines'
+            mode="lines",
+            line=dict(width=config.edge_width, color="#888"),
+            hoverinfo="none",
+            name="Transmission Lines",
         )
         return [trace]
 
-    def _build_node_trace(self, config: PlotConfig,
-                          color_by_cluster: bool = False) -> Optional[go.Scattermapbox]:
+    def _build_node_trace(
+        self, config: PlotConfig, color_by_cluster: bool = False
+    ) -> Optional[go.Scattermapbox]:
         """
         Build node trace with optional cluster-based coloring.
 
@@ -424,8 +434,12 @@ class NetworkPlotter:
             node_lats.append(lat)
 
             # Format voltage information for hover text
-            voltage = data.get('voltage') or data.get('base_voltage', 'N/A')
-            voltage_str = f"{voltage:.2f} kV" if isinstance(voltage, (int, float)) else str(voltage)
+            voltage = data.get("voltage") or data.get("base_voltage", "N/A")
+            voltage_str = (
+                f"{voltage:.2f} kV"
+                if isinstance(voltage, (int, float))
+                else str(voltage)
+            )
             hover_texts.append(f"<b>{node}</b><br>Voltage: {voltage_str}")
 
             # Assign color based on cluster or use uniform color
@@ -448,37 +462,35 @@ class NetworkPlotter:
                 showscale=True,
                 colorbar=dict(
                     title="Clusters",
-                    title_font=dict(color='#008080', size=16, family='Arial, sans-serif'),
-                    tickfont=dict(color='#008080', size=14, family='Arial, sans-serif'),
+                    title_font=dict(
+                        color="#008080", size=16, family="Arial, sans-serif"
+                    ),
+                    tickfont=dict(color="#008080", size=14, family="Arial, sans-serif"),
                     x=0.99,
                     xanchor="right",
                     y=0.5,
                     yanchor="middle",
-                    len=0.9
-                )
+                    len=0.9,
+                ),
             )
         else:
             # Uniform coloring: single color for all nodes
-            marker = dict(
-                size=config.node_size,
-                color=config.node_color
-            )
+            marker = dict(size=config.node_size, color=config.node_color)
 
         trace = go.Scattermapbox(
             lon=node_lons,
             lat=node_lats,
-            mode='markers',
+            mode="markers",
             marker=marker,
-            hoverinfo='text',
+            hoverinfo="text",
             text=hover_texts,
-            name=f'Buses ({len(node_lons)})',
-            legendgroup='nodes',
+            name=f"Buses ({len(node_lons)})",
+            legendgroup="nodes",
         )
         return trace
 
     @staticmethod
-    def _create_figure(traces: List[go.Scattermapbox],
-                       config: PlotConfig) -> go.Figure:
+    def _create_figure(traces: List[go.Scattermapbox], config: PlotConfig) -> go.Figure:
         """
         Assemble Plotly figure with all traces and layout configuration.
 
@@ -496,19 +508,13 @@ class NetworkPlotter:
         fig = go.Figure(data=traces)
         layout_kwargs = dict(
             # Title configuration
-            title_text=config.title or 'Power Network',
-            title_font=dict(
-                color='white',
-                size=20,
-                family='Arial, sans-serif'
-            ),
+            title_text=config.title or "Power Network",
+            title_font=dict(color="white", size=20, family="Arial, sans-serif"),
             title_y=0.994,
             title_x=0.5,
-            title_xanchor='center',
-
+            title_xanchor="center",
             paper_bgcolor="#008080",
-            hovermode='closest',
-
+            hovermode="closest",
             showlegend=True,
             legend=dict(
                 # Position legend in top-left with semi-transparent background
@@ -520,7 +526,7 @@ class NetworkPlotter:
                 bordercolor="#008080",
                 borderwidth=1,
                 font=dict(size=11),
-                itemsizing='constant',
+                itemsizing="constant",
                 tracegroupgap=5,
             ),
             mapbox=dict(
@@ -528,22 +534,23 @@ class NetworkPlotter:
                 bearing=0,
                 center=dict(lat=config.map_center_lat, lon=config.map_center_lon),
                 pitch=0,
-                zoom=config.map_zoom
+                zoom=config.map_zoom,
             ),
-            margin=dict(r=0, t=30, l=0, b=0)
+            margin=dict(r=0, t=30, l=0, b=0),
         )
 
         # Apply optional dimension overrides
         if config.width:
-            layout_kwargs['width'] = config.width
+            layout_kwargs["width"] = config.width
         if config.height:
-            layout_kwargs['height'] = config.height
+            layout_kwargs["height"] = config.height
 
         fig.update_layout(**layout_kwargs)
         return fig
 
-    def _plot(self, style: PlotStyle, config: Optional[PlotConfig] = None,
-              show: bool = True) -> go.Figure:
+    def _plot(
+        self, style: PlotStyle, config: Optional[PlotConfig] = None, show: bool = True
+    ) -> go.Figure:
         """
         Centralized plotting method for all visualization styles.
 
@@ -578,7 +585,7 @@ class NetworkPlotter:
             edge_traces = self._build_edge_traces_voltage_aware(config)
 
         # Build node trace with optional cluster coloring
-        color_by_cluster = (style == PlotStyle.CLUSTERED)
+        color_by_cluster = style == PlotStyle.CLUSTERED
         node_trace = self._build_node_trace(config, color_by_cluster=color_by_cluster)
 
         # Assemble all traces
@@ -592,14 +599,15 @@ class NetworkPlotter:
         # Display in browser if requested
         if show:
             pio.renderers.default = "browser"
-            fig.show(config={'scrollZoom': True})
+            fig.show(config={"scrollZoom": True})
 
         return fig
 
     # Public API methods - these provide clean interfaces for each style
 
-    def plot_simple(self, config: Optional[PlotConfig] = None,
-                    show: bool = True) -> go.Figure:
+    def plot_simple(
+        self, config: Optional[PlotConfig] = None, show: bool = True
+    ) -> go.Figure:
         """
         Create simple visualization with uniform edge styling.
 
@@ -614,8 +622,9 @@ class NetworkPlotter:
         """
         return self._plot(PlotStyle.SIMPLE, config, show)
 
-    def plot_voltage_aware(self, config: Optional[PlotConfig] = None,
-                           show: bool = True) -> go.Figure:
+    def plot_voltage_aware(
+        self, config: Optional[PlotConfig] = None, show: bool = True
+    ) -> go.Figure:
         """
         Create voltage-aware visualization with edges colored by type and voltage.
 
@@ -630,8 +639,9 @@ class NetworkPlotter:
         """
         return self._plot(PlotStyle.VOLTAGE_AWARE, config, show)
 
-    def plot_clustered(self, config: Optional[PlotConfig] = None,
-                       show: bool = True) -> go.Figure:
+    def plot_clustered(
+        self, config: Optional[PlotConfig] = None, show: bool = True
+    ) -> go.Figure:
         """
         Create clustered visualization with nodes colored by cluster assignment.
 
@@ -650,11 +660,13 @@ class NetworkPlotter:
         return self._plot(PlotStyle.CLUSTERED, config, show)
 
 
-def plot_network(graph: nx.DiGraph,
-                 style: str = 'simple',
-                 partition_map: Optional[Dict[int, List[Any]]] = None,
-                 show: bool = True,
-                 **kwargs) -> go.Figure:
+def plot_network(
+    graph: nx.DiGraph,
+    style: str = "simple",
+    partition_map: Optional[Dict[int, List[Any]]] = None,
+    show: bool = True,
+    **kwargs,
+) -> go.Figure:
     """
     Convenience function for quick network visualization.
 
@@ -678,11 +690,11 @@ def plot_network(graph: nx.DiGraph,
     plotter = NetworkPlotter(graph, partition_map=partition_map)
 
     # Support both string and enum style specifications
-    if style == 'simple' or style == PlotStyle.SIMPLE:
+    if style == "simple" or style == PlotStyle.SIMPLE:
         return plotter.plot_simple(config, show=show)
-    elif style == 'voltage_aware' or style == PlotStyle.VOLTAGE_AWARE:
+    elif style == "voltage_aware" or style == PlotStyle.VOLTAGE_AWARE:
         return plotter.plot_voltage_aware(config, show=show)
-    elif style == 'clustered' or style == PlotStyle.CLUSTERED:
+    elif style == "clustered" or style == PlotStyle.CLUSTERED:
         return plotter.plot_clustered(config, show=show)
     else:
         raise ValueError(

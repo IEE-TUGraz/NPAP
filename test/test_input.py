@@ -26,6 +26,7 @@ from npap.input.va_loader import VoltageAwareStrategy
 # FIXTURES FOR CSV FILES
 # =============================================================================
 
+
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for test files."""
@@ -37,12 +38,14 @@ def temp_dir():
 def simple_node_csv(temp_dir):
     """Create a simple nodes CSV file."""
     filepath = os.path.join(temp_dir, "nodes.csv")
-    df = pd.DataFrame({
-        'node_id': [0, 1, 2, 3],
-        'lat': [0.0, 0.0, 1.0, 1.0],
-        'lon': [0.0, 1.0, 0.0, 1.0],
-        'demand': [10.0, 20.0, 30.0, 40.0]
-    })
+    df = pd.DataFrame(
+        {
+            "node_id": [0, 1, 2, 3],
+            "lat": [0.0, 0.0, 1.0, 1.0],
+            "lon": [0.0, 1.0, 0.0, 1.0],
+            "demand": [10.0, 20.0, 30.0, 40.0],
+        }
+    )
     df.to_csv(filepath, index=False)
     return filepath
 
@@ -51,12 +54,14 @@ def simple_node_csv(temp_dir):
 def simple_edge_csv(temp_dir):
     """Create a simple edges CSV file."""
     filepath = os.path.join(temp_dir, "edges.csv")
-    df = pd.DataFrame({
-        'from': [0, 0, 1, 2],
-        'to': [1, 2, 3, 3],
-        'x': [0.1, 0.2, 0.15, 0.25],
-        'length': [100, 150, 120, 180]
-    })
+    df = pd.DataFrame(
+        {
+            "from": [0, 0, 1, 2],
+            "to": [1, 2, 3, 3],
+            "x": [0.1, 0.2, 0.15, 0.25],
+            "length": [100, 150, 120, 180],
+        }
+    )
     df.to_csv(filepath, index=False)
     return filepath
 
@@ -65,11 +70,13 @@ def simple_edge_csv(temp_dir):
 def parallel_edge_csv(temp_dir):
     """Create edges CSV with parallel edges."""
     filepath = os.path.join(temp_dir, "parallel_edges.csv")
-    df = pd.DataFrame({
-        'from': [0, 0, 1, 2],  # Two edges from 0->1
-        'to': [1, 1, 2, 3],
-        'x': [0.1, 0.2, 0.15, 0.25]
-    })
+    df = pd.DataFrame(
+        {
+            "from": [0, 0, 1, 2],  # Two edges from 0->1
+            "to": [1, 1, 2, 3],
+            "x": [0.1, 0.2, 0.15, 0.25],
+        }
+    )
     df.to_csv(filepath, index=False)
     return filepath
 
@@ -78,7 +85,7 @@ def parallel_edge_csv(temp_dir):
 def empty_node_csv(temp_dir):
     """Create an empty nodes CSV file."""
     filepath = os.path.join(temp_dir, "empty_nodes.csv")
-    df = pd.DataFrame(columns=['node_id', 'lat', 'lon'])
+    df = pd.DataFrame(columns=["node_id", "lat", "lon"])
     df.to_csv(filepath, index=False)
     return filepath
 
@@ -87,7 +94,7 @@ def empty_node_csv(temp_dir):
 def empty_edge_csv(temp_dir):
     """Create an empty edges CSV file."""
     filepath = os.path.join(temp_dir, "empty_edges.csv")
-    df = pd.DataFrame(columns=['from', 'to', 'x'])
+    df = pd.DataFrame(columns=["from", "to", "x"])
     df.to_csv(filepath, index=False)
     return filepath
 
@@ -96,11 +103,13 @@ def empty_edge_csv(temp_dir):
 def invalid_edge_csv(temp_dir, simple_node_csv):
     """Create edges CSV referencing non-existent nodes."""
     filepath = os.path.join(temp_dir, "invalid_edges.csv")
-    df = pd.DataFrame({
-        'from': [0, 999],  # 999 doesn't exist
-        'to': [1, 1],
-        'x': [0.1, 0.2]
-    })
+    df = pd.DataFrame(
+        {
+            "from": [0, 999],  # 999 doesn't exist
+            "to": [1, 1],
+            "x": [0.1, 0.2],
+        }
+    )
     df.to_csv(filepath, index=False)
     return filepath
 
@@ -109,11 +118,7 @@ def invalid_edge_csv(temp_dir, simple_node_csv):
 def bus0_bus1_edge_csv(temp_dir):
     """Create edges CSV with bus0/bus1 columns."""
     filepath = os.path.join(temp_dir, "edges_bus.csv")
-    df = pd.DataFrame({
-        'bus0': [0, 1],
-        'bus1': [1, 2],
-        'x': [0.1, 0.2]
-    })
+    df = pd.DataFrame({"bus0": [0, 1], "bus1": [1, 2], "x": [0.1, 0.2]})
     df.to_csv(filepath, index=False)
     return filepath
 
@@ -122,11 +127,7 @@ def bus0_bus1_edge_csv(temp_dir):
 def source_target_edge_csv(temp_dir):
     """Create edges CSV with source/target columns."""
     filepath = os.path.join(temp_dir, "edges_source.csv")
-    df = pd.DataFrame({
-        'source': [0, 1],
-        'target': [1, 2],
-        'x': [0.1, 0.2]
-    })
+    df = pd.DataFrame({"source": [0, 1], "target": [1, 2], "x": [0.1, 0.2]})
     df.to_csv(filepath, index=False)
     return filepath
 
@@ -134,6 +135,7 @@ def source_target_edge_csv(temp_dir):
 # =============================================================================
 # CSV LOADER TESTS
 # =============================================================================
+
 
 class TestCSVFilesStrategy:
     """Tests for CSVFilesStrategy."""
@@ -163,15 +165,14 @@ class TestCSVFilesStrategy:
         with pytest.raises(DataLoadingError, match="File not found"):
             strategy.validate_inputs(
                 node_file="/nonexistent/path/nodes.csv",
-                edge_file="/nonexistent/path/edges.csv"
+                edge_file="/nonexistent/path/edges.csv",
             )
 
     def test_validate_success(self, simple_node_csv, simple_edge_csv):
         """Test successful validation."""
         strategy = CSVFilesStrategy()
         result = strategy.validate_inputs(
-            node_file=simple_node_csv,
-            edge_file=simple_edge_csv
+            node_file=simple_node_csv, edge_file=simple_edge_csv
         )
         assert result is True
 
@@ -224,20 +225,16 @@ class TestCSVFilesStrategy:
         node_file = os.path.join(temp_dir, "nodes_semicolon.csv")
         edge_file = os.path.join(temp_dir, "edges_semicolon.csv")
 
-        pd.DataFrame({
-            'node_id': [0, 1],
-            'lat': [0.0, 1.0],
-            'lon': [0.0, 1.0]
-        }).to_csv(node_file, index=False, sep=';')
+        pd.DataFrame({"node_id": [0, 1], "lat": [0.0, 1.0], "lon": [0.0, 1.0]}).to_csv(
+            node_file, index=False, sep=";"
+        )
 
-        pd.DataFrame({
-            'from': [0],
-            'to': [1],
-            'x': [0.1]
-        }).to_csv(edge_file, index=False, sep=';')
+        pd.DataFrame({"from": [0], "to": [1], "x": [0.1]}).to_csv(
+            edge_file, index=False, sep=";"
+        )
 
         strategy = CSVFilesStrategy()
-        graph = strategy.load(node_file, edge_file, delimiter=';')
+        graph = strategy.load(node_file, edge_file, delimiter=";")
 
         assert len(list(graph.nodes())) == 2
 
@@ -246,24 +243,21 @@ class TestCSVFilesStrategy:
         node_file = os.path.join(temp_dir, "custom_nodes.csv")
         edge_file = os.path.join(temp_dir, "custom_edges.csv")
 
-        pd.DataFrame({
-            'my_id': [0, 1],
-            'lat': [0.0, 1.0],
-            'lon': [0.0, 1.0]
-        }).to_csv(node_file, index=False)
+        pd.DataFrame({"my_id": [0, 1], "lat": [0.0, 1.0], "lon": [0.0, 1.0]}).to_csv(
+            node_file, index=False
+        )
 
-        pd.DataFrame({
-            'start_node': [0],
-            'end_node': [1],
-            'x': [0.1]
-        }).to_csv(edge_file, index=False)
+        pd.DataFrame({"start_node": [0], "end_node": [1], "x": [0.1]}).to_csv(
+            edge_file, index=False
+        )
 
         strategy = CSVFilesStrategy()
         graph = strategy.load(
-            node_file, edge_file,
-            node_id_col='my_id',
-            edge_from_col='start_node',
-            edge_to_col='end_node'
+            node_file,
+            edge_file,
+            node_id_col="my_id",
+            edge_from_col="start_node",
+            edge_to_col="end_node",
         )
 
         assert len(list(graph.nodes())) == 2
@@ -273,21 +267,21 @@ class TestCSVFilesStrategy:
         strategy = CSVFilesStrategy()
 
         with pytest.raises(DataLoadingError, match="Node ID column.*not found"):
-            strategy.load(simple_node_csv, simple_edge_csv, node_id_col='nonexistent')
+            strategy.load(simple_node_csv, simple_edge_csv, node_id_col="nonexistent")
 
     def test_load_invalid_edge_from_column(self, simple_node_csv, simple_edge_csv):
         """Test error when edge 'from' column doesn't exist."""
         strategy = CSVFilesStrategy()
 
         with pytest.raises(DataLoadingError, match="Edge 'from' column.*not found"):
-            strategy.load(simple_node_csv, simple_edge_csv, edge_from_col='nonexistent')
+            strategy.load(simple_node_csv, simple_edge_csv, edge_from_col="nonexistent")
 
     def test_load_invalid_edge_to_column(self, simple_node_csv, simple_edge_csv):
         """Test error when edge 'to' column doesn't exist."""
         strategy = CSVFilesStrategy()
 
         with pytest.raises(DataLoadingError, match="Edge 'to' column.*not found"):
-            strategy.load(simple_node_csv, simple_edge_csv, edge_to_col='nonexistent')
+            strategy.load(simple_node_csv, simple_edge_csv, edge_to_col="nonexistent")
 
     # -------------------------------------------------------------------------
     # Column Detection Tests
@@ -297,11 +291,9 @@ class TestCSVFilesStrategy:
         """Test automatic detection of bus0/bus1 columns."""
         # Extend nodes to include node 2
         node_file = Path(simple_node_csv).parent / "nodes3.csv"
-        pd.DataFrame({
-            'node_id': [0, 1, 2],
-            'lat': [0.0, 1.0, 2.0],
-            'lon': [0.0, 1.0, 2.0]
-        }).to_csv(node_file, index=False)
+        pd.DataFrame(
+            {"node_id": [0, 1, 2], "lat": [0.0, 1.0, 2.0], "lon": [0.0, 1.0, 2.0]}
+        ).to_csv(node_file, index=False)
 
         strategy = CSVFilesStrategy()
         graph = strategy.load(str(node_file), bus0_bus1_edge_csv)
@@ -312,11 +304,9 @@ class TestCSVFilesStrategy:
     def test_detect_source_target_columns(self, temp_dir, source_target_edge_csv):
         """Test automatic detection of source/target columns."""
         node_file = os.path.join(temp_dir, "nodes3.csv")
-        pd.DataFrame({
-            'node_id': [0, 1, 2],
-            'lat': [0.0, 1.0, 2.0],
-            'lon': [0.0, 1.0, 2.0]
-        }).to_csv(node_file, index=False)
+        pd.DataFrame(
+            {"node_id": [0, 1, 2], "lat": [0.0, 1.0, 2.0], "lon": [0.0, 1.0, 2.0]}
+        ).to_csv(node_file, index=False)
 
         strategy = CSVFilesStrategy()
         graph = strategy.load(node_file, source_target_edge_csv)
@@ -329,24 +319,18 @@ class TestCSVFilesStrategy:
         edge_file = os.path.join(temp_dir, "edges_custom.csv")
 
         # First column will be used as ID
-        pd.DataFrame({
-            'custom_first_col': [0, 1],
-            'lat': [0.0, 1.0],
-            'lon': [0.0, 1.0]
-        }).to_csv(node_file, index=False)
+        pd.DataFrame(
+            {"custom_first_col": [0, 1], "lat": [0.0, 1.0], "lon": [0.0, 1.0]}
+        ).to_csv(node_file, index=False)
 
         # Edge file with non-standard columns - will use first two columns
-        pd.DataFrame({
-            'col_a': [0],
-            'col_b': [1],
-            'x': [0.1]
-        }).to_csv(edge_file, index=False)
+        pd.DataFrame({"col_a": [0], "col_b": [1], "x": [0.1]}).to_csv(
+            edge_file, index=False
+        )
 
         strategy = CSVFilesStrategy()
         graph = strategy.load(
-            node_file, edge_file,
-            edge_from_col='col_a',
-            edge_to_col='col_b'
+            node_file, edge_file, edge_from_col="col_a", edge_to_col="col_b"
         )
 
         assert len(list(graph.nodes())) == 2
@@ -355,6 +339,7 @@ class TestCSVFilesStrategy:
 # =============================================================================
 # NETWORKX LOADER TESTS
 # =============================================================================
+
 
 class TestNetworkXDirectStrategy:
     """Tests for NetworkXDirectStrategy."""
@@ -464,64 +449,71 @@ class TestNetworkXDirectStrategy:
     def test_load_preserves_attributes(self):
         """Test that node and edge attributes are preserved."""
         G = nx.Graph()
-        G.add_node(0, lat=0.0, lon=0.0, custom_attr='value')
+        G.add_node(0, lat=0.0, lon=0.0, custom_attr="value")
         G.add_node(1, lat=1.0, lon=1.0)
         G.add_edge(0, 1, x=0.1, length=100)
 
         strategy = NetworkXDirectStrategy()
         result = strategy.load(G)
 
-        assert result.nodes[0]['custom_attr'] == 'value'
-        assert result[0][1]['x'] == 0.1
-        assert result[0][1]['length'] == 100
+        assert result.nodes[0]["custom_attr"] == "value"
+        assert result[0][1]["x"] == 0.1
+        assert result[0][1]["length"] == 100
 
 
 # =============================================================================
 # VOLTAGE-AWARE LOADER TESTS
 # =============================================================================
 
+
 @pytest.fixture
 def va_test_files(temp_dir):
     """Create all required files for VoltageAwareStrategy testing."""
-    files = {'node_file': os.path.join(temp_dir, "buses.csv")}
+    files = {"node_file": os.path.join(temp_dir, "buses.csv")}
 
     # Nodes
-    pd.DataFrame({
-        'bus_id': ['bus_0', 'bus_1', 'bus_2', 'bus_3'],
-        'lat': [0.0, 0.5, 5.0, 5.5],
-        'lon': [0.0, 0.5, 5.0, 5.5],
-        'voltage': [220.0, 220.0, 380.0, 380.0]
-    }).to_csv(files['node_file'], index=False)
+    pd.DataFrame(
+        {
+            "bus_id": ["bus_0", "bus_1", "bus_2", "bus_3"],
+            "lat": [0.0, 0.5, 5.0, 5.5],
+            "lon": [0.0, 0.5, 5.0, 5.5],
+            "voltage": [220.0, 220.0, 380.0, 380.0],
+        }
+    ).to_csv(files["node_file"], index=False)
 
     # Lines
-    files['line_file'] = os.path.join(temp_dir, "lines.csv")
-    pd.DataFrame({
-        'bus0': ['bus_0', 'bus_2'],
-        'bus1': ['bus_1', 'bus_3'],
-        'x': [0.1, 0.08],
-        'voltage': [220.0, 380.0]
-    }).to_csv(files['line_file'], index=False)
+    files["line_file"] = os.path.join(temp_dir, "lines.csv")
+    pd.DataFrame(
+        {
+            "bus0": ["bus_0", "bus_2"],
+            "bus1": ["bus_1", "bus_3"],
+            "x": [0.1, 0.08],
+            "voltage": [220.0, 380.0],
+        }
+    ).to_csv(files["line_file"], index=False)
 
     # Transformers
-    files['transformer_file'] = os.path.join(temp_dir, "transformers.csv")
-    pd.DataFrame({
-        'bus0': ['bus_1'],
-        'bus1': ['bus_2'],
-        'x': [0.05],
-        'primary_voltage': [220.0],
-        'secondary_voltage': [380.0]
-    }).to_csv(files['transformer_file'], index=False)
+    files["transformer_file"] = os.path.join(temp_dir, "transformers.csv")
+    pd.DataFrame(
+        {
+            "bus0": ["bus_1"],
+            "bus1": ["bus_2"],
+            "x": [0.05],
+            "primary_voltage": [220.0],
+            "secondary_voltage": [380.0],
+        }
+    ).to_csv(files["transformer_file"], index=False)
 
     # Converters (empty for basic test)
-    files['converter_file'] = os.path.join(temp_dir, "converters.csv")
-    pd.DataFrame(columns=['converter_id', 'bus0', 'bus1', 'voltage']).to_csv(
-        files['converter_file'], index=False
+    files["converter_file"] = os.path.join(temp_dir, "converters.csv")
+    pd.DataFrame(columns=["converter_id", "bus0", "bus1", "voltage"]).to_csv(
+        files["converter_file"], index=False
     )
 
     # Links (empty for basic test)
-    files['link_file'] = os.path.join(temp_dir, "links.csv")
-    pd.DataFrame(columns=['link_id', 'bus0', 'bus1', 'voltage']).to_csv(
-        files['link_file'], index=False
+    files["link_file"] = os.path.join(temp_dir, "links.csv")
+    pd.DataFrame(columns=["link_id", "bus0", "bus1", "voltage"]).to_csv(
+        files["link_file"], index=False
     )
 
     return files
@@ -530,53 +522,58 @@ def va_test_files(temp_dir):
 @pytest.fixture
 def va_test_files_with_dc(temp_dir):
     """Create files including DC links for testing."""
-    files = {'node_file': os.path.join(temp_dir, "buses.csv")}
+    files = {"node_file": os.path.join(temp_dir, "buses.csv")}
 
     # Nodes - two separate AC networks
-    pd.DataFrame({
-        'bus_id': ['bus_0', 'bus_1', 'bus_2', 'bus_3'],
-        'lat': [0.0, 0.5, 50.0, 50.5],
-        'lon': [0.0, 0.5, 50.0, 50.5],
-        'voltage': [220.0, 220.0, 220.0, 220.0]
-    }).to_csv(files['node_file'], index=False)
+    pd.DataFrame(
+        {
+            "bus_id": ["bus_0", "bus_1", "bus_2", "bus_3"],
+            "lat": [0.0, 0.5, 50.0, 50.5],
+            "lon": [0.0, 0.5, 50.0, 50.5],
+            "voltage": [220.0, 220.0, 220.0, 220.0],
+        }
+    ).to_csv(files["node_file"], index=False)
 
     # Lines - only within islands
-    files['line_file'] = os.path.join(temp_dir, "lines.csv")
-    pd.DataFrame({
-        'bus0': ['bus_0', 'bus_2'],
-        'bus1': ['bus_1', 'bus_3'],
-        'x': [0.1, 0.1],
-        'voltage': [220.0, 220.0]
-    }).to_csv(files['line_file'], index=False)
+    files["line_file"] = os.path.join(temp_dir, "lines.csv")
+    pd.DataFrame(
+        {
+            "bus0": ["bus_0", "bus_2"],
+            "bus1": ["bus_1", "bus_3"],
+            "x": [0.1, 0.1],
+            "voltage": [220.0, 220.0],
+        }
+    ).to_csv(files["line_file"], index=False)
 
     # No transformers
-    files['transformer_file'] = os.path.join(temp_dir, "transformers.csv")
-    pd.DataFrame(columns=['bus0', 'bus1', 'x', 'primary_voltage', 'secondary_voltage']).to_csv(
-        files['transformer_file'], index=False
-    )
+    files["transformer_file"] = os.path.join(temp_dir, "transformers.csv")
+    pd.DataFrame(
+        columns=["bus0", "bus1", "x", "primary_voltage", "secondary_voltage"]
+    ).to_csv(files["transformer_file"], index=False)
 
     # Converters connecting buses to DC side
-    files['converter_file'] = os.path.join(temp_dir, "converters.csv")
-    pd.DataFrame({
-        'converter_id': ['conv_0', 'conv_1'],
-        'bus0': ['dc_0', 'dc_1'],  # DC side
-        'bus1': ['bus_1', 'bus_2'],  # AC side
-        'voltage': [400.0, 400.0]
-    }).to_csv(files['converter_file'], index=False)
+    files["converter_file"] = os.path.join(temp_dir, "converters.csv")
+    pd.DataFrame(
+        {
+            "converter_id": ["conv_0", "conv_1"],
+            "bus0": ["dc_0", "dc_1"],  # DC side
+            "bus1": ["bus_1", "bus_2"],  # AC side
+            "voltage": [400.0, 400.0],
+        }
+    ).to_csv(files["converter_file"], index=False)
 
     # DC link connecting the converters
-    files['link_file'] = os.path.join(temp_dir, "links.csv")
-    pd.DataFrame({
-        'link_id': ['link_0'],
-        'bus0': ['dc_0'],
-        'bus1': ['dc_1'],
-        'voltage': [400.0]
-    }).to_csv(files['link_file'], index=False)
+    files["link_file"] = os.path.join(temp_dir, "links.csv")
+    pd.DataFrame(
+        {"link_id": ["link_0"], "bus0": ["dc_0"], "bus1": ["dc_1"], "voltage": [400.0]}
+    ).to_csv(files["link_file"], index=False)
 
     return files
 
 
-@pytest.mark.filterwarnings("ignore:Converters file is empty. No DC links will be created.")
+@pytest.mark.filterwarnings(
+    "ignore:Converters file is empty. No DC links will be created."
+)
 @pytest.mark.filterwarnings("ignore:Links file is empty. No DC links will be created.")
 class TestVoltageAwareStrategy:
     """Tests for VoltageAwareStrategy."""
@@ -602,7 +599,7 @@ class TestVoltageAwareStrategy:
                 line_file="/nonexistent/lines.csv",
                 transformer_file="/nonexistent/trafos.csv",
                 converter_file="/nonexistent/converters.csv",
-                link_file="/nonexistent/links.csv"
+                link_file="/nonexistent/links.csv",
             )
 
     def test_validate_success(self, va_test_files):
@@ -625,21 +622,20 @@ class TestVoltageAwareStrategy:
 
         # Check dc_island attribute was added
         for node in graph.nodes():
-            assert 'dc_island' in graph.nodes[node]
+            assert "dc_island" in graph.nodes[node]
 
     def test_load_with_dc_links(self, va_test_files_with_dc):
         """Test loading with DC links."""
         strategy = VoltageAwareStrategy()
         with pytest.warns(UserWarning, match="Transformers file is empty"):
-                graph = strategy.load(**va_test_files_with_dc)
+            graph = strategy.load(**va_test_files_with_dc)
 
         # Should have 4 nodes
         assert len(list(graph.nodes())) == 4
 
         # Check DC link was added
         dc_link_edges = [
-            (u, v) for u, v, d in graph.edges(data=True)
-            if d.get('type') == 'dc_link'
+            (u, v) for u, v, d in graph.edges(data=True) if d.get("type") == "dc_link"
         ]
         assert len(dc_link_edges) == 1
 
@@ -650,10 +646,10 @@ class TestVoltageAwareStrategy:
             graph = strategy.load(**va_test_files_with_dc)
 
         # Before DC links, bus_0/bus_1 and bus_2/bus_3 are separate islands
-        island_0 = graph.nodes['bus_0'].get('dc_island')
-        island_1 = graph.nodes['bus_1'].get('dc_island')
-        island_2 = graph.nodes['bus_2'].get('dc_island')
-        island_3 = graph.nodes['bus_3'].get('dc_island')
+        island_0 = graph.nodes["bus_0"].get("dc_island")
+        island_1 = graph.nodes["bus_1"].get("dc_island")
+        island_2 = graph.nodes["bus_2"].get("dc_island")
+        island_3 = graph.nodes["bus_3"].get("dc_island")
 
         # bus_0 and bus_1 should be in same island
         assert island_0 == island_1
@@ -670,9 +666,9 @@ class TestVoltageAwareStrategy:
         """Test loading with empty lines file."""
         # Create empty lines file
         empty_lines = os.path.join(temp_dir, "empty_lines.csv")
-        pd.DataFrame(columns=['bus0', 'bus1', 'x']).to_csv(empty_lines, index=False)
+        pd.DataFrame(columns=["bus0", "bus1", "x"]).to_csv(empty_lines, index=False)
 
-        va_test_files['line_file'] = empty_lines
+        va_test_files["line_file"] = empty_lines
 
         strategy = VoltageAwareStrategy()
 
@@ -688,11 +684,11 @@ class TestVoltageAwareStrategy:
     def test_load_empty_transformers_file(self, temp_dir, va_test_files):
         """Test loading with empty transformers file."""
         empty_trafos = os.path.join(temp_dir, "empty_trafos.csv")
-        pd.DataFrame(columns=['bus0', 'bus1', 'x', 'primary_voltage', 'secondary_voltage']).to_csv(
-            empty_trafos, index=False
-        )
+        pd.DataFrame(
+            columns=["bus0", "bus1", "x", "primary_voltage", "secondary_voltage"]
+        ).to_csv(empty_trafos, index=False)
 
-        va_test_files['transformer_file'] = empty_trafos
+        va_test_files["transformer_file"] = empty_trafos
 
         strategy = VoltageAwareStrategy()
 
@@ -708,63 +704,77 @@ class TestVoltageAwareStrategy:
     def test_load_missing_line_columns(self, temp_dir, va_test_files):
         """Test error when lines file missing required columns."""
         bad_lines = os.path.join(temp_dir, "bad_lines.csv")
-        pd.DataFrame({
-            'from': [0],  # Wrong column names
-            'to': [1]
-        }).to_csv(bad_lines, index=False)
+        pd.DataFrame(
+            {
+                "from": [0],  # Wrong column names
+                "to": [1],
+            }
+        ).to_csv(bad_lines, index=False)
 
-        va_test_files['line_file'] = bad_lines
+        va_test_files["line_file"] = bad_lines
 
         strategy = VoltageAwareStrategy()
 
-        with pytest.raises(DataLoadingError, match="Lines file missing required columns"):
+        with pytest.raises(
+            DataLoadingError, match="Lines file missing required columns"
+        ):
             strategy.load(**va_test_files)
 
     def test_load_missing_transformer_columns(self, temp_dir, va_test_files):
         """Test error when transformers file missing required columns."""
         bad_trafos = os.path.join(temp_dir, "bad_trafos.csv")
-        pd.DataFrame({
-            'bus0': ['bus_0'],
-            'bus1': ['bus_1'],
-            'x': [0.1]
-            # Missing primary_voltage, secondary_voltage
-        }).to_csv(bad_trafos, index=False)
+        pd.DataFrame(
+            {
+                "bus0": ["bus_0"],
+                "bus1": ["bus_1"],
+                "x": [0.1],
+                # Missing primary_voltage, secondary_voltage
+            }
+        ).to_csv(bad_trafos, index=False)
 
-        va_test_files['transformer_file'] = bad_trafos
+        va_test_files["transformer_file"] = bad_trafos
 
         strategy = VoltageAwareStrategy()
 
-        with pytest.raises(DataLoadingError, match="Transformers file missing required columns"):
+        with pytest.raises(
+            DataLoadingError, match="Transformers file missing required columns"
+        ):
             strategy.load(**va_test_files)
 
     def test_load_invalid_transformer_voltage(self, temp_dir, va_test_files):
         """Test error for transformer with invalid voltage."""
         bad_trafos = os.path.join(temp_dir, "bad_voltage_trafos.csv")
-        pd.DataFrame({
-            'bus0': ['bus_0'],
-            'bus1': ['bus_1'],
-            'x': [0.1],
-            'primary_voltage': [-220.0],  # Negative!
-            'secondary_voltage': [380.0]
-        }).to_csv(bad_trafos, index=False)
+        pd.DataFrame(
+            {
+                "bus0": ["bus_0"],
+                "bus1": ["bus_1"],
+                "x": [0.1],
+                "primary_voltage": [-220.0],  # Negative!
+                "secondary_voltage": [380.0],
+            }
+        ).to_csv(bad_trafos, index=False)
 
-        va_test_files['transformer_file'] = bad_trafos
+        va_test_files["transformer_file"] = bad_trafos
 
         strategy = VoltageAwareStrategy()
 
-        with pytest.raises(DataLoadingError, match="positive primary and secondary voltages"):
+        with pytest.raises(
+            DataLoadingError, match="positive primary and secondary voltages"
+        ):
             strategy.load(**va_test_files)
 
     def test_load_edge_references_invalid_node(self, temp_dir, va_test_files):
         """Test error when edge references non-existent node."""
         bad_lines = os.path.join(temp_dir, "bad_refs_lines.csv")
-        pd.DataFrame({
-            'bus0': ['bus_0', 'nonexistent'],
-            'bus1': ['bus_1', 'bus_2'],
-            'x': [0.1, 0.2]
-        }).to_csv(bad_lines, index=False)
+        pd.DataFrame(
+            {
+                "bus0": ["bus_0", "nonexistent"],
+                "bus1": ["bus_1", "bus_2"],
+                "x": [0.1, 0.2],
+            }
+        ).to_csv(bad_lines, index=False)
 
-        va_test_files['line_file'] = bad_lines
+        va_test_files["line_file"] = bad_lines
 
         strategy = VoltageAwareStrategy()
 
@@ -777,43 +787,47 @@ class TestVoltageAwareStrategy:
 
     def test_load_skipped_dc_links(self, temp_dir):
         """Test warning when DC links are skipped due to missing converters."""
-        files = {'node_file': os.path.join(temp_dir, "buses.csv")}
+        files = {"node_file": os.path.join(temp_dir, "buses.csv")}
 
-        pd.DataFrame({
-            'bus_id': ['bus_0', 'bus_1'],
-            'lat': [0.0, 1.0],
-            'lon': [0.0, 1.0],
-            'voltage': [220.0, 220.0]
-        }).to_csv(files['node_file'], index=False)
+        pd.DataFrame(
+            {
+                "bus_id": ["bus_0", "bus_1"],
+                "lat": [0.0, 1.0],
+                "lon": [0.0, 1.0],
+                "voltage": [220.0, 220.0],
+            }
+        ).to_csv(files["node_file"], index=False)
 
-        files['line_file'] = os.path.join(temp_dir, "lines.csv")
-        pd.DataFrame({
-            'bus0': ['bus_0'],
-            'bus1': ['bus_1'],
-            'x': [0.1]
-        }).to_csv(files['line_file'], index=False)
-
-        files['transformer_file'] = os.path.join(temp_dir, "trafos.csv")
-        pd.DataFrame(columns=['bus0', 'bus1', 'x', 'primary_voltage', 'secondary_voltage']).to_csv(
-            files['transformer_file'], index=False
+        files["line_file"] = os.path.join(temp_dir, "lines.csv")
+        pd.DataFrame({"bus0": ["bus_0"], "bus1": ["bus_1"], "x": [0.1]}).to_csv(
+            files["line_file"], index=False
         )
 
-        # Converters that don't match links
-        files['converter_file'] = os.path.join(temp_dir, "converters.csv")
-        pd.DataFrame({
-            'converter_id': ['conv_0'],
-            'bus0': ['dc_wrong'],  # Won't match link
-            'bus1': ['bus_0'],
-            'voltage': [400.0]
-        }).to_csv(files['converter_file'], index=False)
+        files["transformer_file"] = os.path.join(temp_dir, "trafos.csv")
+        pd.DataFrame(
+            columns=["bus0", "bus1", "x", "primary_voltage", "secondary_voltage"]
+        ).to_csv(files["transformer_file"], index=False)
 
-        files['link_file'] = os.path.join(temp_dir, "links.csv")
-        pd.DataFrame({
-            'link_id': ['link_0'],
-            'bus0': ['dc_0'],  # No matching converter
-            'bus1': ['dc_1'],
-            'voltage': [400.0]
-        }).to_csv(files['link_file'], index=False)
+        # Converters that don't match links
+        files["converter_file"] = os.path.join(temp_dir, "converters.csv")
+        pd.DataFrame(
+            {
+                "converter_id": ["conv_0"],
+                "bus0": ["dc_wrong"],  # Won't match link
+                "bus1": ["bus_0"],
+                "voltage": [400.0],
+            }
+        ).to_csv(files["converter_file"], index=False)
+
+        files["link_file"] = os.path.join(temp_dir, "links.csv")
+        pd.DataFrame(
+            {
+                "link_id": ["link_0"],
+                "bus0": ["dc_0"],  # No matching converter
+                "bus1": ["dc_1"],
+                "voltage": [400.0],
+            }
+        ).to_csv(files["link_file"], index=False)
 
         strategy = VoltageAwareStrategy()
 
@@ -830,6 +844,7 @@ class TestVoltageAwareStrategy:
 # EXCEPTION TESTS
 # =============================================================================
 
+
 class TestDataLoadingExceptions:
     """Tests for DataLoadingError exception."""
 
@@ -841,7 +856,7 @@ class TestDataLoadingExceptions:
 
     def test_exception_with_details(self):
         """Test DataLoadingError stores details."""
-        details = {'key': 'value', 'count': 42}
+        details = {"key": "value", "count": 42}
         error = DataLoadingError("Test error", details=details)
         assert error.details == details
 
@@ -867,9 +882,7 @@ class TestStrategyNotFoundError:
         from npap.exceptions import StrategyNotFoundError
 
         error = StrategyNotFoundError(
-            "unknown",
-            "partitioning",
-            available_strategies=['kmeans', 'kmedoids']
+            "unknown", "partitioning", available_strategies=["kmeans", "kmedoids"]
         )
         assert "kmeans" in str(error)
         assert "kmedoids" in str(error)
@@ -890,8 +903,8 @@ class TestVisualizationError:
         """Test VisualizationError with details."""
         from npap.exceptions import VisualizationError
 
-        error = VisualizationError("Plot failed", details={'style': 'invalid'})
-        assert error.details['style'] == 'invalid'
+        error = VisualizationError("Plot failed", details={"style": "invalid"})
+        assert error.details["style"] == "invalid"
 
 
 class TestElectricalCalculationError:
@@ -901,5 +914,7 @@ class TestElectricalCalculationError:
         """Test basic ElectricalCalculationError creation."""
         from npap.exceptions import ElectricalCalculationError
 
-        error = ElectricalCalculationError("Calculation failed", calculation_type="kron")
+        error = ElectricalCalculationError(
+            "Calculation failed", calculation_type="kron"
+        )
         assert error.calculation_type == "kron"

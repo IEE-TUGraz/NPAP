@@ -14,17 +14,25 @@ import pytest
 from npap.exceptions import GraphCompatibilityError, PartitioningError
 from npap.interfaces import PartitionResult
 from npap.utils import (
-    compute_graph_hash, validate_graph_compatibility,
-    create_partition_map, validate_partition,
-    compute_euclidean_distances, compute_haversine_distances,
+    compute_graph_hash,
+    validate_graph_compatibility,
+    create_partition_map,
+    validate_partition,
+    compute_euclidean_distances,
+    compute_haversine_distances,
     compute_geographical_distances,
-    run_kmeans, run_kmedoids, run_hierarchical, run_dbscan, run_hdbscan
+    run_kmeans,
+    run_kmedoids,
+    run_hierarchical,
+    run_dbscan,
+    run_hdbscan,
 )
 
 
 # =============================================================================
 # GRAPH HASH TESTS
 # =============================================================================
+
 
 class TestGraphHash:
     """Tests for graph hash computation."""
@@ -36,7 +44,9 @@ class TestGraphHash:
 
         assert hash1 == hash2
 
-    def test_hash_differs_for_different_graphs(self, simple_digraph, geographical_cluster_graph):
+    def test_hash_differs_for_different_graphs(
+        self, simple_digraph, geographical_cluster_graph
+    ):
         """Test that different graphs produce different hashes."""
         hash1 = compute_graph_hash(simple_digraph)
         hash2 = compute_graph_hash(geographical_cluster_graph)
@@ -81,15 +91,17 @@ class TestGraphCompatibilityValidation:
         partition_result = PartitionResult(
             mapping={0: [0, 1], 1: [2, 3]},
             original_graph_hash=graph_hash,
-            strategy_name='test',
+            strategy_name="test",
             strategy_metadata={},
-            n_clusters=2
+            n_clusters=2,
         )
 
         # Should not raise
         validate_graph_compatibility(partition_result, graph_hash)
 
-    def test_incompatible_partition_raises(self, simple_digraph, geographical_cluster_graph):
+    def test_incompatible_partition_raises(
+        self, simple_digraph, geographical_cluster_graph
+    ):
         """Test that incompatible partition raises GraphCompatibilityError."""
         hash1 = compute_graph_hash(simple_digraph)
         hash2 = compute_graph_hash(geographical_cluster_graph)
@@ -97,9 +109,9 @@ class TestGraphCompatibilityValidation:
         partition_result = PartitionResult(
             mapping={0: [0, 1], 1: [2, 3]},
             original_graph_hash=hash1,  # Created from simple_digraph
-            strategy_name='test',
+            strategy_name="test",
             strategy_metadata={},
-            n_clusters=2
+            n_clusters=2,
         )
 
         # Should raise when validated against different graph
@@ -111,18 +123,19 @@ class TestGraphCompatibilityValidation:
 # PARTITION MAP UTILITIES TESTS
 # =============================================================================
 
+
 class TestPartitionMapUtilities:
     """Tests for partition map utilities."""
 
     def test_create_partition_map_basic(self):
         """Test basic partition map creation from labels."""
-        nodes = ['A', 'B', 'C', 'D']
+        nodes = ["A", "B", "C", "D"]
         labels = np.array([0, 0, 1, 1])
 
         partition_map = create_partition_map(nodes, labels)
 
-        assert partition_map[0] == ['A', 'B']
-        assert partition_map[1] == ['C', 'D']
+        assert partition_map[0] == ["A", "B"]
+        assert partition_map[1] == ["C", "D"]
 
     def test_create_partition_map_preserves_order(self):
         """Test that node order is preserved within clusters."""
@@ -138,43 +151,40 @@ class TestPartitionMapUtilities:
 
     def test_create_partition_map_handles_negative_labels(self):
         """Test handling of negative labels (noise in DBSCAN)."""
-        nodes = ['A', 'B', 'C']
+        nodes = ["A", "B", "C"]
         labels = np.array([0, -1, 0])  # -1 is noise
 
         partition_map = create_partition_map(nodes, labels)
 
-        assert partition_map[0] == ['A', 'C']
-        assert partition_map[-1] == ['B']
+        assert partition_map[0] == ["A", "C"]
+        assert partition_map[-1] == ["B"]
 
     def test_validate_partition_success(self):
         """Test partition validation passes for valid partition."""
         partition_map = {0: [0, 1], 1: [2, 3]}
 
         # Should not raise
-        validate_partition(partition_map, n_nodes=4, strategy_name='test')
+        validate_partition(partition_map, n_nodes=4, strategy_name="test")
 
     def test_validate_partition_fails_on_mismatch(self):
         """Test partition validation fails when node count doesn't match."""
         partition_map = {0: [0, 1], 1: [2, 3]}
 
         with pytest.raises(PartitioningError, match="mismatch"):
-            validate_partition(partition_map, n_nodes=5, strategy_name='test')
+            validate_partition(partition_map, n_nodes=5, strategy_name="test")
 
 
 # =============================================================================
 # DISTANCE MATRIX TESTS
 # =============================================================================
 
+
 class TestDistanceMatrixComputation:
     """Tests for distance matrix computations."""
 
     def test_euclidean_distances_basic(self):
         """Test basic Euclidean distance computation."""
-        coords = np.array([
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [0.0, 1.0]
-        ])
+        coords = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
 
         distances = compute_euclidean_distances(coords)
 
@@ -189,11 +199,7 @@ class TestDistanceMatrixComputation:
 
     def test_euclidean_distances_symmetry(self):
         """Test that Euclidean distance matrix is symmetric."""
-        coords = np.array([
-            [0.0, 0.0],
-            [1.0, 2.0],
-            [3.0, 4.0]
-        ])
+        coords = np.array([[0.0, 0.0], [1.0, 2.0], [3.0, 4.0]])
 
         distances = compute_euclidean_distances(coords)
 
@@ -202,10 +208,12 @@ class TestDistanceMatrixComputation:
     def test_haversine_distances_basic(self):
         """Test basic Haversine distance computation."""
         # Two points on equator, 1 degree apart
-        coords = np.array([
-            [0.0, 0.0],  # lat, lon in degrees
-            [0.0, 1.0]  # 1 degree east
-        ])
+        coords = np.array(
+            [
+                [0.0, 0.0],  # lat, lon in degrees
+                [0.0, 1.0],  # 1 degree east
+            ]
+        )
 
         distances = compute_haversine_distances(coords)
 
@@ -215,11 +223,13 @@ class TestDistanceMatrixComputation:
 
     def test_haversine_distances_symmetry(self):
         """Test that Haversine distance matrix is symmetric."""
-        coords = np.array([
-            [48.8566, 2.3522],  # Paris
-            [51.5074, -0.1278],  # London
-            [40.7128, -74.0060]  # New York
-        ])
+        coords = np.array(
+            [
+                [48.8566, 2.3522],  # Paris
+                [51.5074, -0.1278],  # London
+                [40.7128, -74.0060],  # New York
+            ]
+        )
 
         distances = compute_haversine_distances(coords)
 
@@ -229,7 +239,7 @@ class TestDistanceMatrixComputation:
         """Test geographical distances with Euclidean metric."""
         coords = np.array([[0.0, 0.0], [1.0, 0.0]])
 
-        distances = compute_geographical_distances(coords, metric='euclidean')
+        distances = compute_geographical_distances(coords, metric="euclidean")
 
         assert distances[0, 1] == pytest.approx(1.0)
 
@@ -237,7 +247,7 @@ class TestDistanceMatrixComputation:
         """Test geographical distances with Haversine metric."""
         coords = np.array([[0.0, 0.0], [0.0, 1.0]])
 
-        distances = compute_geographical_distances(coords, metric='haversine')
+        distances = compute_geographical_distances(coords, metric="haversine")
 
         # Should return distances in km
         assert distances[0, 1] > 0
@@ -247,12 +257,13 @@ class TestDistanceMatrixComputation:
         coords = np.array([[0.0, 0.0], [1.0, 1.0]])
 
         with pytest.raises(PartitioningError, match="Unsupported distance metric"):
-            compute_geographical_distances(coords, metric='manhattan')
+            compute_geographical_distances(coords, metric="manhattan")
 
 
 # =============================================================================
 # CLUSTERING ALGORITHM TESTS
 # =============================================================================
+
 
 class TestClusteringAlgorithms:
     """Tests for clustering algorithm wrappers."""
@@ -260,14 +271,16 @@ class TestClusteringAlgorithms:
     @pytest.fixture
     def cluster_features(self):
         """Feature matrix with two clear clusters."""
-        return np.array([
-            [0.0, 0.0],
-            [0.1, 0.1],
-            [0.05, -0.05],
-            [10.0, 10.0],
-            [10.1, 10.1],
-            [10.05, 9.95]
-        ])
+        return np.array(
+            [
+                [0.0, 0.0],
+                [0.1, 0.1],
+                [0.05, -0.05],
+                [10.0, 10.0],
+                [10.1, 10.1],
+                [10.05, 9.95],
+            ]
+        )
 
     @pytest.fixture
     def cluster_distance_matrix(self, cluster_features):
@@ -324,14 +337,16 @@ class TestClusteringAlgorithms:
 
     def test_hierarchical_linkages(self, cluster_distance_matrix):
         """Test Hierarchical clustering with different linkages."""
-        for linkage in ['complete', 'average', 'single']:
-            labels = run_hierarchical(cluster_distance_matrix, n_clusters=2, linkage=linkage)
+        for linkage in ["complete", "average", "single"]:
+            labels = run_hierarchical(
+                cluster_distance_matrix, n_clusters=2, linkage=linkage
+            )
             assert len(labels) == 6
 
     def test_hierarchical_invalid_linkage(self, cluster_distance_matrix):
         """Test Hierarchical with invalid linkage."""
         with pytest.raises(PartitioningError, match="Unsupported linkage"):
-            run_hierarchical(cluster_distance_matrix, n_clusters=2, linkage='ward')
+            run_hierarchical(cluster_distance_matrix, n_clusters=2, linkage="ward")
 
     # -------------------------------------------------------------------------
     # DBSCAN Tests
@@ -363,6 +378,7 @@ class TestClusteringAlgorithms:
 # CONFTEST HELPER FUNCTION TESTS
 # =============================================================================
 
+
 class TestConftestHelpers:
     """Tests for helper functions defined in conftest."""
 
@@ -388,11 +404,11 @@ class TestConftestHelpers:
         """Test get_node_cluster helper."""
         from test.conftest import get_node_cluster
 
-        partition = {0: ['A', 'B'], 1: ['C', 'D']}
+        partition = {0: ["A", "B"], 1: ["C", "D"]}
 
-        assert get_node_cluster(partition, 'A') == 0
-        assert get_node_cluster(partition, 'C') == 1
-        assert get_node_cluster(partition, 'Z') == -1  # Not found
+        assert get_node_cluster(partition, "A") == 0
+        assert get_node_cluster(partition, "C") == 1
+        assert get_node_cluster(partition, "Z") == -1  # Not found
 
     def test_all_nodes_assigned(self):
         """Test all_nodes_assigned helper."""

@@ -10,8 +10,10 @@ from npap.interfaces import PartitioningStrategy, EdgeType
 from npap.logging import log_debug, log_info, log_warning, LogCategory
 from npap.utils import (
     with_runtime_config,
-    create_partition_map, validate_partition,
-    run_kmeans, run_kmedoids
+    create_partition_map,
+    validate_partition,
+    run_kmeans,
+    run_kmedoids,
 )
 
 
@@ -30,6 +32,7 @@ class ElectricalDistanceConfig:
                               mild regularization that prevents singular matrix issues.
         infinite_distance: Value used to represent "infinite" distance between DC islands.
     """
+
     zero_reactance_replacement: float = 1e-5
     regularization_factor: float = 1e-10
     infinite_distance: float = 1e4
@@ -70,21 +73,25 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
     Partition-time parameters override instance defaults for that call only.
     """
 
-    SUPPORTED_ALGORITHMS = ['kmeans', 'kmedoids']
+    SUPPORTED_ALGORITHMS = ["kmeans", "kmedoids"]
 
     # Edge types that participate in AC power flow (have reactance)
     AC_EDGE_TYPES = {EdgeType.LINE.value, EdgeType.TRAFO.value}
 
     # Config parameter names for runtime override detection
     _CONFIG_PARAMS = {
-        'zero_reactance_replacement',
-        'regularization_factor',
-        'infinite_distance'
+        "zero_reactance_replacement",
+        "regularization_factor",
+        "infinite_distance",
     }
 
-    def __init__(self, algorithm: str = 'kmeans', slack_bus: Optional[Any] = None,
-                 dc_island_attr: str = 'dc_island',
-                 config: Optional[ElectricalDistanceConfig] = None):
+    def __init__(
+        self,
+        algorithm: str = "kmeans",
+        slack_bus: Optional[Any] = None,
+        dc_island_attr: str = "dc_island",
+        config: Optional[ElectricalDistanceConfig] = None,
+    ):
         """
         Initialize electrical distance partitioning strategy.
 
@@ -112,15 +119,15 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         log_debug(
             f"Initialized ElectricalDistancePartitioning: algorithm={algorithm}, "
             f"dc_island_attr={dc_island_attr}",
-            LogCategory.PARTITIONING
+            LogCategory.PARTITIONING,
         )
 
     @property
     def required_attributes(self) -> Dict[str, List[str]]:
         """Required attributes for electrical distance partitioning."""
         return {
-            'nodes': [],  # dc_island is validated separately with helpful message
-            'edges': ['x']  # Reactance attribute required on AC edges
+            "nodes": [],  # dc_island is validated separately with helpful message
+            "edges": ["x"],  # Reactance attribute required on AC edges
         }
 
     def _get_strategy_name(self) -> str:
@@ -153,10 +160,10 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         """
         try:
             # Get effective config (injected by decorator)
-            effective_config = kwargs.get('_effective_config', self.config)
+            effective_config = kwargs.get("_effective_config", self.config)
 
             # Resolve slack bus (kwargs override instance default)
-            effective_slack = kwargs.get('slack_bus', self.slack_bus)
+            effective_slack = kwargs.get("slack_bus", self.slack_bus)
 
             # Validate DC island attributes
             self._validate_dc_island_attributes(graph)
@@ -164,18 +171,18 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             # Validate AC edges have reactance
             self._validate_ac_edge_attributes(graph)
 
-            n_clusters = kwargs.get('n_clusters')
+            n_clusters = kwargs.get("n_clusters")
 
             log_info(
                 f"Starting electrical distance partitioning (PTDF): {self.algorithm}, "
                 f"n_clusters={n_clusters}",
-                LogCategory.PARTITIONING
+                LogCategory.PARTITIONING,
             )
 
             if n_clusters is None or n_clusters <= 0:
                 raise PartitioningError(
                     "Electrical distance partitioning requires a positive 'n_clusters' parameter.",
-                    strategy=self._get_strategy_name()
+                    strategy=self._get_strategy_name(),
                 )
 
             nodes = list(graph.nodes())
@@ -184,11 +191,14 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             if n_clusters > n_nodes:
                 raise PartitioningError(
                     f"Cannot create {n_clusters} clusters from {n_nodes} nodes.",
-                    strategy=self._get_strategy_name()
+                    strategy=self._get_strategy_name(),
                 )
 
             # Calculate electrical distance matrix using per-island PTDF
-            log_debug("Computing per-island PTDF-based electrical distance matrix", LogCategory.PARTITIONING)
+            log_debug(
+                "Computing per-island PTDF-based electrical distance matrix",
+                LogCategory.PARTITIONING,
+            )
             distance_matrix = self._calculate_electrical_distance_matrix(
                 graph, nodes, effective_config, effective_slack
             )
@@ -205,7 +215,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
 
             log_info(
                 f"Electrical partitioning complete: {len(partition_map)} clusters",
-                LogCategory.PARTITIONING
+                LogCategory.PARTITIONING,
             )
 
             return partition_map
@@ -216,25 +226,28 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             raise PartitioningError(
                 f"Electrical distance partitioning failed: {e}",
                 strategy=self._get_strategy_name(),
-                graph_info={'nodes': len(list(graph.nodes())), 'edges': len(graph.edges())}
+                graph_info={
+                    "nodes": len(list(graph.nodes())),
+                    "edges": len(graph.edges()),
+                },
             ) from e
 
     def _run_clustering(self, distance_matrix: np.ndarray, **kwargs) -> np.ndarray:
         """Dispatch to appropriate clustering algorithm."""
-        n_clusters = kwargs.get('n_clusters')
-        random_state = kwargs.get('random_state', 42)
-        max_iter = kwargs.get('max_iter', 300)
+        n_clusters = kwargs.get("n_clusters")
+        random_state = kwargs.get("random_state", 42)
+        max_iter = kwargs.get("max_iter", 300)
 
-        if self.algorithm == 'kmeans':
+        if self.algorithm == "kmeans":
             log_debug("Running K-means on distance matrix", LogCategory.PARTITIONING)
             return run_kmeans(distance_matrix, n_clusters, random_state, max_iter)
-        elif self.algorithm == 'kmedoids':
+        elif self.algorithm == "kmedoids":
             log_debug("Running K-medoids on distance matrix", LogCategory.PARTITIONING)
             return run_kmedoids(distance_matrix, n_clusters)
         else:
             raise PartitioningError(
                 f"Unknown algorithm: {self.algorithm}",
-                strategy=self._get_strategy_name()
+                strategy=self._get_strategy_name(),
             )
 
     # =========================================================================
@@ -267,8 +280,8 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                 f"{len(missing_nodes)} node(s) are missing this attribute (first few: {sample}). "
                 f"Please use 'va_loader' data loading strategy to automatically detect DC islands, "
                 f"or manually add the '{self.dc_island_attr}' attribute to all nodes.",
-                missing_attributes={'nodes': [self.dc_island_attr]},
-                strategy=self._get_strategy_name()
+                missing_attributes={"nodes": [self.dc_island_attr]},
+                strategy=self._get_strategy_name(),
             )
 
     def _validate_ac_edge_attributes(self, graph: nx.DiGraph) -> None:
@@ -286,11 +299,11 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         """
         missing_edges = []
         for u, v, data in graph.edges(data=True):
-            edge_type = data.get('type', EdgeType.LINE.value)
+            edge_type = data.get("type", EdgeType.LINE.value)
 
             # Only validate AC edges
             if edge_type in self.AC_EDGE_TYPES:
-                if 'x' not in data:
+                if "x" not in data:
                     missing_edges.append((u, v))
 
         if missing_edges:
@@ -298,12 +311,13 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             raise ValidationError(
                 f"AC edges (lines/transformers) require 'x' (reactance) attribute. "
                 f"{len(missing_edges)} edge(s) are missing this attribute (first few: {sample}).",
-                missing_attributes={'edges': ['x']},
-                strategy=self._get_strategy_name()
+                missing_attributes={"edges": ["x"]},
+                strategy=self._get_strategy_name(),
             )
 
-    def _validate_island_connectivity(self, ac_subgraph: nx.DiGraph,
-                                      island_id: Any, island_nodes: List[Any]) -> None:
+    def _validate_island_connectivity(
+        self, ac_subgraph: nx.DiGraph, island_id: Any, island_nodes: List[Any]
+    ) -> None:
         """
         Validate that an island's AC subgraph is connected.
 
@@ -324,7 +338,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                 f"DC island {island_id} has no AC edges (lines/transformers). "
                 f"Cannot compute electrical distances without AC connectivity.",
                 strategy=self._get_strategy_name(),
-                graph_info={'island_id': island_id, 'n_nodes': len(island_nodes)}
+                graph_info={"island_id": island_id, "n_nodes": len(island_nodes)},
             )
 
         if not nx.is_weakly_connected(ac_subgraph):
@@ -335,15 +349,16 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                 f"missing line/transformer data or incorrect DC island assignment.",
                 strategy=self._get_strategy_name(),
                 graph_info={
-                    'island_id': island_id,
-                    'n_nodes': len(island_nodes),
-                    'n_ac_edges': ac_subgraph.number_of_edges(),
-                    'n_components': n_components
-                }
+                    "island_id": island_id,
+                    "n_nodes": len(island_nodes),
+                    "n_ac_edges": ac_subgraph.number_of_edges(),
+                    "n_components": n_components,
+                },
             )
 
-    def _validate_cluster_dc_island_consistency(self, graph: nx.DiGraph,
-                                                partition_map: Dict[int, List[Any]]) -> None:
+    def _validate_cluster_dc_island_consistency(
+        self, graph: nx.DiGraph, partition_map: Dict[int, List[Any]]
+    ) -> None:
         """
         Validate that clusters don't mix different DC islands.
 
@@ -367,16 +382,20 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                     f"Cluster {cluster_id} contains nodes from multiple DC islands: "
                     f"{dc_islands_in_cluster}. This should not happen with infinite distances.",
                     LogCategory.PARTITIONING,
-                    warn_user=False
+                    warn_user=False,
                 )
 
     # =========================================================================
     # MULTI DC-ISLAND ELECTRICAL DISTANCE CALCULATION
     # =========================================================================
 
-    def _calculate_electrical_distance_matrix(self, graph: nx.DiGraph, nodes: List[Any],
-                                              config: ElectricalDistanceConfig,
-                                              slack_bus: Optional[Any]) -> np.ndarray:
+    def _calculate_electrical_distance_matrix(
+        self,
+        graph: nx.DiGraph,
+        nodes: List[Any],
+        config: ElectricalDistanceConfig,
+        slack_bus: Optional[Any],
+    ) -> np.ndarray:
         """
         Calculate electrical distance matrix with per-island PTDF computation.
 
@@ -401,7 +420,10 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         islands = self._group_nodes_by_dc_island(graph, nodes)
         n_islands = len(islands)
 
-        log_info(f"Processing {n_islands} DC island(s) for PTDF computation", LogCategory.PARTITIONING)
+        log_info(
+            f"Processing {n_islands} DC island(s) for PTDF computation",
+            LogCategory.PARTITIONING,
+        )
 
         # Build node index mapping for the full matrix
         node_to_idx = {node: idx for idx, node in enumerate(nodes)}
@@ -415,12 +437,15 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         for island_id, island_nodes in islands.items():
             log_debug(
                 f"Processing DC island {island_id}: {len(island_nodes)} nodes",
-                LogCategory.PARTITIONING
+                LogCategory.PARTITIONING,
             )
 
             # Handle single-node islands
             if len(island_nodes) == 1:
-                log_debug(f"Island {island_id} has single node, distance = 0", LogCategory.PARTITIONING)
+                log_debug(
+                    f"Island {island_id} has single node, distance = 0",
+                    LogCategory.PARTITIONING,
+                )
                 continue
 
             # Extract AC-only subgraph for this island
@@ -446,8 +471,9 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
 
         return distance_matrix
 
-    def _group_nodes_by_dc_island(self, graph: nx.DiGraph,
-                                  nodes: List[Any]) -> Dict[Any, List[Any]]:
+    def _group_nodes_by_dc_island(
+        self, graph: nx.DiGraph, nodes: List[Any]
+    ) -> Dict[Any, List[Any]]:
         """
         Group nodes by their DC island attribute.
 
@@ -469,8 +495,9 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
 
         return islands
 
-    def _extract_ac_subgraph(self, graph: nx.DiGraph,
-                             island_nodes: List[Any]) -> nx.DiGraph:
+    def _extract_ac_subgraph(
+        self, graph: nx.DiGraph, island_nodes: List[Any]
+    ) -> nx.DiGraph:
         """
         Extract AC-only subgraph for a set of nodes.
 
@@ -493,17 +520,19 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         # Add only AC edges (lines and transformers)
         for u, v, data in graph.edges(data=True):
             if u in island_node_set and v in island_node_set:
-                edge_type = data.get('type', EdgeType.LINE.value)
+                edge_type = data.get("type", EdgeType.LINE.value)
                 if edge_type in self.AC_EDGE_TYPES:
                     ac_subgraph.add_edge(u, v, **data)
 
         return ac_subgraph
 
     @staticmethod
-    def _select_slack_bus_for_island(ac_subgraph: nx.DiGraph,
-                                     island_nodes: List[Any],
-                                     user_slack: Optional[Any],
-                                     island_id: Any) -> Any:
+    def _select_slack_bus_for_island(
+        ac_subgraph: nx.DiGraph,
+        island_nodes: List[Any],
+        user_slack: Optional[Any],
+        island_id: Any,
+    ) -> Any:
         """
         Select slack bus for a specific island.
 
@@ -525,26 +554,31 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         if user_slack is not None and user_slack in island_node_set:
             log_debug(
                 f"Using user-specified slack bus {user_slack} for island {island_id}",
-                LogCategory.PARTITIONING
+                LogCategory.PARTITIONING,
             )
             return user_slack
 
         # Auto-select: use node with highest total degree in AC subgraph
-        degrees = {n: ac_subgraph.in_degree(n) + ac_subgraph.out_degree(n)
-                   for n in island_nodes}
+        degrees = {
+            n: ac_subgraph.in_degree(n) + ac_subgraph.out_degree(n)
+            for n in island_nodes
+        }
         selected = max(island_nodes, key=lambda n: degrees[n])
 
         log_debug(
             f"Auto-selected slack bus {selected} for island {island_id} (degree={degrees[selected]})",
-            LogCategory.PARTITIONING
+            LogCategory.PARTITIONING,
         )
 
         return selected
 
-    def _compute_island_distances(self, ac_subgraph: nx.DiGraph,
-                                  island_nodes: List[Any],
-                                  slack_bus: Any,
-                                  config: ElectricalDistanceConfig) -> np.ndarray:
+    def _compute_island_distances(
+        self,
+        ac_subgraph: nx.DiGraph,
+        island_nodes: List[Any],
+        slack_bus: Any,
+        config: ElectricalDistanceConfig,
+    ) -> np.ndarray:
         """
         Compute PTDF-based electrical distances for a single island.
 
@@ -562,7 +596,10 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             ac_subgraph, island_nodes, slack_bus, config
         )
 
-        log_debug(f"Built island PTDF matrix: shape {ptdf_matrix.shape}", LogCategory.PARTITIONING)
+        log_debug(
+            f"Built island PTDF matrix: shape {ptdf_matrix.shape}",
+            LogCategory.PARTITIONING,
+        )
 
         # Compute distances from PTDF columns
         distance_matrix_active = self._compute_ptdf_distances(ptdf_matrix)
@@ -575,10 +612,12 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         return distance_matrix_island
 
     @staticmethod
-    def _insert_island_distances(full_matrix: np.ndarray,
-                                 island_distances: np.ndarray,
-                                 island_nodes: List[Any],
-                                 node_to_idx: Dict[Any, int]) -> None:
+    def _insert_island_distances(
+        full_matrix: np.ndarray,
+        island_distances: np.ndarray,
+        island_nodes: List[Any],
+        node_to_idx: Dict[Any, int],
+    ) -> None:
         """
         Insert island distance matrix into the full distance matrix.
 
@@ -600,9 +639,13 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
     # PTDF MATRIX CONSTRUCTION
     # =========================================================================
 
-    def _build_ptdf_matrix(self, ac_subgraph: nx.DiGraph, island_nodes: List[Any],
-                           slack_bus: Any, config: ElectricalDistanceConfig
-                           ) -> Tuple[np.ndarray, List[Any]]:
+    def _build_ptdf_matrix(
+        self,
+        ac_subgraph: nx.DiGraph,
+        island_nodes: List[Any],
+        slack_bus: Any,
+        config: ElectricalDistanceConfig,
+    ) -> Tuple[np.ndarray, List[Any]]:
         """
         Build the Power Transfer Distribution Factor (PTDF) matrix for a dc-island.
 
@@ -635,16 +678,23 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             if len(edges) == 0:
                 raise PartitioningError(
                     "No valid AC edges found for PTDF matrix construction.",
-                    strategy=self._get_strategy_name()
+                    strategy=self._get_strategy_name(),
                 )
 
             # Build slack-bus-adjusted incidence matrix
-            K_sba, active_nodes = self._build_incidence_matrix(edges, island_nodes, slack_bus)
-            log_debug(f"Built incidence matrix K_sba: shape {K_sba.shape}", LogCategory.PARTITIONING)
+            K_sba, active_nodes = self._build_incidence_matrix(
+                edges, island_nodes, slack_bus
+            )
+            log_debug(
+                f"Built incidence matrix K_sba: shape {K_sba.shape}",
+                LogCategory.PARTITIONING,
+            )
 
             # Build susceptance matrix B = K_sba^T @ diag(b) @ K_sba
             B_matrix = self._compute_B_matrix(K_sba, susceptances)
-            log_debug(f"Built B matrix: shape {B_matrix.shape}", LogCategory.PARTITIONING)
+            log_debug(
+                f"Built B matrix: shape {B_matrix.shape}", LogCategory.PARTITIONING
+            )
 
             # Compute PTDF using direct linear solve
             ptdf_matrix = self._compute_ptdf(K_sba, susceptances, B_matrix, config)
@@ -655,13 +705,12 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             if isinstance(e, PartitioningError):
                 raise
             raise PartitioningError(
-                f"Failed to build PTDF matrix: {e}",
-                strategy=self._get_strategy_name()
+                f"Failed to build PTDF matrix: {e}", strategy=self._get_strategy_name()
             ) from e
 
-    def _extract_edge_susceptances(self, ac_subgraph: nx.DiGraph,
-                                   config: ElectricalDistanceConfig
-                                   ) -> Tuple[List[Tuple[Any, Any]], np.ndarray]:
+    def _extract_edge_susceptances(
+        self, ac_subgraph: nx.DiGraph, config: ElectricalDistanceConfig
+    ) -> Tuple[List[Tuple[Any, Any]], np.ndarray]:
         """
         Extract AC edges and their susceptances from the subgraph.
 
@@ -683,18 +732,18 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         zero_reactance_count = 0
 
         for u, v, data in ac_subgraph.edges(data=True):
-            reactance = data.get('x')
+            reactance = data.get("x")
 
             if reactance is None:
                 raise PartitioningError(
                     f"AC edge ({u}, {v}) missing reactance attribute 'x'",
-                    strategy=self._get_strategy_name()
+                    strategy=self._get_strategy_name(),
                 )
 
             if not isinstance(reactance, (int, float)):
                 raise PartitioningError(
                     f"Edge ({u}, {v}) reactance must be numeric, got {type(reactance)}",
-                    strategy=self._get_strategy_name()
+                    strategy=self._get_strategy_name(),
                 )
 
             if reactance == 0:
@@ -709,14 +758,15 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             log_warning(
                 f"{zero_reactance_count} edge(s) have zero reactance. "
                 f"Using replacement value: {config.zero_reactance_replacement}",
-                LogCategory.PARTITIONING
+                LogCategory.PARTITIONING,
             )
 
         return edges, np.array(susceptances)
 
     @staticmethod
-    def _build_incidence_matrix(edges: List[Tuple[Any, Any]], nodes: List[Any],
-                                slack_bus: Any) -> Tuple[np.ndarray, List[Any]]:
+    def _build_incidence_matrix(
+        edges: List[Tuple[Any, Any]], nodes: List[Any], slack_bus: Any
+    ) -> Tuple[np.ndarray, List[Any]]:
         """
         Build slack-bus-adjusted incidence matrix K_sba.
 
@@ -780,9 +830,12 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         return (B_matrix + B_matrix.T) / 2.0
 
     @staticmethod
-    def _compute_ptdf(K_sba: np.ndarray, susceptances: np.ndarray,
-                      B_matrix: np.ndarray,
-                      config: ElectricalDistanceConfig) -> np.ndarray:
+    def _compute_ptdf(
+        K_sba: np.ndarray,
+        susceptances: np.ndarray,
+        B_matrix: np.ndarray,
+        config: ElectricalDistanceConfig,
+    ) -> np.ndarray:
         """
         Compute PTDF matrix by solving linear system directly.
 
@@ -803,7 +856,9 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         """
         # Apply Tikhonov regularization for numerical stability
         if config.regularization_factor > 0:
-            B_matrix = B_matrix + config.regularization_factor * np.eye(B_matrix.shape[0])
+            B_matrix = B_matrix + config.regularization_factor * np.eye(
+                B_matrix.shape[0]
+            )
 
         # A = diag(b) @ K_sba, shape (n_edges, n_active)
         A = susceptances[:, np.newaxis] * K_sba
@@ -811,14 +866,14 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         try:
             # Solve B @ X = A^T for X, then PTDF = X^T
             # Using assume_a='sym' tells scipy B is symmetric -> uses faster algorithm
-            X = solve(B_matrix, A.T, assume_a='sym')
+            X = solve(B_matrix, A.T, assume_a="sym")
             ptdf_matrix = X.T
 
         except LinAlgError:
             # Fallback to least-squares solution if matrix is singular
             log_warning(
                 "B matrix is singular, using least-squares solution.",
-                LogCategory.PARTITIONING
+                LogCategory.PARTITIONING,
             )
             X, _, _, _ = np.linalg.lstsq(B_matrix, A.T, rcond=None)
             ptdf_matrix = X.T
@@ -852,7 +907,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         X = ptdf_matrix.T.astype(np.float32, copy=False)
 
         # Compute squared norms for each node's PTDF profile
-        norms_sq = np.einsum('ij,ij->i', X, X)
+        norms_sq = np.einsum("ij,ij->i", X, X)
 
         # Compute Gram matrix (all pairwise dot products) - BLAS optimized
         gram = X @ X.T
@@ -873,15 +928,19 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         if np.any(np.isnan(distance_matrix)):
             raise PartitioningError(
                 "Distance matrix contains NaN values after PTDF distance calculation.",
-                strategy=self._get_strategy_name()
+                strategy=self._get_strategy_name(),
             )
 
         return distance_matrix.astype(np.float64)
 
-    def _integrate_slack_bus_distances(self, distance_matrix_active: np.ndarray,
-                                       ptdf_matrix: np.ndarray,
-                                       island_nodes: List[Any], slack_bus: Any,
-                                       active_nodes: List[Any]) -> np.ndarray:
+    def _integrate_slack_bus_distances(
+        self,
+        distance_matrix_active: np.ndarray,
+        ptdf_matrix: np.ndarray,
+        island_nodes: List[Any],
+        slack_bus: Any,
+        active_nodes: List[Any],
+    ) -> np.ndarray:
         """
         Integrate slack bus into the island's distance matrix.
 
@@ -912,7 +971,9 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         # Copy active distances to island matrix
         for i, island_i in enumerate(active_to_island):
             for j, island_j in enumerate(active_to_island):
-                distance_matrix_island[island_i, island_j] = distance_matrix_active[i, j]
+                distance_matrix_island[island_i, island_j] = distance_matrix_active[
+                    i, j
+                ]
 
         # Calculate slack bus distances
         # Distance from slack to node i = ||PTDF[:,i]||_2 (L2 norm of column i)
@@ -925,7 +986,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         if np.any(np.isnan(distance_matrix_island)):
             raise PartitioningError(
                 "Distance matrix contains NaN values after slack bus integration.",
-                strategy=self._get_strategy_name()
+                strategy=self._get_strategy_name(),
             )
 
         return distance_matrix_island

@@ -34,11 +34,17 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         - Other type-specific attributes
     """
 
-    REQUIRED_NODE_COLUMNS = ['bus_id']
-    REQUIRED_LINE_COLUMNS = ['bus0', 'bus1', 'x']
-    REQUIRED_TRANSFORMER_COLUMNS = ['bus0', 'bus1', 'x', 'primary_voltage', 'secondary_voltage']
-    REQUIRED_CONVERTER_COLUMNS = ['converter_id', 'bus0', 'bus1', 'voltage']
-    REQUIRED_LINK_COLUMNS = ['link_id', 'bus0', 'bus1', 'voltage']
+    REQUIRED_NODE_COLUMNS = ["bus_id"]
+    REQUIRED_LINE_COLUMNS = ["bus0", "bus1", "x"]
+    REQUIRED_TRANSFORMER_COLUMNS = [
+        "bus0",
+        "bus1",
+        "x",
+        "primary_voltage",
+        "secondary_voltage",
+    ]
+    REQUIRED_CONVERTER_COLUMNS = ["converter_id", "bus0", "bus1", "voltage"]
+    REQUIRED_LINK_COLUMNS = ["link_id", "bus0", "bus1", "voltage"]
 
     def validate_inputs(self, **kwargs) -> bool:
         """
@@ -54,8 +60,13 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         Raises:
             DataLoadingError: If validation fails
         """
-        required_files = ['node_file', 'line_file', 'transformer_file',
-                          'converter_file', 'link_file']
+        required_files = [
+            "node_file",
+            "line_file",
+            "transformer_file",
+            "converter_file",
+            "link_file",
+        ]
         missing = [f for f in required_files if f not in kwargs or kwargs[f] is None]
 
         if missing:
@@ -64,9 +75,9 @@ class VoltageAwareStrategy(DataLoadingStrategy):
                 "All files (including converter_file and link_file) are mandatory.",
                 strategy="va_loader",
                 details={
-                    'required_params': required_files,
-                    'provided_params': list(kwargs.keys())
-                }
+                    "required_params": required_files,
+                    "provided_params": list(kwargs.keys()),
+                },
             )
 
         # Check if all files exist
@@ -76,15 +87,21 @@ class VoltageAwareStrategy(DataLoadingStrategy):
                 raise DataLoadingError(
                     f"File not found: {file_path}",
                     strategy="va_loader",
-                    details={'missing_file': str(file_path)}
+                    details={"missing_file": str(file_path)},
                 )
 
-        log_debug(f"Validated VA loader input files", LogCategory.INPUT)
+        log_debug("Validated VA loader input files", LogCategory.INPUT)
         return True
 
-    def load(self, node_file: str, line_file: str, transformer_file: str,
-             converter_file: str, link_file: str,
-             **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
+    def load(
+        self,
+        node_file: str,
+        line_file: str,
+        transformer_file: str,
+        converter_file: str,
+        link_file: str,
+        **kwargs,
+    ) -> nx.DiGraph | nx.MultiDiGraph:
         """
         Load graph from CSV files: nodes, lines, transformers, and DC links.
 
@@ -114,8 +131,8 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             DataLoadingError: If loading fails
         """
         try:
-            delimiter = kwargs.get('delimiter', ',')
-            decimal = kwargs.get('decimal', '.')
+            delimiter = kwargs.get("delimiter", ",")
+            decimal = kwargs.get("decimal", ".")
 
             log_debug(f"Loading nodes from {node_file}", LogCategory.INPUT)
 
@@ -126,25 +143,29 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             lines_df = self._load_lines(line_file, delimiter, decimal)
 
             # Load and validate transformers
-            transformers_df = self._load_transformers(transformer_file, delimiter, decimal)
+            transformers_df = self._load_transformers(
+                transformer_file, delimiter, decimal
+            )
 
             # Load DC link data
             converters_df = self._load_converters(converter_file, delimiter, decimal)
             links_df = self._load_links(link_file, delimiter, decimal)
 
             # Get node ID column
-            node_id_col = kwargs.get('node_id_col', self._detect_id_column(nodes_df))
+            node_id_col = kwargs.get("node_id_col", self._detect_id_column(nodes_df))
             if node_id_col not in nodes_df.columns:
                 raise DataLoadingError(
                     f"Node ID column '{node_id_col}' not found in node file",
                     strategy="va_loader",
-                    details={'available_columns': list(nodes_df.columns)}
+                    details={"available_columns": list(nodes_df.columns)},
                 )
 
             # Validate edge references for AC elements
             valid_node_ids = set(nodes_df[node_id_col].values)
             self._validate_edge_references(lines_df, valid_node_ids, "lines")
-            self._validate_edge_references(transformers_df, valid_node_ids, "transformers")
+            self._validate_edge_references(
+                transformers_df, valid_node_ids, "transformers"
+            )
 
             # Prepare node tuples (without dc_island yet)
             node_tuples = self._prepare_node_tuples(nodes_df, node_id_col)
@@ -179,7 +200,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
                 log_warning(
                     "Parallel edges detected in voltage-aware loader. A MultiDiGraph will be created. "
                     "Call manager.aggregate_parallel_edges() to collapse parallel edges before partitioning.",
-                    LogCategory.INPUT
+                    LogCategory.INPUT,
                 )
             else:
                 graph = nx.DiGraph()
@@ -197,7 +218,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             log_info(
                 f"Loaded VA network: {graph.number_of_nodes()} nodes, "
                 f"{n_lines} lines, {n_trafos} transformers, {n_dc_links} DC links",
-                LogCategory.INPUT
+                LogCategory.INPUT,
             )
 
             # Verify final graph connectivity
@@ -210,11 +231,13 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         except pd.errors.EmptyDataError as e:
             raise DataLoadingError(f"Empty CSV file: {e}", strategy="va_loader") from e
         except pd.errors.ParserError as e:
-            raise DataLoadingError(f"CSV parsing error: {e}", strategy="va_loader") from e
+            raise DataLoadingError(
+                f"CSV parsing error: {e}", strategy="va_loader"
+            ) from e
         except Exception as e:
             raise DataLoadingError(
                 f"Unexpected error loading voltage-aware CSV files: {e}",
-                strategy="va_loader"
+                strategy="va_loader",
             ) from e
 
     # =========================================================================
@@ -222,8 +245,9 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     # =========================================================================
 
     @staticmethod
-    def _detect_dc_islands(node_tuples: List[Tuple[Any, Dict]],
-                           ac_edge_tuples: List[Tuple[Any, Any, Dict]]) -> Dict[Any, int]:
+    def _detect_dc_islands(
+        node_tuples: List[Tuple[Any, Dict]], ac_edge_tuples: List[Tuple[Any, Any, Dict]]
+    ) -> Dict[Any, int]:
         """
         Detect DC islands by finding connected components before DC links are added.
 
@@ -260,13 +284,14 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         return dc_island_map
 
     @staticmethod
-    def _add_dc_island_to_nodes(node_tuples: List[Tuple[Any, Dict]],
-                                dc_island_map: Dict[Any, int]) -> List[Tuple[Any, Dict]]:
+    def _add_dc_island_to_nodes(
+        node_tuples: List[Tuple[Any, Dict]], dc_island_map: Dict[Any, int]
+    ) -> List[Tuple[Any, Dict]]:
         """Add dc_island attribute to node tuples."""
         updated_tuples = []
         for node_id, attrs in node_tuples:
             attrs_copy = attrs.copy()
-            attrs_copy['dc_island'] = dc_island_map.get(node_id, -1)
+            attrs_copy["dc_island"] = dc_island_map.get(node_id, -1)
             updated_tuples.append((node_id, attrs_copy))
         return updated_tuples
 
@@ -289,17 +314,21 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     # =========================================================================
 
     @staticmethod
-    def _remove_isolated_nodes(graph: nx.DiGraph | nx.MultiDiGraph) -> DiGraph | MultiDiGraph:
+    def _remove_isolated_nodes(
+        graph: nx.DiGraph | nx.MultiDiGraph,
+    ) -> DiGraph | MultiDiGraph:
         """Remove isolated nodes (nodes with no connections) from the graph."""
         isolated_nodes = list(nx.isolates(graph))
 
         if isolated_nodes:
             log_warning(
                 f"Found {len(isolated_nodes)} isolated node(s) with no connections. These will be removed.",
-                LogCategory.INPUT
+                LogCategory.INPUT,
             )
-            log_debug(f"Removed isolated nodes: {isolated_nodes[:10]}{'...' if len(isolated_nodes) > 10 else ''}",
-                      LogCategory.INPUT)
+            log_debug(
+                f"Removed isolated nodes: {isolated_nodes[:10]}{'...' if len(isolated_nodes) > 10 else ''}",
+                LogCategory.INPUT,
+            )
             graph.remove_nodes_from(isolated_nodes)
         return graph
 
@@ -310,20 +339,27 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         n_components = nx.number_connected_components(undirected)
 
         if n_components == 1:
-            log_info("Final graph is fully connected (single component)", LogCategory.INPUT)
+            log_info(
+                "Final graph is fully connected (single component)", LogCategory.INPUT
+            )
         else:
             log_warning(
                 f"Final graph has {n_components} disconnected component(s). "
                 "This may indicate missing DC links or data issues.",
                 LogCategory.INPUT,
-                warn_user=False
+                warn_user=False,
             )
 
-            components = sorted(nx.connected_components(undirected), key=len, reverse=True)
+            components = sorted(
+                nx.connected_components(undirected), key=len, reverse=True
+            )
             for i, comp in enumerate(components[:5]):
                 log_debug(f"  Component {i}: {len(comp)} node(s)", LogCategory.INPUT)
             if len(components) > 5:
-                log_debug(f"  ... and {len(components) - 5} more component(s)", LogCategory.INPUT)
+                log_debug(
+                    f"  ... and {len(components) - 5} more component(s)",
+                    LogCategory.INPUT,
+                )
 
     # =========================================================================
     # File Loading Methods
@@ -341,48 +377,65 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     def _load_lines(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
         """Load and validate lines DataFrame."""
-        lines_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        lines_df = pd.read_csv(
+            file_path, delimiter=delimiter, decimal=decimal, quotechar="'"
+        )
 
         if lines_df.empty:
-            log_warning("Lines file is empty. Proceeding with other edge types.", LogCategory.INPUT)
+            log_warning(
+                "Lines file is empty. Proceeding with other edge types.",
+                LogCategory.INPUT,
+            )
             return pd.DataFrame(columns=self.REQUIRED_LINE_COLUMNS)
 
-        missing_cols = [col for col in self.REQUIRED_LINE_COLUMNS if col not in lines_df.columns]
+        missing_cols = [
+            col for col in self.REQUIRED_LINE_COLUMNS if col not in lines_df.columns
+        ]
         if missing_cols:
             raise DataLoadingError(
                 f"Lines file missing required columns: {missing_cols}",
                 strategy="va_loader",
-                details={'available_columns': list(lines_df.columns)}
+                details={"available_columns": list(lines_df.columns)},
             )
 
         return lines_df
 
-    def _load_transformers(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
+    def _load_transformers(
+        self, file_path: str, delimiter: str, decimal: str
+    ) -> pd.DataFrame:
         """Load and validate transformers DataFrame."""
-        transformers_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        transformers_df = pd.read_csv(
+            file_path, delimiter=delimiter, decimal=decimal, quotechar="'"
+        )
 
         if transformers_df.empty:
-            log_warning("Transformers file is empty. Proceeding with other edge types.", LogCategory.INPUT)
+            log_warning(
+                "Transformers file is empty. Proceeding with other edge types.",
+                LogCategory.INPUT,
+            )
             return pd.DataFrame(columns=self.REQUIRED_TRANSFORMER_COLUMNS)
 
-        missing_cols = [col for col in self.REQUIRED_TRANSFORMER_COLUMNS
-                        if col not in transformers_df.columns]
+        missing_cols = [
+            col
+            for col in self.REQUIRED_TRANSFORMER_COLUMNS
+            if col not in transformers_df.columns
+        ]
         if missing_cols:
             raise DataLoadingError(
                 f"Transformers file missing required columns: {missing_cols}",
                 strategy="va_loader",
-                details={'available_columns': list(transformers_df.columns)}
+                details={"available_columns": list(transformers_df.columns)},
             )
 
         # Validate voltage values
         for idx, row in transformers_df.iterrows():
-            primary_v = row.get('primary_voltage', 0)
-            secondary_v = row.get('secondary_voltage', 0)
+            primary_v = row.get("primary_voltage", 0)
+            secondary_v = row.get("secondary_voltage", 0)
 
             if pd.isna(primary_v) or pd.isna(secondary_v):
                 raise DataLoadingError(
                     f"Transformer at row {idx} has missing voltage values",
-                    strategy="va_loader"
+                    strategy="va_loader",
                 )
 
             if primary_v <= 0 or secondary_v <= 0:
@@ -390,48 +443,63 @@ class VoltageAwareStrategy(DataLoadingStrategy):
                     f"Transformer at row {idx} must have positive primary and secondary voltages",
                     strategy="va_loader",
                     details={
-                        'row': idx,
-                        'primary_voltage': primary_v,
-                        'secondary_voltage': secondary_v
-                    }
+                        "row": idx,
+                        "primary_voltage": primary_v,
+                        "secondary_voltage": secondary_v,
+                    },
                 )
 
         return transformers_df
 
-    def _load_converters(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
+    def _load_converters(
+        self, file_path: str, delimiter: str, decimal: str
+    ) -> pd.DataFrame:
         """Load and validate converters DataFrame."""
-        converters_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        converters_df = pd.read_csv(
+            file_path, delimiter=delimiter, decimal=decimal, quotechar="'"
+        )
 
         if converters_df.empty:
-            log_warning("Converters file is empty. No DC links will be created.", LogCategory.INPUT)
+            log_warning(
+                "Converters file is empty. No DC links will be created.",
+                LogCategory.INPUT,
+            )
             return pd.DataFrame(columns=self.REQUIRED_CONVERTER_COLUMNS)
 
-        missing_cols = [col for col in self.REQUIRED_CONVERTER_COLUMNS
-                        if col not in converters_df.columns]
+        missing_cols = [
+            col
+            for col in self.REQUIRED_CONVERTER_COLUMNS
+            if col not in converters_df.columns
+        ]
         if missing_cols:
             raise DataLoadingError(
                 f"Converters file missing required columns: {missing_cols}",
                 strategy="va_loader",
-                details={'available_columns': list(converters_df.columns)}
+                details={"available_columns": list(converters_df.columns)},
             )
 
         return converters_df
 
     def _load_links(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
         """Load and validate DC links DataFrame."""
-        links_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        links_df = pd.read_csv(
+            file_path, delimiter=delimiter, decimal=decimal, quotechar="'"
+        )
 
         if links_df.empty:
-            log_warning("Links file is empty. No DC links will be created.", LogCategory.INPUT)
+            log_warning(
+                "Links file is empty. No DC links will be created.", LogCategory.INPUT
+            )
             return pd.DataFrame(columns=self.REQUIRED_LINK_COLUMNS)
 
-        missing_cols = [col for col in self.REQUIRED_LINK_COLUMNS
-                        if col not in links_df.columns]
+        missing_cols = [
+            col for col in self.REQUIRED_LINK_COLUMNS if col not in links_df.columns
+        ]
         if missing_cols:
             raise DataLoadingError(
                 f"Links file missing required columns: {missing_cols}",
                 strategy="va_loader",
-                details={'available_columns': list(links_df.columns)}
+                details={"available_columns": list(links_df.columns)},
             )
 
         return links_df
@@ -441,25 +509,26 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     # =========================================================================
 
     @staticmethod
-    def _validate_edge_references(edges_df: pd.DataFrame, valid_node_ids: set,
-                                  edge_type: str) -> None:
+    def _validate_edge_references(
+        edges_df: pd.DataFrame, valid_node_ids: set, edge_type: str
+    ) -> None:
         """Validate that all edge node references exist in the node set."""
         if edges_df.empty:
             return
 
         for idx, row in edges_df.iterrows():
-            bus0 = row['bus0']
-            bus1 = row['bus1']
+            bus0 = row["bus0"]
+            bus1 = row["bus1"]
 
             if bus0 not in valid_node_ids:
                 raise DataLoadingError(
                     f"{edge_type.capitalize()} at row {idx} references non-existent node: {bus0}",
-                    strategy="va_loader"
+                    strategy="va_loader",
                 )
             if bus1 not in valid_node_ids:
                 raise DataLoadingError(
                     f"{edge_type.capitalize()} at row {idx} references non-existent node: {bus1}",
-                    strategy="va_loader"
+                    strategy="va_loader",
                 )
 
     # =========================================================================
@@ -467,13 +536,18 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     # =========================================================================
 
     @staticmethod
-    def _prepare_node_tuples(nodes_df: pd.DataFrame, node_id_col: str) -> List[Tuple[Any, Dict]]:
+    def _prepare_node_tuples(
+        nodes_df: pd.DataFrame, node_id_col: str
+    ) -> List[Tuple[Any, Dict]]:
         """Prepare node tuples for graph creation."""
         return [
             (
                 row[node_id_col],
-                {col: row[col] for col in nodes_df.columns
-                 if col != node_id_col and pd.notna(row[col])}
+                {
+                    col: row[col]
+                    for col in nodes_df.columns
+                    if col != node_id_col and pd.notna(row[col])
+                },
             )
             for _, row in nodes_df.iterrows()
         ]
@@ -484,50 +558,59 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         edge_tuples = []
 
         for _, row in lines_df.iterrows():
-            voltage = row.get('line_voltage', row.get('voltage', 0))
+            voltage = row.get("line_voltage", row.get("voltage", 0))
 
             attrs = {
-                'type': EdgeType.LINE.value,
-                'primary_voltage': voltage,
-                'secondary_voltage': voltage,  # Same voltage for lines
+                "type": EdgeType.LINE.value,
+                "primary_voltage": voltage,
+                "secondary_voltage": voltage,  # Same voltage for lines
             }
 
             # Add all other columns as attributes
             for col in lines_df.columns:
-                if col not in ['bus0', 'bus1', 'line_voltage', 'voltage'] and pd.notna(row[col]):
+                if col not in ["bus0", "bus1", "line_voltage", "voltage"] and pd.notna(
+                    row[col]
+                ):
                     if col not in attrs:
                         attrs[col] = row[col]
 
-            edge_tuples.append((row['bus0'], row['bus1'], attrs))
+            edge_tuples.append((row["bus0"], row["bus1"], attrs))
 
         return edge_tuples
 
     @staticmethod
-    def _prepare_transformer_tuples(transformers_df: pd.DataFrame) -> List[Tuple[Any, Any, Dict]]:
+    def _prepare_transformer_tuples(
+        transformers_df: pd.DataFrame,
+    ) -> List[Tuple[Any, Any, Dict]]:
         """Prepare transformer edge tuples with unified schema."""
         edge_tuples = []
 
         for _, row in transformers_df.iterrows():
             attrs = {
-                'type': EdgeType.TRAFO.value,
-                'primary_voltage': row['primary_voltage'],
-                'secondary_voltage': row['secondary_voltage'],
+                "type": EdgeType.TRAFO.value,
+                "primary_voltage": row["primary_voltage"],
+                "secondary_voltage": row["secondary_voltage"],
             }
 
             # Add all other columns as attributes
             for col in transformers_df.columns:
-                if col not in ['bus0', 'bus1', 'primary_voltage', 'secondary_voltage'] \
-                        and pd.notna(row[col]):
+                if col not in [
+                    "bus0",
+                    "bus1",
+                    "primary_voltage",
+                    "secondary_voltage",
+                ] and pd.notna(row[col]):
                     if col not in attrs:
                         attrs[col] = row[col]
 
-            edge_tuples.append((row['bus0'], row['bus1'], attrs))
+            edge_tuples.append((row["bus0"], row["bus1"], attrs))
 
         return edge_tuples
 
     @staticmethod
-    def _prepare_dc_link_tuples(converters_df: pd.DataFrame, links_df: pd.DataFrame,
-                                valid_node_ids: set) -> List[Tuple[Any, Any, Dict]]:
+    def _prepare_dc_link_tuples(
+        converters_df: pd.DataFrame, links_df: pd.DataFrame, valid_node_ids: set
+    ) -> List[Tuple[Any, Any, Dict]]:
         """Prepare DC link edge tuples by resolving converter connections."""
         if converters_df.empty or links_df.empty:
             return []
@@ -535,37 +618,41 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         # Build converter lookup
         converter_lookup: Dict[Any, Dict] = {}
         for _, row in converters_df.iterrows():
-            converter_bus0 = row['bus0']
+            converter_bus0 = row["bus0"]
             converter_lookup[converter_bus0] = {
-                'converter_id': row['converter_id'],
-                'ac_bus': row['bus1'],
-                'dc_voltage': row['voltage'],
-                'p_nom': row.get('p_nom', None)
+                "converter_id": row["converter_id"],
+                "ac_bus": row["bus1"],
+                "dc_voltage": row["voltage"],
+                "p_nom": row.get("p_nom", None),
             }
 
         edge_tuples = []
         skipped_links = []
 
         for _, row in links_df.iterrows():
-            link_id = row['link_id']
-            link_bus0 = row['bus0']
-            link_bus1 = row['bus1']
-            link_voltage = row['voltage']
+            link_id = row["link_id"]
+            link_bus0 = row["bus0"]
+            link_bus1 = row["bus1"]
+            link_voltage = row["voltage"]
 
             # Resolve AC buses through converters
             conv0 = converter_lookup.get(link_bus0)
             conv1 = converter_lookup.get(link_bus1)
 
             if conv0 is None:
-                skipped_links.append((link_id, f"Converter not found for bus0: {link_bus0}"))
+                skipped_links.append(
+                    (link_id, f"Converter not found for bus0: {link_bus0}")
+                )
                 continue
 
             if conv1 is None:
-                skipped_links.append((link_id, f"Converter not found for bus1: {link_bus1}"))
+                skipped_links.append(
+                    (link_id, f"Converter not found for bus1: {link_bus1}")
+                )
                 continue
 
-            ac_bus0 = conv0['ac_bus']
-            ac_bus1 = conv1['ac_bus']
+            ac_bus0 = conv0["ac_bus"]
+            ac_bus1 = conv1["ac_bus"]
 
             # Validate AC buses exist in the network
             if ac_bus0 not in valid_node_ids:
@@ -578,19 +665,21 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
             # Build edge attributes
             attrs = {
-                'type': EdgeType.DC_LINK.value,
-                'primary_voltage': link_voltage,
-                'secondary_voltage': link_voltage,  # Same voltage for DC links
-                'link_id': link_id,
-                'converter_bus0': link_bus0,
-                'converter_bus1': link_bus1,
-                'converter_id_0': conv0['converter_id'],
-                'converter_id_1': conv1['converter_id'],
+                "type": EdgeType.DC_LINK.value,
+                "primary_voltage": link_voltage,
+                "secondary_voltage": link_voltage,  # Same voltage for DC links
+                "link_id": link_id,
+                "converter_bus0": link_bus0,
+                "converter_bus1": link_bus1,
+                "converter_id_0": conv0["converter_id"],
+                "converter_id_1": conv1["converter_id"],
             }
 
             # Add other link attributes
             for col in links_df.columns:
-                if col not in ['link_id', 'bus0', 'bus1', 'voltage'] and pd.notna(row[col]):
+                if col not in ["link_id", "bus0", "bus1", "voltage"] and pd.notna(
+                    row[col]
+                ):
                     if col not in attrs:
                         attrs[col] = row[col]
 
@@ -600,7 +689,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         if skipped_links:
             log_warning(
                 f"{len(skipped_links)} DC link(s) skipped due to missing references",
-                LogCategory.INPUT
+                LogCategory.INPUT,
             )
             for link_id, reason in skipped_links[:5]:
                 log_debug(f"  - {link_id}: {reason}", LogCategory.INPUT)
@@ -630,9 +719,18 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     def _detect_id_column(df: pd.DataFrame) -> str:
         """Detect the ID column for nodes."""
         candidates = [
-            'node_id', 'nodeId', 'node_ID', 'NodeId',
-            'bus_id', 'busId', 'bus_ID',
-            'id', 'Id', 'ID', 'index', 'name'
+            "node_id",
+            "nodeId",
+            "node_ID",
+            "NodeId",
+            "bus_id",
+            "busId",
+            "bus_ID",
+            "id",
+            "Id",
+            "ID",
+            "index",
+            "name",
         ]
 
         for candidate in candidates:

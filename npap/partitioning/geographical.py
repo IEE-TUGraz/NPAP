@@ -9,9 +9,15 @@ from npap.interfaces import PartitioningStrategy
 from npap.logging import log_debug, log_info, LogCategory
 from npap.utils import (
     with_runtime_config,
-    create_partition_map, validate_partition,
-    run_kmeans, run_kmedoids, run_hierarchical, run_dbscan, run_hdbscan,
-    compute_geographical_distances, validate_required_attributes
+    create_partition_map,
+    validate_partition,
+    run_kmeans,
+    run_kmedoids,
+    run_hierarchical,
+    run_dbscan,
+    run_hdbscan,
+    compute_geographical_distances,
+    validate_required_attributes,
 )
 
 
@@ -27,10 +33,11 @@ class GeographicalConfig:
         hierarchical_linkage: Linkage criterion for hierarchical clustering
                              ('ward' for Euclidean, or 'complete'/'average'/'single')
     """
+
     random_state: int = 42
     max_iter: int = 300
     n_init: int = 10
-    hierarchical_linkage: str = 'ward'
+    hierarchical_linkage: str = "ward"
 
 
 class GeographicalPartitioning(PartitioningStrategy):
@@ -55,19 +62,18 @@ class GeographicalPartitioning(PartitioningStrategy):
     Partition-time parameters override instance defaults for that call only.
     """
 
-    SUPPORTED_ALGORITHMS = ['kmeans', 'kmedoids', 'dbscan', 'hierarchical', 'hdbscan']
-    SUPPORTED_DISTANCE_METRICS = ['euclidean', 'haversine']
+    SUPPORTED_ALGORITHMS = ["kmeans", "kmedoids", "dbscan", "hierarchical", "hdbscan"]
+    SUPPORTED_DISTANCE_METRICS = ["euclidean", "haversine"]
 
     # Config parameter names for runtime override detection
-    _CONFIG_PARAMS = {
-        'random_state',
-        'max_iter',
-        'n_init',
-        'hierarchical_linkage'
-    }
+    _CONFIG_PARAMS = {"random_state", "max_iter", "n_init", "hierarchical_linkage"}
 
-    def __init__(self, algorithm: str = 'kmeans', distance_metric: str = 'euclidean',
-                 config: Optional[GeographicalConfig] = None):
+    def __init__(
+        self,
+        algorithm: str = "kmeans",
+        distance_metric: str = "euclidean",
+        config: Optional[GeographicalConfig] = None,
+    ):
         """
         Initialize geographical partitioning strategy.
 
@@ -98,16 +104,13 @@ class GeographicalPartitioning(PartitioningStrategy):
 
         log_debug(
             f"Initialized GeographicalPartitioning: algorithm={algorithm}, metric={distance_metric}",
-            LogCategory.PARTITIONING
+            LogCategory.PARTITIONING,
         )
 
     @property
     def required_attributes(self) -> Dict[str, List[str]]:
         """Required node attributes for geographical partitioning."""
-        return {
-            'nodes': ['lat', 'lon'],
-            'edges': []
-        }
+        return {"nodes": ["lat", "lon"], "edges": []}
 
     def _get_strategy_name(self) -> str:
         """Get descriptive strategy name for error messages."""
@@ -140,20 +143,23 @@ class GeographicalPartitioning(PartitioningStrategy):
         """
         try:
             # Get effective config (injected by decorator)
-            effective_config = kwargs.get('_effective_config', self.config)
-            n_clusters = kwargs.get('n_clusters')
+            effective_config = kwargs.get("_effective_config", self.config)
+            n_clusters = kwargs.get("n_clusters")
 
             log_info(
                 f"Starting geographical partitioning: {self.algorithm}, "
                 f"n_clusters={n_clusters}, metric={self.distance_metric}",
-                LogCategory.PARTITIONING
+                LogCategory.PARTITIONING,
             )
 
             # Extract coordinates
             nodes = list(graph.nodes())
             coordinates = self._extract_coordinates(graph, nodes)
 
-            log_debug(f"Extracted coordinates for {len(nodes)} nodes", LogCategory.PARTITIONING)
+            log_debug(
+                f"Extracted coordinates for {len(nodes)} nodes",
+                LogCategory.PARTITIONING,
+            )
 
             # Perform clustering
             labels = self._run_clustering(coordinates, effective_config, **kwargs)
@@ -164,7 +170,7 @@ class GeographicalPartitioning(PartitioningStrategy):
 
             log_info(
                 f"Geographical partitioning complete: {len(partition_map)} clusters",
-                LogCategory.PARTITIONING
+                LogCategory.PARTITIONING,
             )
 
             return partition_map
@@ -175,7 +181,10 @@ class GeographicalPartitioning(PartitioningStrategy):
             raise PartitioningError(
                 f"Geographical partitioning failed: {e}",
                 strategy=self._get_strategy_name(),
-                graph_info={'nodes': len(list(graph.nodes())), 'edges': len(graph.edges())}
+                graph_info={
+                    "nodes": len(list(graph.nodes())),
+                    "edges": len(graph.edges()),
+                },
             ) from e
 
     def _extract_coordinates(self, graph: nx.Graph, nodes: List[Any]) -> np.ndarray:
@@ -184,147 +193,152 @@ class GeographicalPartitioning(PartitioningStrategy):
 
         for node in nodes:
             node_data = graph.nodes[node]
-            lat = node_data.get('lat')
-            lon = node_data.get('lon')
+            lat = node_data.get("lat")
+            lon = node_data.get("lon")
 
             if lat is None or lon is None:
                 raise PartitioningError(
                     f"Node {node} missing latitude or longitude",
                     strategy=self._get_strategy_name(),
-                    graph_info={'nodes': len(nodes), 'edges': len(graph.edges())}
+                    graph_info={"nodes": len(nodes), "edges": len(graph.edges())},
                 )
 
             coordinates.append([lat, lon])
 
         return np.array(coordinates)
 
-    def _run_clustering(self, coordinates: np.ndarray,
-                        config: GeographicalConfig,
-                        **kwargs) -> np.ndarray:
+    def _run_clustering(
+        self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
+    ) -> np.ndarray:
         """Dispatch to appropriate clustering algorithm."""
-        if self.algorithm == 'kmeans':
+        if self.algorithm == "kmeans":
             return self._kmeans_clustering(coordinates, config, **kwargs)
-        elif self.algorithm == 'kmedoids':
+        elif self.algorithm == "kmedoids":
             return self._kmedoids_clustering(coordinates, **kwargs)
-        elif self.algorithm == 'dbscan':
+        elif self.algorithm == "dbscan":
             return self._dbscan_clustering(coordinates, **kwargs)
-        elif self.algorithm == 'hierarchical':
+        elif self.algorithm == "hierarchical":
             return self._hierarchical_clustering(coordinates, config, **kwargs)
-        elif self.algorithm == 'hdbscan':
+        elif self.algorithm == "hdbscan":
             return self._hdbscan_clustering(coordinates, **kwargs)
         else:
             raise PartitioningError(
                 f"Unknown algorithm: {self.algorithm}",
-                strategy=self._get_strategy_name()
+                strategy=self._get_strategy_name(),
             )
 
-    def _kmeans_clustering(self, coordinates: np.ndarray,
-                           config: GeographicalConfig,
-                           **kwargs) -> np.ndarray:
+    def _kmeans_clustering(
+        self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
+    ) -> np.ndarray:
         """Perform K-means clustering on geographical coordinates."""
         # K-means requires Euclidean distance
-        if self.distance_metric != 'euclidean':
+        if self.distance_metric != "euclidean":
             raise PartitioningError(
                 f"K-means does not support {self.distance_metric} distance. "
                 "Use 'kmedoids' algorithm for non-Euclidean metrics.",
-                strategy=self._get_strategy_name()
+                strategy=self._get_strategy_name(),
             )
 
-        n_clusters = kwargs.get('n_clusters')
+        n_clusters = kwargs.get("n_clusters")
         if n_clusters is None or n_clusters <= 0:
             raise PartitioningError(
                 "K-means requires a positive 'n_clusters' parameter.",
-                strategy=self._get_strategy_name()
+                strategy=self._get_strategy_name(),
             )
 
-        log_debug(f"Running K-means with {n_clusters} clusters", LogCategory.PARTITIONING)
+        log_debug(
+            f"Running K-means with {n_clusters} clusters", LogCategory.PARTITIONING
+        )
         return run_kmeans(
-            coordinates,
-            n_clusters,
-            config.random_state,
-            config.max_iter,
-            config.n_init
+            coordinates, n_clusters, config.random_state, config.max_iter, config.n_init
         )
 
-    def _kmedoids_clustering(self, coordinates: np.ndarray,
-                             **kwargs) -> np.ndarray:
+    def _kmedoids_clustering(self, coordinates: np.ndarray, **kwargs) -> np.ndarray:
         """Perform K-medoids clustering on geographical coordinates."""
-        n_clusters = kwargs.get('n_clusters')
+        n_clusters = kwargs.get("n_clusters")
         if n_clusters is None or n_clusters <= 0:
             raise PartitioningError(
                 "K-medoids requires a positive 'n_clusters' parameter.",
-                strategy=self._get_strategy_name()
+                strategy=self._get_strategy_name(),
             )
 
         log_debug(
             f"Running K-medoids with {n_clusters} clusters, metric={self.distance_metric}",
-            LogCategory.PARTITIONING
+            LogCategory.PARTITIONING,
         )
-        distance_matrix = compute_geographical_distances(coordinates, self.distance_metric)
+        distance_matrix = compute_geographical_distances(
+            coordinates, self.distance_metric
+        )
 
         return run_kmedoids(distance_matrix, n_clusters)
 
     def _dbscan_clustering(self, coordinates: np.ndarray, **kwargs) -> np.ndarray:
         """Perform DBSCAN clustering on geographical coordinates."""
-        eps = kwargs.get('eps')
-        min_samples = kwargs.get('min_samples')
+        eps = kwargs.get("eps")
+        min_samples = kwargs.get("min_samples")
 
         if eps is None or min_samples is None:
             raise PartitioningError(
                 "DBSCAN requires 'eps' and 'min_samples' parameters.",
-                strategy=self._get_strategy_name()
+                strategy=self._get_strategy_name(),
             )
 
-        log_debug(f"Running DBSCAN with eps={eps}, min_samples={min_samples}", LogCategory.PARTITIONING)
-        distance_matrix = compute_geographical_distances(coordinates, self.distance_metric)
+        log_debug(
+            f"Running DBSCAN with eps={eps}, min_samples={min_samples}",
+            LogCategory.PARTITIONING,
+        )
+        distance_matrix = compute_geographical_distances(
+            coordinates, self.distance_metric
+        )
 
         return run_dbscan(distance_matrix, eps, min_samples)
 
-    def _hierarchical_clustering(self, coordinates: np.ndarray,
-                                 config: GeographicalConfig,
-                                 **kwargs) -> np.ndarray:
+    def _hierarchical_clustering(
+        self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
+    ) -> np.ndarray:
         """Perform Hierarchical Clustering on geographical coordinates."""
-        n_clusters = kwargs.get('n_clusters')
+        n_clusters = kwargs.get("n_clusters")
         if n_clusters is None or n_clusters <= 0:
             raise PartitioningError(
                 "Hierarchical clustering requires a positive 'n_clusters' parameter.",
-                strategy=self._get_strategy_name()
+                strategy=self._get_strategy_name(),
             )
 
         linkage = config.hierarchical_linkage
 
         log_debug(
             f"Running hierarchical clustering with {n_clusters} clusters, linkage={linkage}",
-            LogCategory.PARTITIONING
+            LogCategory.PARTITIONING,
         )
 
         # Ward linkage only works with Euclidean distance on raw features
-        if linkage == 'ward':
-            if self.distance_metric != 'euclidean':
+        if linkage == "ward":
+            if self.distance_metric != "euclidean":
                 raise PartitioningError(
                     "Ward linkage for Hierarchical Clustering requires Euclidean distance.",
-                    strategy=self._get_strategy_name()
+                    strategy=self._get_strategy_name(),
                 )
             # Use sklearn's AgglomerativeClustering directly with ward linkage
             from sklearn.cluster import AgglomerativeClustering
+
             clustering = AgglomerativeClustering(
-                n_clusters=n_clusters,
-                metric='euclidean',
-                linkage='ward'
+                n_clusters=n_clusters, metric="euclidean", linkage="ward"
             )
             return clustering.fit_predict(coordinates)
         else:
             # For other linkages, use precomputed distance matrix
-            distance_matrix = compute_geographical_distances(coordinates, self.distance_metric)
+            distance_matrix = compute_geographical_distances(
+                coordinates, self.distance_metric
+            )
             return run_hierarchical(distance_matrix, n_clusters, linkage)
 
     def _hdbscan_clustering(self, coordinates: np.ndarray, **kwargs) -> np.ndarray:
         """Perform HDBSCAN clustering on geographical coordinates."""
-        min_cluster_size = kwargs.get('min_cluster_size', 5)
+        min_cluster_size = kwargs.get("min_cluster_size", 5)
 
         log_debug(
             f"Running HDBSCAN with min_cluster_size={min_cluster_size}, metric={self.distance_metric}",
-            LogCategory.PARTITIONING
+            LogCategory.PARTITIONING,
         )
         coords_rad = np.radians(coordinates)
 

@@ -8,12 +8,13 @@ import networkx as nx
 import numpy as np
 
 # Type variable for config classes
-ConfigT = TypeVar('ConfigT')
+ConfigT = TypeVar("ConfigT")
 
 
 # =============================================================================
 # GRAPH VALIDATION UTILITIES
 # =============================================================================
+
 
 def validate_required_attributes(func):
     """
@@ -29,31 +30,33 @@ def validate_required_attributes(func):
         required = self.required_attributes
 
         # Fast early-exit validation for nodes
-        if required.get('nodes'):
-            required_node_attrs = set(required['nodes'])
+        if required.get("nodes"):
+            required_node_attrs = set(required["nodes"])
             for node_id in graph.nodes():
                 node_attrs = graph.nodes[node_id]
                 missing_attrs = required_node_attrs - node_attrs.keys()
                 if missing_attrs:
                     from npap.exceptions import ValidationError
+
                     raise ValidationError(
                         f"Node {node_id} missing required attributes",
-                        missing_attributes={'nodes': list(missing_attrs)},
-                        strategy=self.__class__.__name__
+                        missing_attributes={"nodes": list(missing_attrs)},
+                        strategy=self.__class__.__name__,
                     )
 
         # Fast early-exit validation for edges
-        if required.get('edges'):
-            required_edge_attrs = set(required['edges'])
+        if required.get("edges"):
+            required_edge_attrs = set(required["edges"])
             for edge in graph.edges():
                 edge_attrs = graph.edges[edge]
                 missing_attrs = required_edge_attrs - edge_attrs.keys()
                 if missing_attrs:
                     from npap.exceptions import ValidationError
+
                     raise ValidationError(
                         f"Edge {edge} missing required attributes",
-                        missing_attributes={'edges': list(missing_attrs)},
-                        strategy=self.__class__.__name__
+                        missing_attributes={"edges": list(missing_attrs)},
+                        strategy=self.__class__.__name__,
                     )
 
         return func(self, graph, **kwargs)
@@ -75,9 +78,9 @@ def compute_graph_hash(graph: nx.Graph) -> str:
         Hash string (16 characters)
     """
     graph_data = {
-        'n_nodes': len(list(graph.nodes())),
-        'n_edges': len(graph.edges()),
-        'nodes': sorted([str(n) for n in graph.nodes()]),
+        "n_nodes": len(list(graph.nodes())),
+        "n_edges": len(graph.edges()),
+        "nodes": sorted([str(n) for n in graph.nodes()]),
     }
     json_str = json.dumps(graph_data, sort_keys=True)
     return hashlib.sha256(json_str.encode()).hexdigest()[:16]
@@ -96,11 +99,12 @@ def validate_graph_compatibility(partition_result, current_graph_hash: str):
     """
     if partition_result.original_graph_hash != current_graph_hash:
         from npap.exceptions import GraphCompatibilityError
+
         raise GraphCompatibilityError(
             "Partition was created from a different graph. "
             "Graph structure has changed since partition was created.",
             expected_hash=partition_result.original_graph_hash,
-            actual_hash=current_graph_hash
+            actual_hash=current_graph_hash,
         )
 
 
@@ -108,12 +112,13 @@ def validate_graph_compatibility(partition_result, current_graph_hash: str):
 # CONFIGURATION RESOLUTION
 # =============================================================================
 
+
 def resolve_runtime_config(
-        instance_config: ConfigT,
-        config_class: Type[ConfigT],
-        config_params: Set[str],
-        strategy_name: str,
-        **kwargs
+    instance_config: ConfigT,
+    config_class: Type[ConfigT],
+    config_params: Set[str],
+    strategy_name: str,
+    **kwargs,
 ) -> ConfigT:
     """
     Resolve effective configuration for a partition call.
@@ -150,13 +155,13 @@ def resolve_runtime_config(
     effective_config = instance_config
 
     # Check for full config override
-    if 'config' in kwargs:
-        config_override = kwargs['config']
+    if "config" in kwargs:
+        config_override = kwargs["config"]
         if not isinstance(config_override, config_class):
             raise PartitioningError(
                 f"'config' parameter must be {config_class.__name__}, "
                 f"got {type(config_override).__name__}",
-                strategy=strategy_name
+                strategy=strategy_name,
             )
         effective_config = config_override
 
@@ -195,7 +200,7 @@ def with_runtime_config(config_class: Type[ConfigT], config_params: Set[str]):
         @functools.wraps(partition_method)
         def wrapper(self, graph: nx.Graph, **kwargs):
             # Determine strategy name for error messages
-            if hasattr(self, '_get_strategy_name'):
+            if hasattr(self, "_get_strategy_name"):
                 strategy_name = self._get_strategy_name()
             else:
                 strategy_name = self.__class__.__name__
@@ -206,11 +211,11 @@ def with_runtime_config(config_class: Type[ConfigT], config_params: Set[str]):
                 config_class=config_class,
                 config_params=config_params,
                 strategy_name=strategy_name,
-                **kwargs
+                **kwargs,
             )
 
             # Inject effective config into kwargs
-            kwargs['_effective_config'] = effective_config
+            kwargs["_effective_config"] = effective_config
 
             return partition_method(self, graph, **kwargs)
 
@@ -222,6 +227,7 @@ def with_runtime_config(config_class: Type[ConfigT], config_params: Set[str]):
 # =============================================================================
 # PARTITION MAP UTILITIES
 # =============================================================================
+
 
 def create_partition_map(nodes: List[Any], labels: np.ndarray) -> Dict[int, List[Any]]:
     """
@@ -245,8 +251,9 @@ def create_partition_map(nodes: List[Any], labels: np.ndarray) -> Dict[int, List
     return partition_map
 
 
-def validate_partition(partition_map: Dict[int, List[Any]], n_nodes: int,
-                       strategy_name: str) -> None:
+def validate_partition(
+    partition_map: Dict[int, List[Any]], n_nodes: int, strategy_name: str
+) -> None:
     """
     Validate that all nodes were assigned to clusters.
 
@@ -265,7 +272,7 @@ def validate_partition(partition_map: Dict[int, List[Any]], n_nodes: int,
     if total_assigned != n_nodes:
         raise PartitioningError(
             f"Partition assignment mismatch: {total_assigned} assigned vs {n_nodes} total",
-            strategy=strategy_name
+            strategy=strategy_name,
         )
 
 
@@ -273,9 +280,14 @@ def validate_partition(partition_map: Dict[int, List[Any]], n_nodes: int,
 # CLUSTERING ALGORITHMS
 # =============================================================================
 
-def run_kmeans(features: np.ndarray, n_clusters: int,
-               random_state: int = 42, max_iter: int = 300,
-               n_init: int = 10) -> np.ndarray:
+
+def run_kmeans(
+    features: np.ndarray,
+    n_clusters: int,
+    random_state: int = 42,
+    max_iter: int = 300,
+    n_init: int = 10,
+) -> np.ndarray:
     """
     Perform K-Means clustering on feature matrix.
 
@@ -306,7 +318,7 @@ def run_kmeans(features: np.ndarray, n_clusters: int,
             n_clusters=n_clusters,
             random_state=random_state,
             max_iter=max_iter,
-            n_init=n_init
+            n_init=n_init,
         )
         return kmeans.fit_predict(features)
 
@@ -345,8 +357,9 @@ def run_kmedoids(distance_matrix: np.ndarray, n_clusters: int) -> np.ndarray:
         raise PartitioningError(f"K-Medoids clustering failed: {e}") from e
 
 
-def run_hierarchical(distance_matrix: np.ndarray, n_clusters: int,
-                     linkage: str = 'complete') -> np.ndarray:
+def run_hierarchical(
+    distance_matrix: np.ndarray, n_clusters: int, linkage: str = "complete"
+) -> np.ndarray:
     """
     Perform hierarchical (agglomerative) clustering with precomputed distance matrix.
 
@@ -367,7 +380,7 @@ def run_hierarchical(distance_matrix: np.ndarray, n_clusters: int,
     from sklearn.cluster import AgglomerativeClustering
     from npap.exceptions import PartitioningError
 
-    valid_linkages = {'complete', 'average', 'single'}
+    valid_linkages = {"complete", "average", "single"}
     if linkage not in valid_linkages:
         raise PartitioningError(
             f"Unsupported linkage '{linkage}' for precomputed distances. "
@@ -376,13 +389,13 @@ def run_hierarchical(distance_matrix: np.ndarray, n_clusters: int,
         )
 
     if n_clusters is None or n_clusters <= 0:
-        raise PartitioningError("Hierarchical clustering requires a positive 'n_clusters' parameter.")
+        raise PartitioningError(
+            "Hierarchical clustering requires a positive 'n_clusters' parameter."
+        )
 
     try:
         clustering = AgglomerativeClustering(
-            n_clusters=n_clusters,
-            metric='precomputed',
-            linkage=linkage
+            n_clusters=n_clusters, metric="precomputed", linkage=linkage
         )
         return clustering.fit_predict(distance_matrix)
 
@@ -390,8 +403,7 @@ def run_hierarchical(distance_matrix: np.ndarray, n_clusters: int,
         raise PartitioningError(f"Hierarchical clustering failed: {e}") from e
 
 
-def run_dbscan(distance_matrix: np.ndarray, eps: float,
-               min_samples: int) -> np.ndarray:
+def run_dbscan(distance_matrix: np.ndarray, eps: float, min_samples: int) -> np.ndarray:
     """
     Perform DBSCAN clustering with precomputed distance matrix.
 
@@ -416,19 +428,16 @@ def run_dbscan(distance_matrix: np.ndarray, eps: float,
         raise PartitioningError("DBSCAN requires 'eps' and 'min_samples' parameters.")
 
     try:
-        dbscan = DBSCAN(
-            eps=eps,
-            min_samples=min_samples,
-            metric='precomputed'
-        )
+        dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric="precomputed")
         return dbscan.fit_predict(distance_matrix)
 
     except Exception as e:
         raise PartitioningError(f"DBSCAN clustering failed: {e}") from e
 
 
-def run_hdbscan(features: np.ndarray, min_cluster_size: int = 5,
-                metric: str = 'euclidean') -> np.ndarray:
+def run_hdbscan(
+    features: np.ndarray, min_cluster_size: int = 5, metric: str = "euclidean"
+) -> np.ndarray:
     """
     Perform HDBSCAN clustering.
 
@@ -451,9 +460,7 @@ def run_hdbscan(features: np.ndarray, min_cluster_size: int = 5,
 
     try:
         clusterer = hdbscan.HDBSCAN(
-            min_cluster_size=min_cluster_size,
-            metric=metric,
-            core_dist_n_jobs=-1
+            min_cluster_size=min_cluster_size, metric=metric, core_dist_n_jobs=-1
         )
         return clusterer.fit_predict(features)
 
@@ -464,6 +471,7 @@ def run_hdbscan(features: np.ndarray, min_cluster_size: int = 5,
 # =============================================================================
 # DISTANCE MATRIX UTILITIES
 # =============================================================================
+
 
 def compute_euclidean_distances(coordinates: np.ndarray) -> np.ndarray:
     """
@@ -476,6 +484,7 @@ def compute_euclidean_distances(coordinates: np.ndarray) -> np.ndarray:
         Distance matrix (n × n)
     """
     from sklearn.metrics.pairwise import euclidean_distances
+
     return euclidean_distances(coordinates)
 
 
@@ -496,8 +505,9 @@ def compute_haversine_distances(coordinates: np.ndarray) -> np.ndarray:
     return haversine_distances(coords_rad) * earth_radius_km
 
 
-def compute_geographical_distances(coordinates: np.ndarray,
-                                   metric: str = 'euclidean') -> np.ndarray:
+def compute_geographical_distances(
+    coordinates: np.ndarray, metric: str = "euclidean"
+) -> np.ndarray:
     """
     Compute geographical distance matrix using specified metric.
 
@@ -513,9 +523,9 @@ def compute_geographical_distances(coordinates: np.ndarray,
     """
     from npap.exceptions import PartitioningError
 
-    if metric == 'euclidean':
+    if metric == "euclidean":
         return compute_euclidean_distances(coordinates)
-    elif metric == 'haversine':
+    elif metric == "haversine":
         return compute_haversine_distances(coordinates)
     else:
         raise PartitioningError(f"Unsupported distance metric: {metric}")

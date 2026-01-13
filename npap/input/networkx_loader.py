@@ -10,28 +10,31 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
 
     def validate_inputs(self, **kwargs) -> bool:
         """Validate that a NetworkX graph is provided."""
-        if 'graph' not in kwargs:
+        if "graph" not in kwargs:
             raise DataLoadingError(
                 "Missing required parameter: graph",
                 strategy="networkx_direct",
-                details={'required_params': ['graph']}
+                details={"required_params": ["graph"]},
             )
 
-        graph = kwargs['graph']
-        if not isinstance(graph, (nx.Graph, nx.DiGraph, nx.MultiGraph, nx.MultiDiGraph)):
+        graph = kwargs["graph"]
+        if not isinstance(
+            graph, (nx.Graph, nx.DiGraph, nx.MultiGraph, nx.MultiDiGraph)
+        ):
             raise DataLoadingError(
                 f"Parameter 'graph' must be a NetworkX Graph, got {type(graph)}",
                 strategy="networkx_direct",
-                details={'provided_type': str(type(graph))}
+                details={"provided_type": str(type(graph))},
             )
 
         if len(list(graph.nodes())) == 0:
             raise DataLoadingError(
-                "Provided graph has no nodes",
-                strategy="networkx_direct"
+                "Provided graph has no nodes", strategy="networkx_direct"
             )
 
-        log_debug(f"Validated NetworkX graph: {type(graph).__name__}", LogCategory.INPUT)
+        log_debug(
+            f"Validated NetworkX graph: {type(graph).__name__}", LogCategory.INPUT
+        )
         return True
 
     def load(self, graph: nx.Graph, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
@@ -55,14 +58,16 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
             DiGraph or MultiDiGraph
         """
         try:
-            bidirectional = kwargs.get('bidirectional', True)
+            bidirectional = kwargs.get("bidirectional", True)
 
             if isinstance(graph, nx.MultiDiGraph):
-                log_debug("Input is already a MultiDiGraph, creating copy", LogCategory.INPUT)
+                log_debug(
+                    "Input is already a MultiDiGraph, creating copy", LogCategory.INPUT
+                )
                 log_warning(
                     "Parallel edges detected in input MultiDiGraph. "
                     "Call manager.aggregate_parallel_edges() to collapse parallel edges before partitioning.",
-                    LogCategory.INPUT
+                    LogCategory.INPUT,
                 )
 
                 result = nx.MultiDiGraph()
@@ -78,7 +83,7 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
                 log_warning(
                     "Parallel edges detected in input MultiGraph. "
                     "Call manager.aggregate_parallel_edges() to collapse parallel edges before partitioning.",
-                    LogCategory.INPUT
+                    LogCategory.INPUT,
                 )
 
                 result = nx.MultiDiGraph()
@@ -103,13 +108,12 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
 
             if len(list(result.nodes())) == 0:
                 raise DataLoadingError(
-                    "Graph has no nodes after processing",
-                    strategy="networkx_direct"
+                    "Graph has no nodes after processing", strategy="networkx_direct"
                 )
 
             log_info(
                 f"Loaded graph from NetworkX: {result.number_of_nodes()} nodes, {result.number_of_edges()} edges",
-                LogCategory.INPUT
+                LogCategory.INPUT,
             )
 
             return result
@@ -118,6 +122,5 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
             raise
         except Exception as e:
             raise DataLoadingError(
-                f"Error processing NetworkX graph: {e}",
-                strategy="networkx_direct"
+                f"Error processing NetworkX graph: {e}", strategy="networkx_direct"
             ) from e

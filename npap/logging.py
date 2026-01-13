@@ -4,10 +4,10 @@ from enum import Enum
 from typing import Optional
 
 # Package-level logger
-_PACKAGE_LOGGER_NAME = 'npap'
+_PACKAGE_LOGGER_NAME = "npap"
 
 # Default format for NPAP loggers
-_DEFAULT_FORMAT = '%(levelname)s - %(name)s - %(message)s'
+_DEFAULT_FORMAT = "%(levelname)s - %(name)s - %(message)s"
 
 
 class LogCategory(Enum):
@@ -16,13 +16,14 @@ class LogCategory(Enum):
 
     Each category maps to a specific logger under the npap namespace.
     """
-    INPUT = 'input'
-    PARTITIONING = 'partitioning'
-    AGGREGATION = 'aggregation'
-    VISUALIZATION = 'visualization'
-    VALIDATION = 'validation'
-    MANAGER = 'manager'
-    UTILS = 'utils'
+
+    INPUT = "input"
+    PARTITIONING = "partitioning"
+    AGGREGATION = "aggregation"
+    VISUALIZATION = "visualization"
+    VALIDATION = "validation"
+    MANAGER = "manager"
+    UTILS = "utils"
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -45,9 +46,9 @@ def get_logger(name: str) -> logging.Logger:
 
 
 def configure_logging(
-        level: int = logging.INFO,
-        format_string: Optional[str] = None,
-        handler: Optional[logging.Handler] = None
+    level: int = logging.INFO,
+    format_string: Optional[str] = None,
+    handler: Optional[logging.Handler] = None,
 ) -> None:
     """
     Configure NPAP logging globally.
@@ -113,12 +114,13 @@ logging.getLogger(_PACKAGE_LOGGER_NAME).addHandler(logging.NullHandler())
 # UNIFIED LOGGING FUNCTION
 # =============================================================================
 
+
 def log_message(
-        message: str,
-        category: LogCategory = LogCategory.UTILS,
-        level: int = logging.INFO,
-        warn_user: bool = False,
-        stacklevel: int = 3
+    message: str,
+    category: LogCategory = LogCategory.UTILS,
+    level: int = logging.INFO,
+    warn_user: bool = False,
+    stacklevel: int = 3,
 ) -> None:
     """
     Unified logging function for consistent message handling across NPAP.
@@ -157,6 +159,7 @@ def log_message(
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
+
 def log_debug(message: str, category: LogCategory = LogCategory.UTILS) -> None:
     """Log a debug message."""
     log_message(message, category, logging.DEBUG)
@@ -168,9 +171,7 @@ def log_info(message: str, category: LogCategory = LogCategory.UTILS) -> None:
 
 
 def log_warning(
-        message: str,
-        category: LogCategory = LogCategory.UTILS,
-        warn_user: bool = True
+    message: str, category: LogCategory = LogCategory.UTILS, warn_user: bool = True
 ) -> None:
     """Log a warning message, optionally alerting the user."""
     log_message(message, category, logging.WARNING, warn_user=warn_user)

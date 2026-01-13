@@ -17,11 +17,7 @@ except PackageNotFoundError:
 
 # Core components
 from npap.managers import PartitionAggregatorManager
-from npap.interfaces import (
-    AggregationProfile,
-    AggregationMode,
-    PartitionResult
-)
+from npap.interfaces import AggregationProfile, AggregationMode, PartitionResult
 
 # Aggregation mode helper
 from npap.aggregation import get_mode_profile
@@ -35,24 +31,24 @@ from npap.exceptions import (
     ElectricalCalculationError,
     ValidationError,
     GraphCompatibilityError,
-    StrategyNotFoundError
+    StrategyNotFoundError,
 )
 
 # Main interface
 __all__ = [
-    'PartitionAggregatorManager',
-    'AggregationProfile',
-    'AggregationMode',
-    'PartitionResult',
-    'get_mode_profile',
-    'NPAPError',
-    'DataLoadingError',
-    'PartitioningError',
-    'AggregationError',
-    'ElectricalCalculationError',
-    'ValidationError',
-    'GraphCompatibilityError',
-    'StrategyNotFoundError',
+    "PartitionAggregatorManager",
+    "AggregationProfile",
+    "AggregationMode",
+    "PartitionResult",
+    "get_mode_profile",
+    "NPAPError",
+    "DataLoadingError",
+    "PartitioningError",
+    "AggregationError",
+    "ElectricalCalculationError",
+    "ValidationError",
+    "GraphCompatibilityError",
+    "StrategyNotFoundError",
 ]
 
 
