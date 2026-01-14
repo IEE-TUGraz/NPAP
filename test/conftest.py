@@ -8,7 +8,6 @@ of partitioning and aggregation strategies.
 import networkx as nx
 import pytest
 
-
 # =============================================================================
 # BASIC TEST GRAPHS
 # =============================================================================
@@ -218,22 +217,14 @@ def voltage_aware_graph() -> nx.DiGraph:
 
     # Edges within DC Island 0
     G.add_edge(0, 1, x=0.1, type="line", primary_voltage=220.0, secondary_voltage=220.0)
-    G.add_edge(
-        1, 2, x=0.15, type="line", primary_voltage=220.0, secondary_voltage=220.0
-    )
+    G.add_edge(1, 2, x=0.15, type="line", primary_voltage=220.0, secondary_voltage=220.0)
 
     # Edges within DC Island 1
-    G.add_edge(
-        3, 4, x=0.08, type="line", primary_voltage=380.0, secondary_voltage=380.0
-    )
-    G.add_edge(
-        4, 5, x=0.12, type="line", primary_voltage=380.0, secondary_voltage=380.0
-    )
+    G.add_edge(3, 4, x=0.08, type="line", primary_voltage=380.0, secondary_voltage=380.0)
+    G.add_edge(4, 5, x=0.12, type="line", primary_voltage=380.0, secondary_voltage=380.0)
 
     # DC Link connecting the islands (would be added after island detection in real use)
-    G.add_edge(
-        2, 3, x=0.5, type="dc_link", primary_voltage=400.0, secondary_voltage=400.0
-    )
+    G.add_edge(2, 3, x=0.5, type="dc_link", primary_voltage=400.0, secondary_voltage=400.0)
 
     return G
 
@@ -264,14 +255,10 @@ def mixed_voltage_graph() -> nx.DiGraph:
     G.add_edge(0, 1, x=0.1, type="line", primary_voltage=220.0, secondary_voltage=220.0)
 
     # 380kV lines
-    G.add_edge(
-        2, 3, x=0.08, type="line", primary_voltage=380.0, secondary_voltage=380.0
-    )
+    G.add_edge(2, 3, x=0.08, type="line", primary_voltage=380.0, secondary_voltage=380.0)
 
     # Transformer 220kV -> 380kV
-    G.add_edge(
-        1, 2, x=0.05, type="trafo", primary_voltage=220.0, secondary_voltage=380.0
-    )
+    G.add_edge(1, 2, x=0.05, type="trafo", primary_voltage=220.0, secondary_voltage=380.0)
 
     return G
 

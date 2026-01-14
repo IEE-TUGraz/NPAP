@@ -1,20 +1,20 @@
 from dataclasses import dataclass
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Any
 
 import networkx as nx
 import numpy as np
 
 from npap.exceptions import PartitioningError
 from npap.interfaces import PartitioningStrategy
-from npap.logging import log_debug, log_info, log_warning, LogCategory
+from npap.logging import LogCategory, log_debug, log_info, log_warning
 from npap.utils import (
-    with_runtime_config,
-    create_partition_map,
-    validate_partition,
-    run_kmedoids,
-    run_hierarchical,
     compute_geographical_distances,
+    create_partition_map,
+    run_hierarchical,
+    run_kmedoids,
+    validate_partition,
     validate_required_attributes,
+    with_runtime_config,
 )
 
 
@@ -23,7 +23,8 @@ class VAGeographicalConfig:
     """
     Configuration for voltage-aware geographical partitioning.
 
-    Attributes:
+    Attributes
+    ----------
         voltage_tolerance: Tolerance for voltage comparison (kV).
                           Nodes with voltages within this tolerance are
                           considered the same voltage level. Default is 1.0 kV.
@@ -108,7 +109,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         distance_metric: str = "euclidean",
         voltage_attr: str = "voltage",
         dc_island_attr: str = "dc_island",
-        config: Optional[VAGeographicalConfig] = None,
+        config: VAGeographicalConfig | None = None,
     ):
         """
         Initialize voltage-aware geographical partitioning strategy.
@@ -120,7 +121,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             dc_island_attr: Node attribute name containing DC island ID
             config: Configuration parameters for the algorithm
 
-        Raises:
+        Raises
+        ------
             ValueError: If unsupported algorithm, distance metric, or linkage
         """
         self.algorithm = algorithm
@@ -155,7 +157,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         )
 
     @property
-    def required_attributes(self) -> Dict[str, List[str]]:
+    def required_attributes(self) -> dict[str, list[str]]:
         """Required node attributes for voltage-aware geographical partitioning."""
         return {
             "nodes": ["lat", "lon", self.voltage_attr, self.dc_island_attr],
@@ -169,7 +171,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
 
     @with_runtime_config(VAGeographicalConfig, _CONFIG_PARAMS)
     @validate_required_attributes
-    def partition(self, graph: nx.Graph, **kwargs) -> Dict[int, List[Any]]:
+    def partition(self, graph: nx.Graph, **kwargs) -> dict[int, list[Any]]:
         """
         Partition nodes based on DC island and voltage-aware geographical distance.
 
@@ -185,10 +187,12 @@ class VAGeographicalPartitioning(PartitioningStrategy):
                 - proportional_clustering: Override config parameter
                 - hierarchical_linkage: Override config parameter
 
-        Returns:
+        Returns
+        -------
             Dictionary mapping cluster_id -> list of node_ids
 
-        Raises:
+        Raises
+        ------
             PartitioningError: If partitioning fails
         """
         try:
@@ -281,13 +285,13 @@ class VAGeographicalPartitioning(PartitioningStrategy):
 
     def _standard_partition(
         self,
-        nodes: List[Any],
+        nodes: list[Any],
         coordinates: np.ndarray,
         voltages: np.ndarray,
         dc_islands: np.ndarray,
         config: VAGeographicalConfig,
         **kwargs,
-    ) -> Dict[int, List[Any]]:
+    ) -> dict[int, list[Any]]:
         """
         Partition using single clustering on full matrix with infinite distances.
 
@@ -302,7 +306,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             config: VAGeographicalConfig instance
             **kwargs: Clustering parameters
 
-        Returns:
+        Returns
+        -------
             Partition mapping
         """
         log_debug("Using standard partitioning mode", LogCategory.PARTITIONING)
@@ -319,13 +324,13 @@ class VAGeographicalPartitioning(PartitioningStrategy):
 
     def _proportional_partition(
         self,
-        nodes: List[Any],
+        nodes: list[Any],
         coordinates: np.ndarray,
         voltages: np.ndarray,
         dc_islands: np.ndarray,
         config: VAGeographicalConfig,
         **kwargs,
-    ) -> Dict[int, List[Any]]:
+    ) -> dict[int, list[Any]]:
         """
         Partition each (dc_island, voltage) group independently with proportional distribution.
 
@@ -337,7 +342,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             config: VAGeographicalConfig instance
             **kwargs: Clustering parameters
 
-        Returns:
+        Returns
+        -------
             Partition mapping
         """
         log_debug("Using proportional partitioning mode", LogCategory.PARTITIONING)
@@ -352,7 +358,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
 
         log_debug(f"Cluster allocation: {allocation}", LogCategory.PARTITIONING)
 
-        partition_map: Dict[int, List[Any]] = {}
+        partition_map: dict[int, list[Any]] = {}
         cluster_offset = 0
 
         for group_key, node_indices in groups.items():
@@ -368,9 +374,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
                 continue
 
             # Cluster this group using geographical distances only
-            distances = compute_geographical_distances(
-                group_coords, self.distance_metric
-            )
+            distances = compute_geographical_distances(group_coords, self.distance_metric)
             labels = self._run_clustering(
                 distances,
                 config,
@@ -398,9 +402,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         if self.algorithm == "kmedoids":
             return run_kmedoids(distance_matrix, n_clusters)
         elif self.algorithm == "hierarchical":
-            return run_hierarchical(
-                distance_matrix, n_clusters, config.hierarchical_linkage
-            )
+            return run_hierarchical(distance_matrix, n_clusters, config.hierarchical_linkage)
         else:
             raise PartitioningError(
                 f"Unknown algorithm: {self.algorithm}",
@@ -412,8 +414,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
     # =========================================================================
 
     def _extract_node_data(
-        self, graph: nx.Graph, nodes: List[Any]
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        self, graph: nx.Graph, nodes: list[Any]
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Extract coordinates, voltage levels, and DC island IDs from nodes.
 
@@ -421,10 +423,12 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             graph: NetworkX graph
             nodes: List of node IDs
 
-        Returns:
+        Returns
+        -------
             Tuple of (coordinates array [n x 2], voltages array [n], dc_islands array [n])
 
-        Raises:
+        Raises
+        ------
             PartitioningError: If required attributes are missing.
         """
         coordinates = []
@@ -465,7 +469,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
 
     def _group_by_island_and_voltage(
         self, dc_islands: np.ndarray, voltages: np.ndarray, config: VAGeographicalConfig
-    ) -> Dict[Tuple[Any, Any], List[int]]:
+    ) -> dict[tuple[Any, Any], list[int]]:
         """
         Group node indices by (dc_island, voltage_level) combination.
 
@@ -474,10 +478,11 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             voltages: Array of voltage values
             config: VAGeographicalConfig instance
 
-        Returns:
+        Returns
+        -------
             Dict mapping (dc_island, voltage_level) -> list of node indices
         """
-        groups: Dict[Tuple[Any, Any], List[int]] = {}
+        groups: dict[tuple[Any, Any], list[int]] = {}
 
         for idx in range(len(dc_islands)):
             dc_island = dc_islands[idx]
@@ -505,8 +510,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
 
     @staticmethod
     def _allocate_clusters(
-        groups: Dict[Tuple[Any, Any], List[int]], n_clusters: int
-    ) -> Dict[Tuple[Any, Any], int]:
+        groups: dict[tuple[Any, Any], list[int]], n_clusters: int
+    ) -> dict[tuple[Any, Any], int]:
         """
         Allocate clusters proportionally to groups.
 
@@ -514,11 +519,12 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             groups: Dict mapping (dc_island, voltage) -> node indices
             n_clusters: Total clusters to allocate
 
-        Returns:
+        Returns
+        -------
             Dict mapping (dc_island, voltage) -> number of clusters
         """
         total_nodes = sum(len(indices) for indices in groups.values())
-        allocation: Dict[Tuple[Any, Any], int] = {}
+        allocation: dict[tuple[Any, Any], int] = {}
 
         # Sort by size (largest first) for stable allocation
         sorted_keys = sorted(groups.keys(), key=lambda k: len(groups[k]), reverse=True)
@@ -534,9 +540,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
                 # Proportional allocation
                 proportion = n_nodes / total_nodes
                 allocated = max(1, int(round(n_clusters * proportion)))
-                allocated = min(
-                    allocated, n_nodes, remaining - (len(sorted_keys) - i - 1)
-                )
+                allocated = min(allocated, n_nodes, remaining - (len(sorted_keys) - i - 1))
                 allocation[group_key] = allocated
                 remaining -= allocated
 
@@ -554,7 +558,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             voltages: Array of voltage values
             config: VAGeographicalConfig instance
 
-        Returns:
+        Returns
+        -------
             Number of unique groups
         """
         seen_groups = set()
@@ -605,7 +610,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             dc_islands: Array of DC island IDs (n)
             config: VAGeographicalConfig instance
 
-        Returns:
+        Returns
+        -------
             Distance matrix (n x n) where:
                 - d[i,j] = geographical_distance if same DC island AND same voltage
                 - d[i,j] = infinite_distance otherwise
@@ -614,9 +620,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
         n_nodes = len(coordinates)
 
         # Calculate geographical distances using utility function
-        geo_distances = compute_geographical_distances(
-            coordinates, self.distance_metric
-        )
+        geo_distances = compute_geographical_distances(coordinates, self.distance_metric)
 
         # Initialize distance matrix with infinite distances
         distance_matrix = np.full((n_nodes, n_nodes), config.infinite_distance)
@@ -658,7 +662,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             island1: First DC island ID
             island2: Second DC island ID
 
-        Returns:
+        Returns
+        -------
             True if islands are the same, False otherwise.
         """
         # Handle missing DC island IDs - isolated nodes
@@ -678,7 +683,8 @@ class VAGeographicalPartitioning(PartitioningStrategy):
             v2: Second voltage value
             config: VAGeographicalConfig instance
 
-        Returns:
+        Returns
+        -------
             True if voltages are compatible (within tolerance), False otherwise.
         """
         # Handle missing voltages - nodes without voltage are isolated
@@ -696,9 +702,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
     # =========================================================================
 
     @staticmethod
-    def _log_group_summary(
-        dc_islands: np.ndarray, voltages: np.ndarray, n_groups: int
-    ) -> None:
+    def _log_group_summary(dc_islands: np.ndarray, voltages: np.ndarray, n_groups: int) -> None:
         """Log summary of (dc_island, voltage_level) groups found."""
         n_islands = len(set(dc_islands))
         n_voltages = len(set(voltages))
@@ -712,7 +716,7 @@ class VAGeographicalPartitioning(PartitioningStrategy):
     def _validate_cluster_consistency(
         self,
         graph: nx.Graph,
-        partition_map: Dict[int, List[Any]],
+        partition_map: dict[int, list[Any]],
         config: VAGeographicalConfig,
     ) -> None:
         """

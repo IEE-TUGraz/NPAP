@@ -1,12 +1,11 @@
 import itertools
-from typing import Dict, List, Any
+from typing import Any
 
 import networkx as nx
 
 from npap.exceptions import AggregationError
-from npap.interfaces import TopologyStrategy, NodePropertyStrategy, EdgePropertyStrategy
-from npap.logging import log_debug, LogCategory
-
+from npap.interfaces import EdgePropertyStrategy, NodePropertyStrategy, TopologyStrategy
+from npap.logging import LogCategory, log_debug
 
 # ============================================================================
 # TOPOLOGY STRATEGIES - Define graph structure
@@ -25,9 +24,7 @@ class SimpleTopologyStrategy(TopologyStrategy):
     - Does NOT create new edges
     """
 
-    def create_topology(
-        self, graph: nx.DiGraph, partition_map: Dict[int, List[Any]]
-    ) -> nx.DiGraph:
+    def create_topology(self, graph: nx.DiGraph, partition_map: dict[int, list[Any]]) -> nx.DiGraph:
         """Create aggregated topology with basic node and edge mapping."""
         try:
             aggregated = nx.DiGraph()
@@ -74,9 +71,7 @@ class ElectricalTopologyStrategy(TopologyStrategy):
         """
         self.initial_connectivity = initial_connectivity
 
-    def create_topology(
-        self, graph: nx.DiGraph, partition_map: Dict[int, List[Any]]
-    ) -> nx.DiGraph:
+    def create_topology(self, graph: nx.DiGraph, partition_map: dict[int, list[Any]]) -> nx.DiGraph:
         """Create topology suitable for electrical aggregation."""
         try:
             aggregated = nx.DiGraph()
@@ -87,9 +82,7 @@ class ElectricalTopologyStrategy(TopologyStrategy):
 
             # Step 2: Create edges based on connectivity mode
             if self.initial_connectivity == "full":
-                for cluster1, cluster2 in itertools.permutations(
-                    partition_map.keys(), 2
-                ):
+                for cluster1, cluster2 in itertools.permutations(partition_map.keys(), 2):
                     aggregated.add_edge(cluster1, cluster2)
                 log_debug(
                     f"ElectricalTopology (full): {len(partition_map)} nodes, "
@@ -123,7 +116,7 @@ class ElectricalTopologyStrategy(TopologyStrategy):
 
 
 def _clusters_connected_directed(
-    graph: nx.DiGraph, source_nodes: List[Any], target_nodes: List[Any]
+    graph: nx.DiGraph, source_nodes: list[Any], target_nodes: list[Any]
 ) -> bool:
     """Return True if any directed edge exists from source_nodes to target_nodes."""
     for n1 in source_nodes:
@@ -134,7 +127,7 @@ def _clusters_connected_directed(
 
 
 def _create_edges_with_existing_connection(
-    partition_map: Dict[int, List[Any]], graph: nx.DiGraph, aggregated: nx.DiGraph
+    partition_map: dict[int, list[Any]], graph: nx.DiGraph, aggregated: nx.DiGraph
 ) -> None:
     """Create edges in aggregated graph where original connections exist."""
     edge_count = 0
@@ -160,9 +153,7 @@ def _create_edges_with_existing_connection(
 class SumNodeStrategy(NodePropertyStrategy):
     """Sum numerical properties across nodes in a cluster."""
 
-    def aggregate_property(
-        self, graph: nx.DiGraph, nodes: List[Any], property_name: str
-    ) -> Any:
+    def aggregate_property(self, graph: nx.DiGraph, nodes: list[Any], property_name: str) -> Any:
         """Sum property values across nodes."""
         try:
             values = []
@@ -182,9 +173,7 @@ class SumNodeStrategy(NodePropertyStrategy):
 class AverageNodeStrategy(NodePropertyStrategy):
     """Average numerical properties across nodes in a cluster."""
 
-    def aggregate_property(
-        self, graph: nx.DiGraph, nodes: List[Any], property_name: str
-    ) -> Any:
+    def aggregate_property(self, graph: nx.DiGraph, nodes: list[Any], property_name: str) -> Any:
         """Average property values across nodes."""
         try:
             values = []
@@ -205,9 +194,7 @@ class AverageNodeStrategy(NodePropertyStrategy):
 class FirstNodeStrategy(NodePropertyStrategy):
     """Take the first available value for non-numerical properties."""
 
-    def aggregate_property(
-        self, graph: nx.DiGraph, nodes: List[Any], property_name: str
-    ) -> Any:
+    def aggregate_property(self, graph: nx.DiGraph, nodes: list[Any], property_name: str) -> Any:
         """Take first available property value."""
         try:
             for node in nodes:
@@ -229,9 +216,7 @@ class FirstNodeStrategy(NodePropertyStrategy):
 class SumEdgeStrategy(EdgePropertyStrategy):
     """Sum numerical properties across edges."""
 
-    def aggregate_property(
-        self, original_edges: List[Dict[str, Any]], property_name: str
-    ) -> Any:
+    def aggregate_property(self, original_edges: list[dict[str, Any]], property_name: str) -> Any:
         """Sum property values across edges."""
         try:
             values = []
@@ -251,9 +236,7 @@ class SumEdgeStrategy(EdgePropertyStrategy):
 class AverageEdgeStrategy(EdgePropertyStrategy):
     """Average numerical properties across edges."""
 
-    def aggregate_property(
-        self, original_edges: List[Dict[str, Any]], property_name: str
-    ) -> Any:
+    def aggregate_property(self, original_edges: list[dict[str, Any]], property_name: str) -> Any:
         """Average property values across edges."""
         try:
             values = []
@@ -274,9 +257,7 @@ class AverageEdgeStrategy(EdgePropertyStrategy):
 class FirstEdgeStrategy(EdgePropertyStrategy):
     """Take the first available value for non-numerical properties."""
 
-    def aggregate_property(
-        self, original_edges: List[Dict[str, Any]], property_name: str
-    ) -> Any:
+    def aggregate_property(self, original_edges: list[dict[str, Any]], property_name: str) -> Any:
         """Take first available property value."""
         try:
             for edge_data in original_edges:
@@ -304,13 +285,12 @@ class EquivalentReactanceStrategy(EdgePropertyStrategy):
     x_eq = 1 / b_eq
     """
 
-    def aggregate_property(
-        self, original_edges: List[Dict[str, Any]], property_name: str
-    ) -> Any:
+    def aggregate_property(self, original_edges: list[dict[str, Any]], property_name: str) -> Any:
         """
         Calculate the equivalent reactance for the given parallel edges.
 
-        Returns:
+        Returns
+        -------
             Equivalent reactance value, or float('inf') if no edges exist
         """
         try:

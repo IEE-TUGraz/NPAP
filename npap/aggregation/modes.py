@@ -7,7 +7,7 @@ Each mode provides a validated combination of:
 - Statistical property aggregation defaults
 """
 
-from npap.interfaces import AggregationProfile, AggregationMode
+from npap.interfaces import AggregationMode, AggregationProfile
 
 
 def get_mode_profile(mode: AggregationMode, **overrides) -> AggregationProfile:
@@ -18,7 +18,8 @@ def get_mode_profile(mode: AggregationMode, **overrides) -> AggregationProfile:
         mode: Aggregation mode enum
         **overrides: Override any profile parameters
 
-    Returns:
+    Returns
+    -------
         AggregationProfile configured for the mode
 
     Example:

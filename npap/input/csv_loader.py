@@ -5,7 +5,7 @@ import pandas as pd
 
 from npap.exceptions import DataLoadingError
 from npap.interfaces import DataLoadingStrategy
-from npap.logging import log_debug, log_info, log_warning, LogCategory
+from npap.logging import LogCategory, log_debug, log_info, log_warning
 
 
 class CSVFilesStrategy(DataLoadingStrategy):
@@ -14,11 +14,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
     def validate_inputs(self, **kwargs) -> bool:
         """Validate that required CSV files are provided."""
         required_files = ["node_file", "edge_file"]
-        missing = [
-            file
-            for file in required_files
-            if file not in kwargs or kwargs[file] is None
-        ]
+        missing = [file for file in required_files if file not in kwargs or kwargs[file] is None]
         if missing:
             raise DataLoadingError(
                 f"Missing required parameters: {missing}",
@@ -45,9 +41,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
         )
         return True
 
-    def load(
-        self, node_file: str, edge_file: str, **kwargs
-    ) -> nx.DiGraph | nx.MultiDiGraph:
+    def load(self, node_file: str, edge_file: str, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
         """Load graph from CSV files as a directed graph."""
         try:
             delimiter = kwargs.get("delimiter", ",")
@@ -61,9 +55,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
                 raise DataLoadingError("Node file is empty", strategy="csv_files")
 
             # Determine node ID column
-            node_id_col = kwargs.get(
-                "node_id_col", self._detect_id_column(nodes_df, "node")
-            )
+            node_id_col = kwargs.get("node_id_col", self._detect_id_column(nodes_df, "node"))
             if node_id_col not in nodes_df.columns:
                 raise DataLoadingError(
                     f"Node ID column '{node_id_col}' not found in node file",
@@ -74,19 +66,13 @@ class CSVFilesStrategy(DataLoadingStrategy):
             log_debug(f"Loading edges from {edge_file}", LogCategory.INPUT)
 
             # Load edges
-            edges_df = pd.read_csv(
-                edge_file, delimiter=delimiter, decimal=decimal, quotechar="'"
-            )
+            edges_df = pd.read_csv(edge_file, delimiter=delimiter, decimal=decimal, quotechar="'")
             if edges_df.empty:
                 raise DataLoadingError("Edge file is empty", strategy="csv_files")
 
             # Determine edge columns
-            edge_from_col = kwargs.get(
-                "edge_from_col", self._detect_edge_column(edges_df, "from")
-            )
-            edge_to_col = kwargs.get(
-                "edge_to_col", self._detect_edge_column(edges_df, "to")
-            )
+            edge_from_col = kwargs.get("edge_from_col", self._detect_edge_column(edges_df, "from"))
+            edge_to_col = kwargs.get("edge_to_col", self._detect_edge_column(edges_df, "to"))
 
             if edge_from_col not in edges_df.columns:
                 raise DataLoadingError(
@@ -166,9 +152,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
         except pd.errors.EmptyDataError as e:
             raise DataLoadingError(f"Empty CSV file: {e}", strategy="csv_files") from e
         except pd.errors.ParserError as e:
-            raise DataLoadingError(
-                f"CSV parsing error: {e}", strategy="csv_files"
-            ) from e
+            raise DataLoadingError(f"CSV parsing error: {e}", strategy="csv_files") from e
         except DataLoadingError:
             raise
         except Exception as e:

@@ -12,20 +12,19 @@ import pytest
 
 from npap.exceptions import PartitioningError, ValidationError
 from npap.partitioning.electrical import (
-    ElectricalDistancePartitioning,
     ElectricalDistanceConfig,
+    ElectricalDistancePartitioning,
 )
-from npap.partitioning.geographical import GeographicalPartitioning, GeographicalConfig
+from npap.partitioning.geographical import GeographicalConfig, GeographicalPartitioning
 from npap.partitioning.va_geographical import (
-    VAGeographicalPartitioning,
     VAGeographicalConfig,
+    VAGeographicalPartitioning,
 )
 from test.conftest import (
-    nodes_in_same_cluster,
-    nodes_in_different_clusters,
     all_nodes_assigned,
+    nodes_in_different_clusters,
+    nodes_in_same_cluster,
 )
-
 
 # =============================================================================
 # GEOGRAPHICAL PARTITIONING TESTS
@@ -74,12 +73,8 @@ class TestGeographicalPartitioning:
 
     def test_kmeans_basic_partition(self, geographical_cluster_graph):
         """Test K-Means partitions geographically distinct clusters correctly."""
-        strategy = GeographicalPartitioning(
-            algorithm="kmeans", distance_metric="euclidean"
-        )
-        partition = strategy.partition(
-            geographical_cluster_graph, n_clusters=2, random_state=42
-        )
+        strategy = GeographicalPartitioning(algorithm="kmeans", distance_metric="euclidean")
+        partition = strategy.partition(geographical_cluster_graph, n_clusters=2, random_state=42)
 
         # Verify all nodes assigned
         assert all_nodes_assigned(partition, list(geographical_cluster_graph.nodes()))
@@ -97,9 +92,7 @@ class TestGeographicalPartitioning:
 
     def test_kmeans_requires_euclidean(self, simple_digraph):
         """Test K-Means raises error for non-Euclidean metrics."""
-        strategy = GeographicalPartitioning(
-            algorithm="kmeans", distance_metric="haversine"
-        )
+        strategy = GeographicalPartitioning(algorithm="kmeans", distance_metric="haversine")
 
         with pytest.raises(PartitioningError, match="does not support haversine"):
             strategy.partition(simple_digraph, n_clusters=2)
@@ -125,9 +118,7 @@ class TestGeographicalPartitioning:
 
     def test_kmedoids_euclidean_partition(self, geographical_cluster_graph):
         """Test K-Medoids with Euclidean distance."""
-        strategy = GeographicalPartitioning(
-            algorithm="kmedoids", distance_metric="euclidean"
-        )
+        strategy = GeographicalPartitioning(algorithm="kmedoids", distance_metric="euclidean")
         partition = strategy.partition(geographical_cluster_graph, n_clusters=2)
 
         assert all_nodes_assigned(partition, list(geographical_cluster_graph.nodes()))
@@ -140,9 +131,7 @@ class TestGeographicalPartitioning:
 
     def test_kmedoids_haversine_partition(self, geographical_cluster_graph):
         """Test K-Medoids with Haversine distance."""
-        strategy = GeographicalPartitioning(
-            algorithm="kmedoids", distance_metric="haversine"
-        )
+        strategy = GeographicalPartitioning(algorithm="kmedoids", distance_metric="haversine")
         partition = strategy.partition(geographical_cluster_graph, n_clusters=2)
 
         assert all_nodes_assigned(partition, list(geographical_cluster_graph.nodes()))
@@ -154,9 +143,7 @@ class TestGeographicalPartitioning:
 
     def test_hierarchical_partition(self, geographical_cluster_graph):
         """Test Hierarchical clustering partitions correctly."""
-        strategy = GeographicalPartitioning(
-            algorithm="hierarchical", distance_metric="euclidean"
-        )
+        strategy = GeographicalPartitioning(algorithm="hierarchical", distance_metric="euclidean")
         partition = strategy.partition(geographical_cluster_graph, n_clusters=2)
 
         assert all_nodes_assigned(partition, list(geographical_cluster_graph.nodes()))
@@ -189,12 +176,8 @@ class TestGeographicalPartitioning:
 
     def test_dbscan_basic_partition(self, geographical_cluster_graph):
         """Test DBSCAN can identify clusters."""
-        strategy = GeographicalPartitioning(
-            algorithm="dbscan", distance_metric="euclidean"
-        )
-        partition = strategy.partition(
-            geographical_cluster_graph, eps=1.0, min_samples=2
-        )
+        strategy = GeographicalPartitioning(algorithm="dbscan", distance_metric="euclidean")
+        partition = strategy.partition(geographical_cluster_graph, eps=1.0, min_samples=2)
 
         # DBSCAN should find the two clusters (may have noise points labeled -1)
         # Just verify it runs without error and assigns nodes
@@ -207,9 +190,7 @@ class TestGeographicalPartitioning:
 
     def test_hdbscan_basic_partition(self, geographical_cluster_graph):
         """Test HDBSCAN can identify clusters."""
-        strategy = GeographicalPartitioning(
-            algorithm="hdbscan", distance_metric="euclidean"
-        )
+        strategy = GeographicalPartitioning(algorithm="hdbscan", distance_metric="euclidean")
         partition = strategy.partition(geographical_cluster_graph, min_cluster_size=2)
 
         # HDBSCAN should find clusters (may have noise)
@@ -334,36 +315,26 @@ class TestElectricalDistancePartitioning:
     # DC Island Isolation Tests
     # -------------------------------------------------------------------------
 
-    def test_dc_island_isolation_respects_boundaries(
-        self, multi_island_electrical_graph
-    ):
+    def test_dc_island_isolation_respects_boundaries(self, multi_island_electrical_graph):
         """Test that partitioning respects DC island boundaries."""
         strategy = ElectricalDistancePartitioning(algorithm="kmedoids")
-        partition = strategy.partition(
-            multi_island_electrical_graph, n_clusters=2, random_state=42
-        )
+        partition = strategy.partition(multi_island_electrical_graph, n_clusters=2, random_state=42)
 
         # Nodes 0, 1, 2 are in DC island 0
         # Nodes 3, 4, 5 are in DC island 1
         # They should NEVER be in the same cluster
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
-                assert nodes_in_different_clusters(
-                    partition, i, j
-                ), f"Nodes {i} and {j} should be in different clusters (different DC islands)"
+                assert nodes_in_different_clusters(partition, i, j), (
+                    f"Nodes {i} and {j} should be in different clusters (different DC islands)"
+                )
 
-    def test_dc_island_isolation_with_more_clusters(
-        self, multi_island_electrical_graph
-    ):
+    def test_dc_island_isolation_with_more_clusters(self, multi_island_electrical_graph):
         """Test DC island isolation with more clusters than islands."""
         strategy = ElectricalDistancePartitioning(algorithm="kmedoids")
-        partition = strategy.partition(
-            multi_island_electrical_graph, n_clusters=4, random_state=42
-        )
+        partition = strategy.partition(multi_island_electrical_graph, n_clusters=4, random_state=42)
 
-        assert all_nodes_assigned(
-            partition, list(multi_island_electrical_graph.nodes())
-        )
+        assert all_nodes_assigned(partition, list(multi_island_electrical_graph.nodes()))
         assert len(partition) == 4
 
         # DC island boundaries should still be respected
@@ -374,9 +345,7 @@ class TestElectricalDistancePartitioning:
     def test_dc_island_isolation_kmeans(self, multi_island_electrical_graph):
         """Test DC island isolation with K-Means algorithm."""
         strategy = ElectricalDistancePartitioning(algorithm="kmeans")
-        partition = strategy.partition(
-            multi_island_electrical_graph, n_clusters=2, random_state=42
-        )
+        partition = strategy.partition(multi_island_electrical_graph, n_clusters=2, random_state=42)
 
         # DC island boundaries should be respected
         for i in [0, 1, 2]:
@@ -387,9 +356,7 @@ class TestElectricalDistancePartitioning:
     # Missing dc_island Attribute Tests
     # -------------------------------------------------------------------------
 
-    def test_missing_dc_island_raises_helpful_error(
-        self, electrical_graph_no_dc_island
-    ):
+    def test_missing_dc_island_raises_helpful_error(self, electrical_graph_no_dc_island):
         """Test that missing dc_island attribute raises ValidationError with helpful message."""
         strategy = ElectricalDistancePartitioning()
 
@@ -404,9 +371,7 @@ class TestElectricalDistancePartitioning:
     def test_missing_dc_island_with_custom_attr_name(self):
         """Test that missing custom dc_island attribute raises appropriate error."""
         G = nx.DiGraph()
-        G.add_node(
-            0, lat=0.0, lon=0.0, dc_island=0
-        )  # Has dc_island but not custom attr
+        G.add_node(0, lat=0.0, lon=0.0, dc_island=0)  # Has dc_island but not custom attr
         G.add_node(1, lat=1.0, lon=0.0, dc_island=0)
         G.add_edge(0, 1, x=0.1)
 
@@ -492,9 +457,7 @@ class TestElectricalDistancePartitioning:
         config = ElectricalDistanceConfig(infinite_distance=1e6)
         strategy = ElectricalDistancePartitioning(config=config)
 
-        partition = strategy.partition(
-            multi_island_electrical_graph, n_clusters=2, random_state=42
-        )
+        partition = strategy.partition(multi_island_electrical_graph, n_clusters=2, random_state=42)
 
         # DC island boundaries should still be respected
         for i in [0, 1, 2]:
@@ -549,34 +512,30 @@ class TestVAGeographicalPartitioning:
     def test_respects_dc_island_boundaries(self, voltage_aware_graph):
         """Test that partitioning respects DC island boundaries."""
         strategy = VAGeographicalPartitioning(algorithm="kmedoids")
-        partition = strategy.partition(
-            voltage_aware_graph, n_clusters=2, random_state=42
-        )
+        partition = strategy.partition(voltage_aware_graph, n_clusters=2, random_state=42)
 
         # Nodes 0,1,2 are in DC island 0
         # Nodes 3,4,5 are in DC island 1
         # They should never be in the same cluster
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
-                assert nodes_in_different_clusters(
-                    partition, i, j
-                ), f"Nodes {i} and {j} should be in different clusters (different DC islands)"
+                assert nodes_in_different_clusters(partition, i, j), (
+                    f"Nodes {i} and {j} should be in different clusters (different DC islands)"
+                )
 
     def test_respects_voltage_boundaries(self, mixed_voltage_graph):
         """Test that partitioning respects voltage level boundaries."""
         strategy = VAGeographicalPartitioning(algorithm="kmedoids")
-        partition = strategy.partition(
-            mixed_voltage_graph, n_clusters=2, random_state=42
-        )
+        partition = strategy.partition(mixed_voltage_graph, n_clusters=2, random_state=42)
 
         # Nodes 0,1 are 220kV
         # Nodes 2,3 are 380kV
         # They should not be in the same cluster
         for i in [0, 1]:
             for j in [2, 3]:
-                assert nodes_in_different_clusters(
-                    partition, i, j
-                ), f"Nodes {i} and {j} should be in different clusters (different voltages)"
+                assert nodes_in_different_clusters(partition, i, j), (
+                    f"Nodes {i} and {j} should be in different clusters (different voltages)"
+                )
 
     # -------------------------------------------------------------------------
     # Standard Mode Tests
@@ -588,9 +547,7 @@ class TestVAGeographicalPartitioning:
             algorithm="kmedoids",
             config=VAGeographicalConfig(proportional_clustering=False),
         )
-        partition = strategy.partition(
-            voltage_aware_graph, n_clusters=2, random_state=42
-        )
+        partition = strategy.partition(voltage_aware_graph, n_clusters=2, random_state=42)
 
         assert all_nodes_assigned(partition, list(voltage_aware_graph.nodes()))
 
@@ -614,9 +571,7 @@ class TestVAGeographicalPartitioning:
             algorithm="kmedoids",
             config=VAGeographicalConfig(proportional_clustering=True),
         )
-        partition = strategy.partition(
-            voltage_aware_graph, n_clusters=4, random_state=42
-        )
+        partition = strategy.partition(voltage_aware_graph, n_clusters=4, random_state=42)
 
         assert all_nodes_assigned(partition, list(voltage_aware_graph.nodes()))
 
@@ -631,12 +586,8 @@ class TestVAGeographicalPartitioning:
 
     def test_haversine_distance_metric(self, voltage_aware_graph):
         """Test partitioning with Haversine distance metric."""
-        strategy = VAGeographicalPartitioning(
-            algorithm="kmedoids", distance_metric="haversine"
-        )
-        partition = strategy.partition(
-            voltage_aware_graph, n_clusters=2, random_state=42
-        )
+        strategy = VAGeographicalPartitioning(algorithm="kmedoids", distance_metric="haversine")
+        partition = strategy.partition(voltage_aware_graph, n_clusters=2, random_state=42)
 
         assert all_nodes_assigned(partition, list(voltage_aware_graph.nodes()))
 
@@ -679,9 +630,7 @@ class TestVAGeographicalPartitioning:
         strategy = VAGeographicalPartitioning(algorithm="kmedoids", config=config)
 
         # Note: DC island constraint still applies, so they won't actually cluster together
-        partition = strategy.partition(
-            voltage_aware_graph, n_clusters=2, random_state=42
-        )
+        partition = strategy.partition(voltage_aware_graph, n_clusters=2, random_state=42)
         assert all_nodes_assigned(partition, list(voltage_aware_graph.nodes()))
 
     def test_infinite_distance_config(self, voltage_aware_graph):
@@ -689,9 +638,7 @@ class TestVAGeographicalPartitioning:
         config = VAGeographicalConfig(infinite_distance=1e6)
         strategy = VAGeographicalPartitioning(algorithm="kmedoids", config=config)
 
-        partition = strategy.partition(
-            voltage_aware_graph, n_clusters=2, random_state=42
-        )
+        partition = strategy.partition(voltage_aware_graph, n_clusters=2, random_state=42)
         assert all_nodes_assigned(partition, list(voltage_aware_graph.nodes()))
 
 
@@ -732,9 +679,7 @@ class TestPartitioningEdgeCases:
         n_nodes = len(list(simple_digraph.nodes()))
 
         strategy = GeographicalPartitioning(algorithm="kmedoids")
-        partition = strategy.partition(
-            simple_digraph, n_clusters=n_nodes, random_state=42
-        )
+        partition = strategy.partition(simple_digraph, n_clusters=n_nodes, random_state=42)
 
         assert len(partition) == n_nodes
         # Each cluster should have exactly one node
@@ -745,12 +690,8 @@ class TestPartitioningEdgeCases:
         """Test that same random_state produces same results."""
         strategy = GeographicalPartitioning(algorithm="kmeans")
 
-        partition1 = strategy.partition(
-            geographical_cluster_graph, n_clusters=2, random_state=42
-        )
-        partition2 = strategy.partition(
-            geographical_cluster_graph, n_clusters=2, random_state=42
-        )
+        partition1 = strategy.partition(geographical_cluster_graph, n_clusters=2, random_state=42)
+        partition2 = strategy.partition(geographical_cluster_graph, n_clusters=2, random_state=42)
 
         assert partition1 == partition2
 
@@ -758,12 +699,8 @@ class TestPartitioningEdgeCases:
         """Test that different random_state may produce different results."""
         strategy = GeographicalPartitioning(algorithm="kmeans")
 
-        partition1 = strategy.partition(
-            geographical_cluster_graph, n_clusters=2, random_state=1
-        )
-        partition2 = strategy.partition(
-            geographical_cluster_graph, n_clusters=2, random_state=999
-        )
+        partition1 = strategy.partition(geographical_cluster_graph, n_clusters=2, random_state=1)
+        partition2 = strategy.partition(geographical_cluster_graph, n_clusters=2, random_state=999)
 
         # Results might be the same (if data is clearly separable) or different
         # Just verify both are valid

@@ -1,7 +1,6 @@
 import logging
 import warnings
 from enum import Enum
-from typing import Optional
 
 # Package-level logger
 _PACKAGE_LOGGER_NAME = "npap"
@@ -33,7 +32,8 @@ def get_logger(name: str) -> logging.Logger:
     Args:
         name: Module name (typically __name__)
 
-    Returns:
+    Returns
+    -------
         Configured logger instance
 
     Example:
@@ -47,8 +47,8 @@ def get_logger(name: str) -> logging.Logger:
 
 def configure_logging(
     level: int = logging.INFO,
-    format_string: Optional[str] = None,
-    handler: Optional[logging.Handler] = None,
+    format_string: str | None = None,
+    handler: logging.Handler | None = None,
 ) -> None:
     """
     Configure NPAP logging globally.
@@ -137,7 +137,8 @@ def log_message(
         warn_user: If True, also emit a Python warning (for interactive use)
         stacklevel: Stack level for warnings.warn (default: 3)
 
-    Examples:
+    Examples
+    --------
         # Simple info message
         log_message("Processing started", LogCategory.INPUT)
 

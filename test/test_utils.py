@@ -14,20 +14,19 @@ import pytest
 from npap.exceptions import GraphCompatibilityError, PartitioningError
 from npap.interfaces import PartitionResult
 from npap.utils import (
-    compute_graph_hash,
-    validate_graph_compatibility,
-    create_partition_map,
-    validate_partition,
     compute_euclidean_distances,
-    compute_haversine_distances,
     compute_geographical_distances,
-    run_kmeans,
-    run_kmedoids,
-    run_hierarchical,
+    compute_graph_hash,
+    compute_haversine_distances,
+    create_partition_map,
     run_dbscan,
     run_hdbscan,
+    run_hierarchical,
+    run_kmeans,
+    run_kmedoids,
+    validate_graph_compatibility,
+    validate_partition,
 )
-
 
 # =============================================================================
 # GRAPH HASH TESTS
@@ -44,9 +43,7 @@ class TestGraphHash:
 
         assert hash1 == hash2
 
-    def test_hash_differs_for_different_graphs(
-        self, simple_digraph, geographical_cluster_graph
-    ):
+    def test_hash_differs_for_different_graphs(self, simple_digraph, geographical_cluster_graph):
         """Test that different graphs produce different hashes."""
         hash1 = compute_graph_hash(simple_digraph)
         hash2 = compute_graph_hash(geographical_cluster_graph)
@@ -99,9 +96,7 @@ class TestGraphCompatibilityValidation:
         # Should not raise
         validate_graph_compatibility(partition_result, graph_hash)
 
-    def test_incompatible_partition_raises(
-        self, simple_digraph, geographical_cluster_graph
-    ):
+    def test_incompatible_partition_raises(self, simple_digraph, geographical_cluster_graph):
         """Test that incompatible partition raises GraphCompatibilityError."""
         hash1 = compute_graph_hash(simple_digraph)
         hash2 = compute_graph_hash(geographical_cluster_graph)
@@ -338,9 +333,7 @@ class TestClusteringAlgorithms:
     def test_hierarchical_linkages(self, cluster_distance_matrix):
         """Test Hierarchical clustering with different linkages."""
         for linkage in ["complete", "average", "single"]:
-            labels = run_hierarchical(
-                cluster_distance_matrix, n_clusters=2, linkage=linkage
-            )
+            labels = run_hierarchical(cluster_distance_matrix, n_clusters=2, linkage=linkage)
             assert len(labels) == 6
 
     def test_hierarchical_invalid_linkage(self, cluster_distance_matrix):

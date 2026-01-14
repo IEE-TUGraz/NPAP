@@ -21,7 +21,6 @@ from npap.input.csv_loader import CSVFilesStrategy
 from npap.input.networkx_loader import NetworkXDirectStrategy
 from npap.input.va_loader import VoltageAwareStrategy
 
-
 # =============================================================================
 # FIXTURES FOR CSV FILES
 # =============================================================================
@@ -171,9 +170,7 @@ class TestCSVFilesStrategy:
     def test_validate_success(self, simple_node_csv, simple_edge_csv):
         """Test successful validation."""
         strategy = CSVFilesStrategy()
-        result = strategy.validate_inputs(
-            node_file=simple_node_csv, edge_file=simple_edge_csv
-        )
+        result = strategy.validate_inputs(node_file=simple_node_csv, edge_file=simple_edge_csv)
         assert result is True
 
     # -------------------------------------------------------------------------
@@ -229,9 +226,7 @@ class TestCSVFilesStrategy:
             node_file, index=False, sep=";"
         )
 
-        pd.DataFrame({"from": [0], "to": [1], "x": [0.1]}).to_csv(
-            edge_file, index=False, sep=";"
-        )
+        pd.DataFrame({"from": [0], "to": [1], "x": [0.1]}).to_csv(edge_file, index=False, sep=";")
 
         strategy = CSVFilesStrategy()
         graph = strategy.load(node_file, edge_file, delimiter=";")
@@ -291,9 +286,9 @@ class TestCSVFilesStrategy:
         """Test automatic detection of bus0/bus1 columns."""
         # Extend nodes to include node 2
         node_file = Path(simple_node_csv).parent / "nodes3.csv"
-        pd.DataFrame(
-            {"node_id": [0, 1, 2], "lat": [0.0, 1.0, 2.0], "lon": [0.0, 1.0, 2.0]}
-        ).to_csv(node_file, index=False)
+        pd.DataFrame({"node_id": [0, 1, 2], "lat": [0.0, 1.0, 2.0], "lon": [0.0, 1.0, 2.0]}).to_csv(
+            node_file, index=False
+        )
 
         strategy = CSVFilesStrategy()
         graph = strategy.load(str(node_file), bus0_bus1_edge_csv)
@@ -304,9 +299,9 @@ class TestCSVFilesStrategy:
     def test_detect_source_target_columns(self, temp_dir, source_target_edge_csv):
         """Test automatic detection of source/target columns."""
         node_file = os.path.join(temp_dir, "nodes3.csv")
-        pd.DataFrame(
-            {"node_id": [0, 1, 2], "lat": [0.0, 1.0, 2.0], "lon": [0.0, 1.0, 2.0]}
-        ).to_csv(node_file, index=False)
+        pd.DataFrame({"node_id": [0, 1, 2], "lat": [0.0, 1.0, 2.0], "lon": [0.0, 1.0, 2.0]}).to_csv(
+            node_file, index=False
+        )
 
         strategy = CSVFilesStrategy()
         graph = strategy.load(node_file, source_target_edge_csv)
@@ -319,19 +314,15 @@ class TestCSVFilesStrategy:
         edge_file = os.path.join(temp_dir, "edges_custom.csv")
 
         # First column will be used as ID
-        pd.DataFrame(
-            {"custom_first_col": [0, 1], "lat": [0.0, 1.0], "lon": [0.0, 1.0]}
-        ).to_csv(node_file, index=False)
+        pd.DataFrame({"custom_first_col": [0, 1], "lat": [0.0, 1.0], "lon": [0.0, 1.0]}).to_csv(
+            node_file, index=False
+        )
 
         # Edge file with non-standard columns - will use first two columns
-        pd.DataFrame({"col_a": [0], "col_b": [1], "x": [0.1]}).to_csv(
-            edge_file, index=False
-        )
+        pd.DataFrame({"col_a": [0], "col_b": [1], "x": [0.1]}).to_csv(edge_file, index=False)
 
         strategy = CSVFilesStrategy()
-        graph = strategy.load(
-            node_file, edge_file, edge_from_col="col_a", edge_to_col="col_b"
-        )
+        graph = strategy.load(node_file, edge_file, edge_from_col="col_a", edge_to_col="col_b")
 
         assert len(list(graph.nodes())) == 2
 
@@ -547,9 +538,9 @@ def va_test_files_with_dc(temp_dir):
 
     # No transformers
     files["transformer_file"] = os.path.join(temp_dir, "transformers.csv")
-    pd.DataFrame(
-        columns=["bus0", "bus1", "x", "primary_voltage", "secondary_voltage"]
-    ).to_csv(files["transformer_file"], index=False)
+    pd.DataFrame(columns=["bus0", "bus1", "x", "primary_voltage", "secondary_voltage"]).to_csv(
+        files["transformer_file"], index=False
+    )
 
     # Converters connecting buses to DC side
     files["converter_file"] = os.path.join(temp_dir, "converters.csv")
@@ -571,9 +562,7 @@ def va_test_files_with_dc(temp_dir):
     return files
 
 
-@pytest.mark.filterwarnings(
-    "ignore:Converters file is empty. No DC links will be created."
-)
+@pytest.mark.filterwarnings("ignore:Converters file is empty. No DC links will be created.")
 @pytest.mark.filterwarnings("ignore:Links file is empty. No DC links will be created.")
 class TestVoltageAwareStrategy:
     """Tests for VoltageAwareStrategy."""
@@ -634,9 +623,7 @@ class TestVoltageAwareStrategy:
         assert len(list(graph.nodes())) == 4
 
         # Check DC link was added
-        dc_link_edges = [
-            (u, v) for u, v, d in graph.edges(data=True) if d.get("type") == "dc_link"
-        ]
+        dc_link_edges = [(u, v) for u, v, d in graph.edges(data=True) if d.get("type") == "dc_link"]
         assert len(dc_link_edges) == 1
 
     def test_load_detects_dc_islands(self, va_test_files_with_dc):
@@ -684,9 +671,9 @@ class TestVoltageAwareStrategy:
     def test_load_empty_transformers_file(self, temp_dir, va_test_files):
         """Test loading with empty transformers file."""
         empty_trafos = os.path.join(temp_dir, "empty_trafos.csv")
-        pd.DataFrame(
-            columns=["bus0", "bus1", "x", "primary_voltage", "secondary_voltage"]
-        ).to_csv(empty_trafos, index=False)
+        pd.DataFrame(columns=["bus0", "bus1", "x", "primary_voltage", "secondary_voltage"]).to_csv(
+            empty_trafos, index=False
+        )
 
         va_test_files["transformer_file"] = empty_trafos
 
@@ -715,9 +702,7 @@ class TestVoltageAwareStrategy:
 
         strategy = VoltageAwareStrategy()
 
-        with pytest.raises(
-            DataLoadingError, match="Lines file missing required columns"
-        ):
+        with pytest.raises(DataLoadingError, match="Lines file missing required columns"):
             strategy.load(**va_test_files)
 
     def test_load_missing_transformer_columns(self, temp_dir, va_test_files):
@@ -736,9 +721,7 @@ class TestVoltageAwareStrategy:
 
         strategy = VoltageAwareStrategy()
 
-        with pytest.raises(
-            DataLoadingError, match="Transformers file missing required columns"
-        ):
+        with pytest.raises(DataLoadingError, match="Transformers file missing required columns"):
             strategy.load(**va_test_files)
 
     def test_load_invalid_transformer_voltage(self, temp_dir, va_test_files):
@@ -758,9 +741,7 @@ class TestVoltageAwareStrategy:
 
         strategy = VoltageAwareStrategy()
 
-        with pytest.raises(
-            DataLoadingError, match="positive primary and secondary voltages"
-        ):
+        with pytest.raises(DataLoadingError, match="positive primary and secondary voltages"):
             strategy.load(**va_test_files)
 
     def test_load_edge_references_invalid_node(self, temp_dir, va_test_files):
@@ -804,9 +785,9 @@ class TestVoltageAwareStrategy:
         )
 
         files["transformer_file"] = os.path.join(temp_dir, "trafos.csv")
-        pd.DataFrame(
-            columns=["bus0", "bus1", "x", "primary_voltage", "secondary_voltage"]
-        ).to_csv(files["transformer_file"], index=False)
+        pd.DataFrame(columns=["bus0", "bus1", "x", "primary_voltage", "secondary_voltage"]).to_csv(
+            files["transformer_file"], index=False
+        )
 
         # Converters that don't match links
         files["converter_file"] = os.path.join(temp_dir, "converters.csv")
@@ -914,7 +895,5 @@ class TestElectricalCalculationError:
         """Test basic ElectricalCalculationError creation."""
         from npap.exceptions import ElectricalCalculationError
 
-        error = ElectricalCalculationError(
-            "Calculation failed", calculation_type="kron"
-        )
+        error = ElectricalCalculationError("Calculation failed", calculation_type="kron")
         assert error.calculation_type == "kron"

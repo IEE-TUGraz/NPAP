@@ -2,7 +2,7 @@ import networkx as nx
 
 from npap.exceptions import DataLoadingError
 from npap.interfaces import DataLoadingStrategy
-from npap.logging import log_debug, log_info, log_warning, LogCategory
+from npap.logging import LogCategory, log_debug, log_info, log_warning
 
 
 class NetworkXDirectStrategy(DataLoadingStrategy):
@@ -18,9 +18,7 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
             )
 
         graph = kwargs["graph"]
-        if not isinstance(
-            graph, (nx.Graph, nx.DiGraph, nx.MultiGraph, nx.MultiDiGraph)
-        ):
+        if not isinstance(graph, (nx.Graph, nx.DiGraph, nx.MultiGraph, nx.MultiDiGraph)):
             raise DataLoadingError(
                 f"Parameter 'graph' must be a NetworkX Graph, got {type(graph)}",
                 strategy="networkx_direct",
@@ -28,13 +26,9 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
             )
 
         if len(list(graph.nodes())) == 0:
-            raise DataLoadingError(
-                "Provided graph has no nodes", strategy="networkx_direct"
-            )
+            raise DataLoadingError("Provided graph has no nodes", strategy="networkx_direct")
 
-        log_debug(
-            f"Validated NetworkX graph: {type(graph).__name__}", LogCategory.INPUT
-        )
+        log_debug(f"Validated NetworkX graph: {type(graph).__name__}", LogCategory.INPUT)
         return True
 
     def load(self, graph: nx.Graph, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
@@ -54,16 +48,15 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
                                  bidirectional directed edges. If False, only
                                  create edges in the original iteration order.
 
-        Returns:
+        Returns
+        -------
             DiGraph or MultiDiGraph
         """
         try:
             bidirectional = kwargs.get("bidirectional", True)
 
             if isinstance(graph, nx.MultiDiGraph):
-                log_debug(
-                    "Input is already a MultiDiGraph, creating copy", LogCategory.INPUT
-                )
+                log_debug("Input is already a MultiDiGraph, creating copy", LogCategory.INPUT)
                 log_warning(
                     "Parallel edges detected in input MultiDiGraph. "
                     "Call manager.aggregate_parallel_edges() to collapse parallel edges before partitioning.",

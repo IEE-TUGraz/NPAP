@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Any
 
 import networkx as nx
 
@@ -13,11 +13,11 @@ class KronReductionStrategy(PhysicalAggregationStrategy):
     """
 
     @property
-    def required_properties(self) -> List[str]:
+    def required_properties(self) -> list[str]:
         return ["reactance"]
 
     @property
-    def modifies_properties(self) -> List[str]:
+    def modifies_properties(self) -> list[str]:
         return ["reactance"]
 
     @property
@@ -31,10 +31,10 @@ class KronReductionStrategy(PhysicalAggregationStrategy):
     def aggregate(
         self,
         original_graph: nx.Graph,
-        partition_map: Dict[int, List[Any]],
+        partition_map: dict[int, list[Any]],
         topology_graph: nx.Graph,
-        properties: List[str],
-        parameters: Dict[str, Any] = None,
+        properties: list[str],
+        parameters: dict[str, Any] = None,
     ) -> nx.Graph:
         """Kron reduction - TO BE IMPLEMENTED"""
         raise NotImplementedError(

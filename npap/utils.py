@@ -2,7 +2,7 @@ import functools
 import hashlib
 import json
 from dataclasses import replace
-from typing import Any, Dict, List, Set, Type, TypeVar
+from typing import Any, TypeVar
 
 import networkx as nx
 import numpy as np
@@ -74,7 +74,8 @@ def compute_graph_hash(graph: nx.Graph) -> str:
     Args:
         graph: NetworkX graph
 
-    Returns:
+    Returns
+    -------
         Hash string (16 characters)
     """
     graph_data = {
@@ -94,7 +95,8 @@ def validate_graph_compatibility(partition_result, current_graph_hash: str):
         partition_result: PartitionResult object
         current_graph_hash: Hash of the current graph
 
-    Raises:
+    Raises
+    ------
         GraphCompatibilityError: If hashes don't match
     """
     if partition_result.original_graph_hash != current_graph_hash:
@@ -115,8 +117,8 @@ def validate_graph_compatibility(partition_result, current_graph_hash: str):
 
 def resolve_runtime_config(
     instance_config: ConfigT,
-    config_class: Type[ConfigT],
-    config_params: Set[str],
+    config_class: type[ConfigT],
+    config_params: set[str],
     strategy_name: str,
     **kwargs,
 ) -> ConfigT:
@@ -135,10 +137,12 @@ def resolve_runtime_config(
         strategy_name: Strategy name for error messages
         **kwargs: Parameters passed to partition()
 
-    Returns:
+    Returns
+    -------
         Resolved configuration instance
 
-    Raises:
+    Raises
+    ------
         PartitioningError: If config type is invalid
 
     Example:
@@ -175,7 +179,7 @@ def resolve_runtime_config(
     return effective_config
 
 
-def with_runtime_config(config_class: Type[ConfigT], config_params: Set[str]):
+def with_runtime_config(config_class: type[ConfigT], config_params: set[str]):
     """
     Decorator factory that adds runtime config resolution to partition methods.
 
@@ -186,7 +190,8 @@ def with_runtime_config(config_class: Type[ConfigT], config_params: Set[str]):
         config_class: The dataclass type for configuration
         config_params: Set of parameter names that belong to config
 
-    Returns:
+    Returns
+    -------
         Decorator function
 
     Usage:
@@ -229,7 +234,7 @@ def with_runtime_config(config_class: Type[ConfigT], config_params: Set[str]):
 # =============================================================================
 
 
-def create_partition_map(nodes: List[Any], labels: np.ndarray) -> Dict[int, List[Any]]:
+def create_partition_map(nodes: list[Any], labels: np.ndarray) -> dict[int, list[Any]]:
     """
     Create partition mapping from cluster labels.
 
@@ -237,10 +242,11 @@ def create_partition_map(nodes: List[Any], labels: np.ndarray) -> Dict[int, List
         nodes: List of node IDs (must match order of labels)
         labels: Array of cluster labels from clustering algorithm
 
-    Returns:
+    Returns
+    -------
         Dictionary mapping cluster_id -> list of node_ids
     """
-    partition_map: Dict[int, List[Any]] = {}
+    partition_map: dict[int, list[Any]] = {}
 
     for i, label in enumerate(labels):
         cluster_id = int(label)
@@ -252,7 +258,7 @@ def create_partition_map(nodes: List[Any], labels: np.ndarray) -> Dict[int, List
 
 
 def validate_partition(
-    partition_map: Dict[int, List[Any]], n_nodes: int, strategy_name: str
+    partition_map: dict[int, list[Any]], n_nodes: int, strategy_name: str
 ) -> None:
     """
     Validate that all nodes were assigned to clusters.
@@ -262,7 +268,8 @@ def validate_partition(
         n_nodes: Expected total number of nodes
         strategy_name: Strategy name for error messages
 
-    Raises:
+    Raises
+    ------
         PartitioningError: If node count doesn't match
     """
     from npap.exceptions import PartitioningError
@@ -301,13 +308,16 @@ def run_kmeans(
         max_iter: Maximum iterations for convergence
         n_init: Number of initializations to run
 
-    Returns:
+    Returns
+    -------
         Array of cluster labels for each sample
 
-    Raises:
+    Raises
+    ------
         PartitioningError: If clustering fails
     """
     from sklearn.cluster import KMeans
+
     from npap.exceptions import PartitioningError
 
     if n_clusters is None or n_clusters <= 0:
@@ -337,13 +347,16 @@ def run_kmedoids(distance_matrix: np.ndarray, n_clusters: int) -> np.ndarray:
         distance_matrix: Precomputed distance matrix (n × n), must be symmetric
         n_clusters: Number of clusters to form
 
-    Returns:
+    Returns
+    -------
         Array of cluster labels for each sample
 
-    Raises:
+    Raises
+    ------
         PartitioningError: If clustering fails
     """
     import kmedoids
+
     from npap.exceptions import PartitioningError
 
     if n_clusters is None or n_clusters <= 0:
@@ -371,13 +384,16 @@ def run_hierarchical(
         linkage: Linkage criterion ('complete', 'average', 'single').
                 Note: 'ward' is NOT supported with precomputed distances.
 
-    Returns:
+    Returns
+    -------
         Array of cluster labels for each sample
 
-    Raises:
+    Raises
+    ------
         PartitioningError: If clustering fails or invalid linkage specified
     """
     from sklearn.cluster import AgglomerativeClustering
+
     from npap.exceptions import PartitioningError
 
     valid_linkages = {"complete", "average", "single"}
@@ -415,13 +431,16 @@ def run_dbscan(distance_matrix: np.ndarray, eps: float, min_samples: int) -> np.
         eps: Maximum distance between two samples to be considered neighbors
         min_samples: Minimum samples in a neighborhood for a core point
 
-    Returns:
+    Returns
+    -------
         Array of cluster labels (-1 indicates noise)
 
-    Raises:
+    Raises
+    ------
         PartitioningError: If clustering fails
     """
     from sklearn.cluster import DBSCAN
+
     from npap.exceptions import PartitioningError
 
     if eps is None or min_samples is None:
@@ -449,13 +468,16 @@ def run_hdbscan(
         min_cluster_size: Minimum size of clusters
         metric: Distance metric ('euclidean' or 'haversine')
 
-    Returns:
+    Returns
+    -------
         Array of cluster labels (-1 indicates noise)
 
-    Raises:
+    Raises
+    ------
         PartitioningError: If clustering fails
     """
     import hdbscan
+
     from npap.exceptions import PartitioningError
 
     try:
@@ -480,7 +502,8 @@ def compute_euclidean_distances(coordinates: np.ndarray) -> np.ndarray:
     Args:
         coordinates: Array of coordinates (n × 2) as [lat, lon] or [x, y]
 
-    Returns:
+    Returns
+    -------
         Distance matrix (n × n)
     """
     from sklearn.metrics.pairwise import euclidean_distances
@@ -495,7 +518,8 @@ def compute_haversine_distances(coordinates: np.ndarray) -> np.ndarray:
     Args:
         coordinates: Array of coordinates (n × 2) as [lat, lon] in DEGREES
 
-    Returns:
+    Returns
+    -------
         Distance matrix (n × n) in kilometers
     """
     from sklearn.metrics.pairwise import haversine_distances
@@ -515,10 +539,12 @@ def compute_geographical_distances(
         coordinates: Array of coordinates (n × 2) as [lat, lon]
         metric: Distance metric ('euclidean' or 'haversine')
 
-    Returns:
+    Returns
+    -------
         Distance matrix (n × n)
 
-    Raises:
+    Raises
+    ------
         PartitioningError: If unsupported metric specified
     """
     from npap.exceptions import PartitioningError

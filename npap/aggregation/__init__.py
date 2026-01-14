@@ -8,37 +8,32 @@ Separated into:
 """
 
 from .basic_strategies import (
+    AverageEdgeStrategy,
+    AverageNodeStrategy,
+    ElectricalTopologyStrategy,
+    EquivalentReactanceStrategy,
+    FirstEdgeStrategy,
+    FirstNodeStrategy,
     # Topology strategies
     SimpleTopologyStrategy,
-    ElectricalTopologyStrategy,
-    # Node property strategies
-    SumNodeStrategy,
-    AverageNodeStrategy,
-    FirstNodeStrategy,
     # Edge property strategies
     SumEdgeStrategy,
-    AverageEdgeStrategy,
-    FirstEdgeStrategy,
-    EquivalentReactanceStrategy,
+    # Node property strategies
+    SumNodeStrategy,
 )
 from .modes import get_mode_profile
 from .physical_strategies import KronReductionStrategy
 
 __all__ = [
-    # Topology strategies
-    "SimpleTopologyStrategy",
-    "ElectricalTopologyStrategy",
-    # Physical strategies
-    "KronReductionStrategy",
-    # Node property strategies
-    "SumNodeStrategy",
-    "AverageNodeStrategy",
-    "FirstNodeStrategy",
-    # Edge property strategies
-    "SumEdgeStrategy",
     "AverageEdgeStrategy",
-    "FirstEdgeStrategy",
+    "AverageNodeStrategy",
+    "ElectricalTopologyStrategy",
     "EquivalentReactanceStrategy",
-    # Mode profiles
+    "FirstEdgeStrategy",
+    "FirstNodeStrategy",
+    "KronReductionStrategy",
+    "SimpleTopologyStrategy",
+    "SumEdgeStrategy",
+    "SumNodeStrategy",
     "get_mode_profile",
 ]

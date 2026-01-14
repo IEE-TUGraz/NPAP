@@ -1,23 +1,23 @@
 from dataclasses import dataclass
-from typing import Dict, List, Any, Optional
+from typing import Any
 
 import networkx as nx
 import numpy as np
 
 from npap.exceptions import PartitioningError
 from npap.interfaces import PartitioningStrategy
-from npap.logging import log_debug, log_info, LogCategory
+from npap.logging import LogCategory, log_debug, log_info
 from npap.utils import (
-    with_runtime_config,
+    compute_geographical_distances,
     create_partition_map,
-    validate_partition,
-    run_kmeans,
-    run_kmedoids,
-    run_hierarchical,
     run_dbscan,
     run_hdbscan,
-    compute_geographical_distances,
+    run_hierarchical,
+    run_kmeans,
+    run_kmedoids,
+    validate_partition,
     validate_required_attributes,
+    with_runtime_config,
 )
 
 
@@ -26,7 +26,8 @@ class GeographicalConfig:
     """
     Configuration parameters for geographical partitioning.
 
-    Attributes:
+    Attributes
+    ----------
         random_state: Random seed for reproducibility in stochastic algorithms
         max_iter: Maximum iterations for iterative algorithms (K-means, K-medoids)
         n_init: Number of initializations for K-means
@@ -72,7 +73,7 @@ class GeographicalPartitioning(PartitioningStrategy):
         self,
         algorithm: str = "kmeans",
         distance_metric: str = "euclidean",
-        config: Optional[GeographicalConfig] = None,
+        config: GeographicalConfig | None = None,
     ):
         """
         Initialize geographical partitioning strategy.
@@ -83,7 +84,8 @@ class GeographicalPartitioning(PartitioningStrategy):
             distance_metric: Distance metric ('haversine', 'euclidean')
             config: Configuration parameters for the algorithm
 
-        Raises:
+        Raises
+        ------
             ValueError: If unsupported algorithm or distance metric specified
         """
         self.algorithm = algorithm
@@ -108,7 +110,7 @@ class GeographicalPartitioning(PartitioningStrategy):
         )
 
     @property
-    def required_attributes(self) -> Dict[str, List[str]]:
+    def required_attributes(self) -> dict[str, list[str]]:
         """Required node attributes for geographical partitioning."""
         return {"nodes": ["lat", "lon"], "edges": []}
 
@@ -118,7 +120,7 @@ class GeographicalPartitioning(PartitioningStrategy):
 
     @with_runtime_config(GeographicalConfig, _CONFIG_PARAMS)
     @validate_required_attributes
-    def partition(self, graph: nx.Graph, **kwargs) -> Dict[int, List[Any]]:
+    def partition(self, graph: nx.Graph, **kwargs) -> dict[int, list[Any]]:
         """
         Partition nodes based on geographical coordinates.
 
@@ -135,10 +137,12 @@ class GeographicalPartitioning(PartitioningStrategy):
                 - n_init: Override config parameter
                 - hierarchical_linkage: Override config parameter
 
-        Returns:
+        Returns
+        -------
             Dictionary mapping cluster_id -> list of node_ids
 
-        Raises:
+        Raises
+        ------
             PartitioningError: If partitioning fails
         """
         try:
@@ -187,7 +191,7 @@ class GeographicalPartitioning(PartitioningStrategy):
                 },
             ) from e
 
-    def _extract_coordinates(self, graph: nx.Graph, nodes: List[Any]) -> np.ndarray:
+    def _extract_coordinates(self, graph: nx.Graph, nodes: list[Any]) -> np.ndarray:
         """Extract coordinates from graph nodes."""
         coordinates = []
 
@@ -246,9 +250,7 @@ class GeographicalPartitioning(PartitioningStrategy):
                 strategy=self._get_strategy_name(),
             )
 
-        log_debug(
-            f"Running K-means with {n_clusters} clusters", LogCategory.PARTITIONING
-        )
+        log_debug(f"Running K-means with {n_clusters} clusters", LogCategory.PARTITIONING)
         return run_kmeans(
             coordinates, n_clusters, config.random_state, config.max_iter, config.n_init
         )
@@ -266,9 +268,7 @@ class GeographicalPartitioning(PartitioningStrategy):
             f"Running K-medoids with {n_clusters} clusters, metric={self.distance_metric}",
             LogCategory.PARTITIONING,
         )
-        distance_matrix = compute_geographical_distances(
-            coordinates, self.distance_metric
-        )
+        distance_matrix = compute_geographical_distances(coordinates, self.distance_metric)
 
         return run_kmedoids(distance_matrix, n_clusters)
 
@@ -287,9 +287,7 @@ class GeographicalPartitioning(PartitioningStrategy):
             f"Running DBSCAN with eps={eps}, min_samples={min_samples}",
             LogCategory.PARTITIONING,
         )
-        distance_matrix = compute_geographical_distances(
-            coordinates, self.distance_metric
-        )
+        distance_matrix = compute_geographical_distances(coordinates, self.distance_metric)
 
         return run_dbscan(distance_matrix, eps, min_samples)
 
@@ -327,9 +325,7 @@ class GeographicalPartitioning(PartitioningStrategy):
             return clustering.fit_predict(coordinates)
         else:
             # For other linkages, use precomputed distance matrix
-            distance_matrix = compute_geographical_distances(
-                coordinates, self.distance_metric
-            )
+            distance_matrix = compute_geographical_distances(coordinates, self.distance_metric)
             return run_hierarchical(distance_matrix, n_clusters, linkage)
 
     def _hdbscan_clustering(self, coordinates: np.ndarray, **kwargs) -> np.ndarray:

@@ -7,7 +7,7 @@ from .geographical import GeographicalPartitioning
 from .va_geographical import VAGeographicalPartitioning
 
 __all__ = [
-    "GeographicalPartitioning",
     "ElectricalDistancePartitioning",
+    "GeographicalPartitioning",
     "VAGeographicalPartitioning",
 ]

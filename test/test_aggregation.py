@@ -14,20 +14,19 @@ import pytest
 
 from npap import AggregationError
 from npap.aggregation.basic_strategies import (
-    SimpleTopologyStrategy,
-    ElectricalTopologyStrategy,
-    SumNodeStrategy,
-    AverageNodeStrategy,
-    FirstNodeStrategy,
-    SumEdgeStrategy,
     AverageEdgeStrategy,
-    FirstEdgeStrategy,
+    AverageNodeStrategy,
+    ElectricalTopologyStrategy,
     EquivalentReactanceStrategy,
+    FirstEdgeStrategy,
+    FirstNodeStrategy,
+    SimpleTopologyStrategy,
+    SumEdgeStrategy,
+    SumNodeStrategy,
 )
 from npap.aggregation.modes import get_mode_profile
-from npap.interfaces import AggregationProfile, AggregationMode
+from npap.interfaces import AggregationMode, AggregationProfile
 from npap.managers import AggregationManager
-
 
 # =============================================================================
 # TOPOLOGY STRATEGY TESTS
@@ -45,9 +44,7 @@ class TestSimpleTopologyStrategy:
         assert len(list(result.nodes())) == len(simple_partition_map)
         assert set(result.nodes()) == set(simple_partition_map.keys())
 
-    def test_creates_edges_where_connections_exist(
-        self, simple_digraph, simple_partition_map
-    ):
+    def test_creates_edges_where_connections_exist(self, simple_digraph, simple_partition_map):
         """Test that edges are created only where original connections exist."""
         # Partition: {0: [0, 2], 1: [1, 3]}
         # Original edges: 0->1, 0->2 (internal), 1->3 (internal), 2->3
@@ -141,9 +138,7 @@ class TestElectricalTopologyStrategy:
         assert existing_strategy.can_create_new_edges is False
         assert full_strategy.can_create_new_edges is True
 
-    def test_invalid_connectivity_mode_raises(
-        self, simple_digraph, simple_partition_map
-    ):
+    def test_invalid_connectivity_mode_raises(self, simple_digraph, simple_partition_map):
         """Test that invalid connectivity mode raises ValueError."""
         strategy = ElectricalTopologyStrategy(initial_connectivity="invalid")
 
@@ -394,9 +389,7 @@ class TestAggregationManager:
         # Should have edges where connections existed
         assert len(result.edges()) > 0
 
-    def test_aggregate_with_geographical_profile(
-        self, simple_digraph, simple_partition_map
-    ):
+    def test_aggregate_with_geographical_profile(self, simple_digraph, simple_partition_map):
         """Test aggregation with GEOGRAPHICAL mode profile."""
         manager = AggregationManager()
         profile = get_mode_profile(AggregationMode.GEOGRAPHICAL, warn_on_defaults=False)
@@ -445,9 +438,7 @@ class TestAggregationManager:
         assert result.nodes[1]["lat"] == pytest.approx(0.5)
         assert result.nodes[1]["lon"] == pytest.approx(1.0)
 
-    def test_invalid_topology_strategy_raises(
-        self, simple_digraph, simple_partition_map
-    ):
+    def test_invalid_topology_strategy_raises(self, simple_digraph, simple_partition_map):
         """Test that invalid topology strategy raises ValueError."""
         manager = AggregationManager()
         profile = AggregationProfile(topology_strategy="nonexistent")
@@ -583,9 +574,7 @@ class TestAggregationModes:
 
     def test_mode_profile_with_overrides(self):
         """Test mode profile with parameter overrides."""
-        profile = get_mode_profile(
-            AggregationMode.SIMPLE, default_node_strategy="average"
-        )
+        profile = get_mode_profile(AggregationMode.SIMPLE, default_node_strategy="average")
 
         assert profile.default_node_strategy == "average"
 
