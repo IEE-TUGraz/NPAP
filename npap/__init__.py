@@ -8,7 +8,7 @@ extensibility for new partitioning algorithms, aggregation methods, and
 physical constraint handling.
 """
 
-__author__ = "Marco Antonio Arnaiz Montero"
+__author__ = "Marco Anarmo"
 
 from importlib.metadata import PackageNotFoundError, version
 
