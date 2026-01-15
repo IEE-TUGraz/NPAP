@@ -230,6 +230,45 @@ def voltage_aware_graph() -> nx.DiGraph:
 
 
 @pytest.fixture
+def geographical_dc_island_graph() -> nx.DiGraph:
+    """
+    Graph with DC islands for testing DC-island-aware geographical partitioning.
+
+    DC Island 0: nodes 0, 1, 2 (located around origin)
+    DC Island 1: nodes 3, 4, 5 (located far from origin)
+
+    Both islands have nodes with lat/lon attributes for geographical partitioning.
+    The dc_island attribute enables automatic DC-island awareness.
+    """
+    G = nx.DiGraph()
+
+    # DC Island 0 - nodes near origin
+    G.add_node(0, lat=0.0, lon=0.0, dc_island=0)
+    G.add_node(1, lat=0.1, lon=0.1, dc_island=0)
+    G.add_node(2, lat=0.05, lon=-0.05, dc_island=0)
+
+    # DC Island 1 - nodes far from origin
+    G.add_node(3, lat=10.0, lon=10.0, dc_island=1)
+    G.add_node(4, lat=10.1, lon=10.1, dc_island=1)
+    G.add_node(5, lat=10.05, lon=9.95, dc_island=1)
+
+    # Edges within DC Island 0
+    G.add_edge(0, 1, x=0.1)
+    G.add_edge(1, 2, x=0.1)
+    G.add_edge(0, 2, x=0.15)
+
+    # Edges within DC Island 1
+    G.add_edge(3, 4, x=0.1)
+    G.add_edge(4, 5, x=0.1)
+    G.add_edge(3, 5, x=0.15)
+
+    # DC link between islands
+    G.add_edge(2, 3, x=1.0, type="dc_link")
+
+    return G
+
+
+@pytest.fixture
 def mixed_voltage_graph() -> nx.DiGraph:
     """
     Graph with multiple voltage levels within same DC island.
