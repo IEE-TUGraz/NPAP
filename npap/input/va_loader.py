@@ -413,26 +413,35 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             )
 
         # Validate voltage values
-        for idx, row in transformers_df.iterrows():
-            primary_v = row.get("primary_voltage", 0)
-            secondary_v = row.get("secondary_voltage", 0)
+        primary_v = transformers_df["primary_voltage"]
+        secondary_v = transformers_df["secondary_voltage"]
 
-            if pd.isna(primary_v) or pd.isna(secondary_v):
-                raise DataLoadingError(
-                    f"Transformer at row {idx} has missing voltage values",
-                    strategy="va_loader",
-                )
+        # Check for missing values
+        missing_primary = primary_v.isna()
+        missing_secondary = secondary_v.isna()
 
-            if primary_v <= 0 or secondary_v <= 0:
-                raise DataLoadingError(
-                    f"Transformer at row {idx} must have positive primary and secondary voltages",
-                    strategy="va_loader",
-                    details={
-                        "row": idx,
-                        "primary_voltage": primary_v,
-                        "secondary_voltage": secondary_v,
-                    },
-                )
+        if missing_primary.any() or missing_secondary.any():
+            first_missing_idx = (missing_primary | missing_secondary).idxmax()
+            raise DataLoadingError(
+                f"Transformer at row {first_missing_idx} has missing voltage values",
+                strategy="va_loader",
+            )
+
+        # Check for non-positive values
+        invalid_primary = primary_v <= 0
+        invalid_secondary = secondary_v <= 0
+
+        if invalid_primary.any() or invalid_secondary.any():
+            first_invalid_idx = (invalid_primary | invalid_secondary).idxmax()
+            raise DataLoadingError(
+                f"Transformer at row {first_invalid_idx} must have positive primary and secondary voltages",
+                strategy="va_loader",
+                details={
+                    "row": first_invalid_idx,
+                    "primary_voltage": primary_v[first_invalid_idx],
+                    "secondary_voltage": secondary_v[first_invalid_idx],
+                },
+            )
 
         return transformers_df
 
@@ -489,20 +498,24 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         if edges_df.empty:
             return
 
-        for idx, row in edges_df.iterrows():
-            bus0 = row["bus0"]
-            bus1 = row["bus1"]
+        invalid_bus0 = ~edges_df["bus0"].isin(valid_node_ids)
+        invalid_bus1 = ~edges_df["bus1"].isin(valid_node_ids)
 
-            if bus0 not in valid_node_ids:
-                raise DataLoadingError(
-                    f"{edge_type.capitalize()} at row {idx} references non-existent node: {bus0}",
-                    strategy="va_loader",
-                )
-            if bus1 not in valid_node_ids:
-                raise DataLoadingError(
-                    f"{edge_type.capitalize()} at row {idx} references non-existent node: {bus1}",
-                    strategy="va_loader",
-                )
+        if invalid_bus0.any():
+            first_invalid_idx = invalid_bus0.idxmax()
+            invalid_node = edges_df.loc[first_invalid_idx, "bus0"]
+            raise DataLoadingError(
+                f"{edge_type.capitalize()} at row {first_invalid_idx} references non-existent node: {invalid_node}",
+                strategy="va_loader",
+            )
+
+        if invalid_bus1.any():
+            first_invalid_idx = invalid_bus1.idxmax()
+            invalid_node = edges_df.loc[first_invalid_idx, "bus1"]
+            raise DataLoadingError(
+                f"{edge_type.capitalize()} at row {first_invalid_idx} references non-existent node: {invalid_node}",
+                strategy="va_loader",
+            )
 
     # =========================================================================
     # Edge Tuple Preparation Methods
@@ -511,25 +524,27 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     @staticmethod
     def _prepare_node_tuples(nodes_df: pd.DataFrame, node_id_col: str) -> list[tuple[Any, dict]]:
         """Prepare node tuples for graph creation."""
+        node_records = nodes_df.to_dict("records")
         return [
             (
-                row[node_id_col],
-                {
-                    col: row[col]
-                    for col in nodes_df.columns
-                    if col != node_id_col and pd.notna(row[col])
-                },
+                record[node_id_col],
+                {k: v for k, v in record.items() if k != node_id_col and pd.notna(v)},
             )
-            for _, row in nodes_df.iterrows()
+            for record in node_records
         ]
 
     @staticmethod
     def _prepare_line_tuples(lines_df: pd.DataFrame) -> list[tuple[Any, Any, dict]]:
         """Prepare line edge tuples with unified schema."""
-        edge_tuples = []
+        if lines_df.empty:
+            return []
 
-        for _, row in lines_df.iterrows():
-            voltage = row.get("line_voltage", row.get("voltage", 0))
+        line_records = lines_df.to_dict("records")
+        exclude_cols = {"bus0", "bus1", "line_voltage", "voltage"}
+
+        edge_tuples = []
+        for record in line_records:
+            voltage = record.get("line_voltage") or record.get("voltage") or 0
 
             attrs = {
                 "type": EdgeType.LINE.value,
@@ -538,12 +553,11 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             }
 
             # Add all other columns as attributes
-            for col in lines_df.columns:
-                if col not in ["bus0", "bus1", "line_voltage", "voltage"] and pd.notna(row[col]):
-                    if col not in attrs:
-                        attrs[col] = row[col]
+            for col, val in record.items():
+                if col not in exclude_cols and col not in attrs and pd.notna(val):
+                    attrs[col] = val
 
-            edge_tuples.append((row["bus0"], row["bus1"], attrs))
+            edge_tuples.append((record["bus0"], record["bus1"], attrs))
 
         return edge_tuples
 
@@ -552,27 +566,26 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         transformers_df: pd.DataFrame,
     ) -> list[tuple[Any, Any, dict]]:
         """Prepare transformer edge tuples with unified schema."""
-        edge_tuples = []
+        if transformers_df.empty:
+            return []
 
-        for _, row in transformers_df.iterrows():
+        trafo_records = transformers_df.to_dict("records")
+        exclude_cols = {"bus0", "bus1", "primary_voltage", "secondary_voltage"}
+
+        edge_tuples = []
+        for record in trafo_records:
             attrs = {
                 "type": EdgeType.TRAFO.value,
-                "primary_voltage": row["primary_voltage"],
-                "secondary_voltage": row["secondary_voltage"],
+                "primary_voltage": record["primary_voltage"],
+                "secondary_voltage": record["secondary_voltage"],
             }
 
             # Add all other columns as attributes
-            for col in transformers_df.columns:
-                if col not in [
-                    "bus0",
-                    "bus1",
-                    "primary_voltage",
-                    "secondary_voltage",
-                ] and pd.notna(row[col]):
-                    if col not in attrs:
-                        attrs[col] = row[col]
+            for col, val in record.items():
+                if col not in exclude_cols and col not in attrs and pd.notna(val):
+                    attrs[col] = val
 
-            edge_tuples.append((row["bus0"], row["bus1"], attrs))
+            edge_tuples.append((record["bus0"], record["bus1"], attrs))
 
         return edge_tuples
 
@@ -586,23 +599,24 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
         # Build converter lookup
         converter_lookup: dict[Any, dict] = {}
-        for _, row in converters_df.iterrows():
-            converter_bus0 = row["bus0"]
+        for record in converters_df.to_dict("records"):
+            converter_bus0 = record["bus0"]
             converter_lookup[converter_bus0] = {
-                "converter_id": row["converter_id"],
-                "ac_bus": row["bus1"],
-                "dc_voltage": row["voltage"],
-                "p_nom": row.get("p_nom", None),
+                "converter_id": record["converter_id"],
+                "ac_bus": record["bus1"],
+                "dc_voltage": record["voltage"],
+                "p_nom": record.get("p_nom"),
             }
 
         edge_tuples = []
         skipped_links = []
+        exclude_cols = {"link_id", "bus0", "bus1", "voltage"}
 
-        for _, row in links_df.iterrows():
-            link_id = row["link_id"]
-            link_bus0 = row["bus0"]
-            link_bus1 = row["bus1"]
-            link_voltage = row["voltage"]
+        for record in links_df.to_dict("records"):
+            link_id = record["link_id"]
+            link_bus0 = record["bus0"]
+            link_bus1 = record["bus1"]
+            link_voltage = record["voltage"]
 
             # Resolve AC buses through converters
             conv0 = converter_lookup.get(link_bus0)
@@ -641,10 +655,9 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             }
 
             # Add other link attributes
-            for col in links_df.columns:
-                if col not in ["link_id", "bus0", "bus1", "voltage"] and pd.notna(row[col]):
-                    if col not in attrs:
-                        attrs[col] = row[col]
+            for col, val in record.items():
+                if col not in exclude_cols and col not in attrs and pd.notna(val):
+                    attrs[col] = val
 
             edge_tuples.append((ac_bus0, ac_bus1, attrs))
 
@@ -668,15 +681,11 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     @staticmethod
     def _check_parallel_edges(edge_tuples: list[tuple]) -> bool:
         """Check if there are parallel edges (same source-target pair)."""
-        seen_pairs = set()
+        if not edge_tuples:
+            return False
 
-        for edge in edge_tuples:
-            pair = (edge[0], edge[1])
-            if pair in seen_pairs:
-                return True
-            seen_pairs.add(pair)
-
-        return False
+        edge_pairs = pd.DataFrame([(e[0], e[1]) for e in edge_tuples], columns=["from", "to"])
+        return edge_pairs.duplicated(subset=["from", "to"]).any()
 
     @staticmethod
     def _detect_id_column(df: pd.DataFrame) -> str:

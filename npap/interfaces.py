@@ -138,10 +138,19 @@ class TopologyStrategy(ABC):
         For directed graphs, this checks edges in both directions.
         Use _clusters_connected_directed for direction-specific checks.
         """
-        for n1 in nodes1:
-            for n2 in nodes2:
-                if graph.has_edge(n1, n2) or graph.has_edge(n2, n1):
+        set_n2 = set(nodes2)
+
+        # Check edges from nodes1 to nodes2 or vice versa
+        for node in nodes1:
+            # Check outgoing edges
+            for neighbor in graph.successors(node):
+                if neighbor in set_n2:
                     return True
+            # Check incoming edges
+            for neighbor in graph.predecessors(node):
+                if neighbor in set_n2:
+                    return True
+
         return False
 
     @staticmethod
@@ -149,10 +158,13 @@ class TopologyStrategy(ABC):
         graph: nx.DiGraph, source_nodes: list[Any], target_nodes: list[Any]
     ) -> bool:
         """Return True if any directed edge exists from source_nodes to target_nodes."""
-        for n1 in source_nodes:
-            for n2 in target_nodes:
-                if graph.has_edge(n1, n2):
+        target_set = set(target_nodes)
+
+        for node in source_nodes:
+            for neighbor in graph.successors(node):
+                if neighbor in target_set:
                     return True
+
         return False
 
 

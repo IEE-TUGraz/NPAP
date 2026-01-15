@@ -88,45 +88,43 @@ class CSVFilesStrategy(DataLoadingStrategy):
                     details={"available_columns": list(edges_df.columns)},
                 )
 
-            # Prepare node tuples: (node_id, attr_dict)
+            # Prepare node tuples
+            node_records = nodes_df.to_dict("records")
             node_tuples = [
                 (
-                    row[node_id_col],
-                    {
-                        col: row[col]
-                        for col in nodes_df.columns
-                        if col != node_id_col and pd.notna(row[col])
-                    },
+                    record[node_id_col],
+                    {k: v for k, v in record.items() if k != node_id_col and pd.notna(v)},
                 )
-                for _, row in nodes_df.iterrows()
+                for record in node_records
             ]
 
-            # Check for parallel edges (duplicate directed pairs)
-            edge_pairs = edges_df[[edge_from_col, edge_to_col]].copy()
-            edge_pairs["directed_pair"] = edge_pairs.apply(
-                lambda row: (row[edge_from_col], row[edge_to_col]), axis=1
-            )
-            has_parallel_edges = edge_pairs["directed_pair"].duplicated().any()
+            # Check for parallel edges
+            has_parallel_edges = edges_df.duplicated(
+                subset=[edge_from_col, edge_to_col], keep=False
+            ).any()
 
-            # Prepare edge tuples: (from_node, to_node, attr_dict)
-            edge_tuples = []
-            for _, row in edges_df.iterrows():
-                from_node = row[edge_from_col]
-                to_node = row[edge_to_col]
-                if (
-                    from_node not in nodes_df[node_id_col].values
-                    or to_node not in nodes_df[node_id_col].values
-                ):
-                    raise DataLoadingError(
-                        "Edge references non-existent node", strategy="csv_files"
-                    )
+            # Validate edge references using vectorized set operations
+            valid_node_ids = set(nodes_df[node_id_col].values)
+            invalid_from = ~edges_df[edge_from_col].isin(valid_node_ids)
+            invalid_to = ~edges_df[edge_to_col].isin(valid_node_ids)
 
-                attrs = {
-                    col: row[col]
-                    for col in edges_df.columns
-                    if col not in [edge_from_col, edge_to_col] and pd.notna(row[col])
-                }
-                edge_tuples.append((from_node, to_node, attrs))
+            if invalid_from.any() or invalid_to.any():
+                raise DataLoadingError("Edge references non-existent node", strategy="csv_files")
+
+            # Prepare edge tuples
+            edge_records = edges_df.to_dict("records")
+            edge_tuples = [
+                (
+                    record[edge_from_col],
+                    record[edge_to_col],
+                    {
+                        k: v
+                        for k, v in record.items()
+                        if k not in [edge_from_col, edge_to_col] and pd.notna(v)
+                    },
+                )
+                for record in edge_records
+            ]
 
             # Create appropriate directed graph type based on parallel edges
             if has_parallel_edges:
