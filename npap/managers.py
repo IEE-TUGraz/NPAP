@@ -14,6 +14,7 @@ from npap.interfaces import (
     TopologyStrategy,
 )
 from npap.logging import LogCategory, log_debug, log_info, log_warning
+from npap.partitioning import VAElectricalDistancePartitioning
 
 
 class InputDataManager:
@@ -145,6 +146,14 @@ class PartitioningManager:
             algorithm="hierarchical",
             distance_metric="haversine",
             config=VAGeographicalConfig(proportional_clustering=True),
+        )
+
+        # Voltage-Aware Electrical partitioning strategies
+        self._strategies["va_electrical_kmedoids"] = VAElectricalDistancePartitioning(
+            algorithm="kmedoids"
+        )
+        self._strategies["va_electrical_hierarchical"] = VAElectricalDistancePartitioning(
+            algorithm="hierarchical"
         )
 
         log_debug("Registered default partitioning strategies", LogCategory.MANAGER)
