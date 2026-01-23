@@ -1,0 +1,990 @@
+
+/* -----------------------------------------------------------------------------
+   CSS Variables - Consistent Color Palette
+   ----------------------------------------------------------------------------- */
+:root,
+html[data-theme="light"] {
+    /* Core Brand Colors */
+    --npap-primary: #2993B5;
+    --npap-primary-hover: #3aa8cc;
+    --npap-primary-light: rgba(41, 147, 181, 0.1);
+    --npap-yellow: #FFBF00;
+    --npap-green: #098754;
+
+    /* Text & Backgrounds */
+    --npap-text: #1e293b;
+    --npap-text-muted: #64748b;
+    --npap-bg: #ffffff;
+    --npap-surface: #f8fafc;
+    --npap-border: #e2e8f0;
+    --npap-shadow: rgba(0, 0, 0, 0.08);
+    --npap-code-bg: #1e293b;
+
+    /* PyData theme overrides - kill the purple */
+    --pst-color-primary: #2993B5;
+    --pst-color-secondary: #2993B5;
+    --pst-color-link-hover: #2993B5;
+    --pst-color-table-row-hover-bg: rgba(41, 147, 181, 0.20);
+    --pst-color-inline-code: #2993B5;
+
+    /* Sphinx Design button overrides */
+    --sd-color-primary: #2993B5;
+    --sd-color-primary-highlight: #1d6f8a;
+    --sd-color-primary-text: #ffffff;
+}
+
+html[data-theme="dark"] {
+    /* Dark Mode Brand Colors */
+    --npap-primary: #2993B5;
+    --npap-primary-hover: #3aa8cc;
+    --npap-primary-light: rgba(41, 147, 181, 0.2);
+    --npap-yellow: #FFBF00;
+    --npap-green: #0fad6b;
+
+    /* Dark Mode Text & Backgrounds */
+    --npap-text: #e2e8f0;
+    --npap-text-muted: #94a3b8;
+    --npap-bg: #1e2433;
+    --npap-surface: #1e2433;
+    --npap-border: rgba(255, 255, 255, 0.08);
+    --npap-shadow: rgba(0, 0, 0, 0.4);
+    --npap-code-bg: #0f172a; /* Deep midnight blue for terminal */
+
+    /* PyData theme overrides - kill the purple */
+    --pst-color-primary: #2993B5;
+    --pst-color-secondary: #2993B5;
+    --pst-color-link-hover: #2993B5;
+    --pst-color-table-row-hover-bg: rgba(41, 147, 181, 0.20);
+    --pst-color-inline-code: #3aa8cc;
+
+    /* Sphinx Design button overrides */
+    --sd-color-primary: #2993B5;
+    --sd-color-primary-highlight: #1d6f8a;
+    --sd-color-primary-text: #ffffff;
+}
+
+/* -----------------------------------------------------------------------------
+   Global Layout & Backgrounds
+   ----------------------------------------------------------------------------- */
+.landing-page,
+html[data-theme="dark"] body,
+html[data-theme="dark"] .bd-main,
+html[data-theme="dark"] .bd-content,
+html[data-theme="dark"] .bd-article-container,
+html[data-theme="dark"] .bd-article,
+html[data-theme="dark"] article {
+    background-color: var(--npap-bg) !important;
+}
+
+/* Image Toggle Helpers */
+.only-light {
+    display: block;
+}
+
+.only-dark {
+    display: none;
+}
+
+html[data-theme="dark"] .only-light {
+    display: none;
+}
+
+html[data-theme="dark"] .only-dark {
+    display: block;
+}
+
+/* -----------------------------------------------------------------------------
+   Header & Navigation
+   ----------------------------------------------------------------------------- */
+.bd-header {
+    border-bottom: 1px solid var(--npap-border);
+    background: var(--npap-bg) !important;
+}
+
+html[data-theme="dark"] .bd-header {
+    background: var(--npap-bg) !important;
+    border-bottom-color: var(--npap-border);
+}
+
+.bd-header .navbar-header-items {
+    flex-grow: 1;
+    justify-content: flex-end;
+}
+
+.bd-header .navbar-header-items__end {
+    margin-left: auto;
+}
+
+/* -----------------------------------------------------------------------------
+   Search Bar - "Pill" Style
+   ----------------------------------------------------------------------------- */
+.bd-search {
+    position: relative;
+    width: 175px;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bd-search .form-control {
+    border-radius: 50px !important;
+    background-color: var(--pst-color-surface) !important;
+    border: 1px solid var(--pst-color-border) !important;
+    box-shadow: none !important;
+    padding-left: 2.2rem !important;
+    padding-right: 4.5rem !important;
+    height: 2.7rem !important;
+    font-size: 0.9rem !important;
+    width: 100% !important;
+    transition: border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                padding-right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bd-search .form-control:focus {
+    border-color: var(--npap-primary) !important;
+    box-shadow: 0 0 0 3px var(--npap-primary-light) !important;
+    padding-right: 1rem !important;
+}
+
+/* Expand the search container on focus-within */
+.bd-search:focus-within {
+    width: 280px;
+}
+
+/* Search Icon */
+.bd-search .fa-magnifying-glass {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--npap-text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* Ctrl+K Badge */
+.bd-search .search-button__kbd-shortcut {
+    display: flex !important;
+    align-items: center;
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0 !important;
+    opacity: 1;
+    pointer-events: none;
+    z-index: 5;
+    transition: opacity 0.2s ease;
+}
+
+/* Hide Ctrl+K badge when typing */
+.bd-search:focus-within .search-button__kbd-shortcut {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.bd-search .search-button__kbd-shortcut kbd {
+    background: var(--pst-color-background) !important;
+    border: 1px solid var(--pst-color-border) !important;
+    border-radius: 4px;
+    color: var(--npap-text-muted);
+    font-size: 0.75rem;
+    padding: 0.1rem 0.3rem;
+    margin-left: 3px;
+    box-shadow: 0 1px 0 var(--pst-color-border);
+}
+
+/* Standard Links */
+a:hover {
+    color: var(--npap-primary);
+    text-decoration-color: var(--npap-primary);
+}
+
+/* -----------------------------------------------------------------------------
+   Header Logo/Brand Hover - NPAP Blue instead of white
+   ----------------------------------------------------------------------------- */
+.navbar-brand:hover,
+.navbar-brand:hover .navbar-brand-text,
+.bd-header .navbar-brand:hover,
+.bd-header .navbar-brand:hover span,
+a.navbar-brand:hover {
+    color: var(--npap-primary) !important;
+    text-decoration-color: var(--npap-primary) !important;
+}
+
+.navbar-brand::after,
+.bd-header .navbar-brand::after {
+    background-color: var(--npap-primary) !important;
+}
+
+/* Ensure the underline on hover is also NPAP blue */
+.navbar-brand:hover::after,
+.bd-header .navbar-brand:hover::after,
+a.navbar-brand:hover::after {
+    background-color: var(--npap-primary) !important;
+}
+
+/* -----------------------------------------------------------------------------
+   Hero Section & Buttons
+   ----------------------------------------------------------------------------- */
+.hero-section {
+    text-align: center;
+    padding: 2rem 2rem 1.5rem 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.hero-banner {
+    max-width: 400px;
+    width: 100%;
+    margin: 0 auto 0.5rem auto;
+}
+
+.hero-description {
+    font-size: 1.2rem;
+    line-height: 1.7;
+    color: var(--npap-text-muted);
+    margin: 0 auto 1.5rem auto;
+    max-width: 550px;
+}
+
+.hero-description strong {
+    color: var(--npap-primary);
+    font-weight: 500;
+    text-decoration-color: rgba(40, 147, 180, 0.4);
+    text-underline-offset: 3px;
+}
+
+.hero-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Base Button Style */
+.hero-btn,
+.hero-btn.sd-sphinx-override {
+    padding: 0.6rem 1.4rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    transition: background-color 0.2s ease !important;
+    transform: none !important;
+    translate: none !important;
+    scale: none !important;
+    rotate: none !important;
+}
+
+/* Primary Button - Sphinx Design overrides */
+.hero-btn-primary,
+.sd-btn-primary,
+.sd-sphinx-override.sd-btn-primary,
+a.sd-sphinx-override.sd-btn-primary {
+    background: var(--npap-primary) !important;
+    border: none !important;
+    color: #ffffff !important;
+    transition: background-color 0.2s ease !important;
+    padding: 0.6rem 1.4rem !important;
+    transform: none !important;
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+/* Arrow icon for Get Started button */
+.hero-btn-primary::after,
+.sd-sphinx-override.sd-btn-primary.hero-btn-primary::after,
+a.sd-sphinx-override.sd-btn-primary.hero-btn-primary::after {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-left: 6px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='m12 5 7 7-7 7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: contain;
+    transition: transform 0.2s ease;
+    vertical-align: middle;
+}
+
+.hero-btn-primary:hover::after,
+.sd-sphinx-override.sd-btn-primary.hero-btn-primary:hover::after,
+a.sd-sphinx-override.sd-btn-primary.hero-btn-primary:hover::after {
+    transform: translateX(4px);
+}
+
+.hero-btn-primary:hover,
+.hero-btn-primary:active,
+.hero-btn-primary:focus,
+.sd-btn-primary:hover,
+.sd-btn-primary:active,
+.sd-btn-primary:focus,
+.sd-sphinx-override.sd-btn-primary:hover,
+.sd-sphinx-override.sd-btn-primary:active,
+.sd-sphinx-override.sd-btn-primary:focus,
+a.sd-sphinx-override.sd-btn-primary:hover,
+a.sd-sphinx-override.sd-btn-primary:active,
+a.sd-sphinx-override.sd-btn-primary:focus {
+    /* Darker Blue on Hover/Click */
+    background: #1d6f8a !important;
+    color: #ffffff !important;
+
+    /* No movement or size change */
+    transform: none !important;
+    scale: none !important;
+    box-shadow: none !important;
+    padding: 0.6rem 1.4rem !important;
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+}
+
+/* Secondary Button - Light mode */
+.hero-btn-secondary, .sd-btn-secondary {
+    background: transparent !important;
+    border: 1px solid var(--npap-border) !important;
+    color: var(--npap-text-muted) !important;
+}
+
+.hero-btn-secondary:hover, .sd-btn-secondary:hover,
+.hero-btn-secondary:active, .sd-btn-secondary:active {
+    border-color: var(--npap-primary) !important;
+    color: var(--npap-primary) !important;
+    background: rgba(41, 147, 181, 0.1) !important;
+    transform: none !important;
+}
+
+.hero-btn-secondary:focus-visible, .sd-btn-secondary:focus-visible {
+    box-shadow: 0 0 0 3px rgba(41, 147, 181, 0.3) !important;
+    outline: none !important;
+    border-color: var(--npap-primary) !important;
+}
+
+/* Dark mode adjustments for secondary button */
+html[data-theme="dark"] .hero-btn-secondary,
+html[data-theme="dark"] .sd-btn-secondary {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #b8c5d6 !important;
+}
+
+html[data-theme="dark"] .hero-btn-secondary:hover,
+html[data-theme="dark"] .sd-btn-secondary:hover {
+    color: var(--npap-primary) !important;
+    border-color: var(--npap-primary) !important;
+    background: rgba(41, 147, 181, 0.1) !important;
+}
+
+/* -----------------------------------------------------------------------------
+   Code Blocks & Terminal Style
+   ----------------------------------------------------------------------------- */
+.code-section {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 2rem 2rem 2rem;
+    animation: fadeInUp 0.4s ease-out 0.1s both;
+}
+
+.code-block-wrapper {
+    background: var(--npap-code-bg);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    position: relative;
+    animation: neonPulse 4s ease-in-out infinite;
+}
+
+@keyframes neonPulse {
+    0%, 100% {
+        box-shadow:
+            0 0 15px rgba(41, 147, 181, 0.15),
+            0 0 30px rgba(41, 147, 181, 0.08);
+    }
+    50% {
+        box-shadow:
+            0 0 20px rgba(41, 147, 181, 0.2),
+            0 0 40px rgba(41, 147, 181, 0.1);
+    }
+}
+
+.code-block-header {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 0.7rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Terminal Dots */
+.terminal-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.terminal-dot.red {
+    background: #ff5f56;
+}
+
+.terminal-dot.yellow {
+    background: #ffbd2e;
+}
+
+.terminal-dot.green {
+    background: #27ca40;
+}
+
+.code-block-title {
+    margin-left: 0.75rem;
+    color: #8b949e;
+    font-size: 0.8rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.code-block-body {
+    background: var(--npap-code-bg);
+    text-align: left;
+}
+
+.code-block-body .highlight,
+.code-block-body pre {
+    background: var(--npap-code-bg) !important;
+    margin: 0 !important;
+    padding: 1rem 1.5rem !important;
+    border: none !important;
+    color: #e2e8f0 !important;
+}
+
+/* Ensure code text is always light on dark background in landing page */
+.landing-page .code-block-body .highlight,
+.landing-page .code-block-body pre,
+.landing-page .code-block-body code {
+    color: #e2e8f0 !important;
+    background: var(--npap-code-bg) !important;
+}
+
+/* -----------------------------------------------------------------------------
+   Syntax Highlighting - NPAP Color Scheme
+   ----------------------------------------------------------------------------- */
+
+/* Landing page code block syntax highlighting */
+.landing-page .code-block-body .highlight .k,
+.landing-page .code-block-body .highlight .kn,
+.landing-page .code-block-body .highlight .kd { color: #3aa8cc !important; } /* keywords - NPAP Blue light */
+.landing-page .code-block-body .highlight .n { color: #e2e8f0 !important; } /* names */
+.landing-page .code-block-body .highlight .s,
+.landing-page .code-block-body .highlight .s1,
+.landing-page .code-block-body .highlight .s2 { color: #FFBF00 !important; } /* strings - NPAP Yellow */
+.landing-page .code-block-body .highlight .sd { color: #0fad6b !important; } /* docstrings - NPAP Green */
+.landing-page .code-block-body .highlight .si { color: #0fad6b !important; } /* string interpolation {} - NPAP Green */
+.landing-page .code-block-body .highlight .c,
+.landing-page .code-block-body .highlight .c1,
+.landing-page .code-block-body .highlight .cm { color: #64748b !important; } /* comments - muted */
+.landing-page .code-block-body .highlight .mi,
+.landing-page .code-block-body .highlight .mf { color: #3aa8cc !important; } /* numbers - NPAP Blue light */
+.landing-page .code-block-body .highlight .o { color: #0fad6b !important; } /* operators (=, ->, **) - NPAP Green */
+.landing-page .code-block-body .highlight .p,
+.landing-page .code-block-body .highlight .p1,
+.landing-page .code-block-body .highlight .p2,
+.landing-page .code-block-body .highlight .punctuation { color: #0fad6b !important; } /* punctuation (., :, {}, etc) - NPAP Green */
+.landing-page .code-block-body .highlight span[class^="p"] { color: #0fad6b !important; }
+.landing-page .code-block-body .highlight .nf,
+.landing-page .code-block-body .highlight .fm { color: #0fad6b !important; } /* function names - NPAP Green */
+.landing-page .code-block-body .highlight .nb { color: #3aa8cc !important; } /* builtins - NPAP Blue light */
+.landing-page .code-block-body .highlight .nc { color: #0fad6b !important; } /* class names - NPAP Green */
+.landing-page .code-block-body .highlight .nn { color: #e2e8f0 !important; } /* module names */
+.landing-page .code-block-body .highlight .bp { color: #3aa8cc !important; } /* self - NPAP Blue light */
+
+/* Global syntax highlighting for all code blocks */
+.highlight .k,
+.highlight .kn,
+.highlight .kd { color: var(--npap-primary) !important; } /* keywords - NPAP Blue */
+.highlight .s,
+.highlight .s1,
+.highlight .s2,
+.highlight .sa { color: var(--npap-yellow) !important; } /* strings - NPAP Yellow */
+.highlight .sd { color: var(--npap-green) !important; } /* docstrings - NPAP Green */
+.highlight .si { color: var(--npap-green) !important; } /* string interpolation {} - NPAP Green */
+.highlight .nf,
+.highlight .fm,
+.highlight .nc { color: var(--npap-green) !important; } /* functions & classes - NPAP Green */
+.highlight .nb,
+.highlight .bp { color: var(--npap-primary) !important; } /* builtins & self - NPAP Blue */
+.highlight .mi,
+.highlight .mf,
+.highlight .mb,
+.highlight .mh,
+.highlight .mo { color: var(--npap-primary-hover) !important; } /* numbers - NPAP Blue hover */
+.highlight .c,
+.highlight .c1,
+.highlight .cm,
+.highlight .cs { color: var(--npap-text-muted) !important; } /* comments - muted */
+.highlight .o { color: var(--npap-green) !important; } /* operators (=, ->, **, etc) - NPAP Green */
+.highlight .p,
+.highlight .p1,
+.highlight .p2,
+.highlight .punctuation { color: var(--npap-green) !important; } /* punctuation (., :, {}, etc) - NPAP Green */
+
+/* Ensure all punctuation including braces use NPAP Green */
+.highlight span[class^="p"] { color: var(--npap-green) !important; }
+
+/* Inline code styling */
+code.literal,
+code:not(.highlight *):not([class*="highlight"]) {
+    color: var(--npap-primary) !important;
+    background-color: var(--npap-primary-light) !important;
+    padding: 0.1em 0.4em !important;
+    border-radius: 4px !important;
+    font-size: 0.9em !important;
+}
+
+/* Hide copy button in landing code blocks */
+.code-block-body button.copybtn {
+    display: none;
+}
+
+/* -----------------------------------------------------------------------------
+   Sidebar & Components
+   ----------------------------------------------------------------------------- */
+
+/* Narrower left sidebar for more content space */
+.bd-sidebar-primary {
+    width: 215px !important;
+    min-width: 215px !important;
+    flex: 0 0 215px !important;
+}
+
+@media (min-width: 960px) {
+    .bd-page-width {
+        --pst-sidebar-primary: 215px;
+    }
+}
+
+.bd-sidebar-primary,
+html[data-theme="dark"] .bd-sidebar-primary,
+html[data-theme="dark"] .bd-sidebar-secondary {
+    background: var(--npap-bg) !important;
+    border-right: 1px solid var(--npap-border);
+}
+
+/* Hide "On this page" title and remove right sidebar border */
+.bd-sidebar-secondary {
+    border-left: none !important;
+    border: none !important;
+}
+
+.bd-sidebar-secondary .bd-toc,
+.bd-sidebar-secondary nav.page-toc {
+    border: none !important;
+    border-left: none !important;
+}
+
+/* Hide "On this page" title - multiple selectors for compatibility */
+.toc-title-container,
+.toc-title,
+.bd-toc-title,
+.page-toc-header,
+.bd-sidebar-secondary .sidebar-secondary-item h4,
+.bd-sidebar-secondary .onthispage,
+.bd-sidebar-secondary h4,
+.bd-sidebar-secondary .page-toc > h4,
+nav.bd-toc > h4,
+nav.page-toc > h4 {
+    display: none !important;
+}
+
+/* Remove border from TOC nav list */
+.bd-sidebar-secondary nav.bd-toc,
+.bd-sidebar-secondary .bd-toc nav,
+.bd-sidebar-secondary ul.visible,
+.bd-toc nav ul {
+    border-left: none !important;
+}
+
+/* Back to top button */
+#pst-back-to-top {
+    background-color: rgba(41, 147, 181, 0.6) !important;
+    border: 1px solid rgba(41, 147, 181, 0.7) !important;
+    color: rgba(250, 250, 250, 0.6) !important;
+    transition: all 0.2s ease !important;
+}
+
+#pst-back-to-top:hover {
+    background-color: rgba(41, 147, 181, 0.8) !important;
+    border-color: var(--npap-primary) !important;
+    color: rgba(250, 250, 250, 0.9) !important;
+}
+
+/* Sidebar Links */
+.sidebar-primary-items__start .nav-link,
+.sidebar-primary-items__end .nav-link {
+    border-radius: 6px;
+    margin: 2px 8px;
+    transition: all 0.2s ease;
+}
+
+.sidebar-primary-items__start .nav-link:hover,
+.sidebar-primary-items__end .nav-link:hover,
+.sidebar-primary-items__start .nav-link.active {
+    background: var(--npap-primary-light);
+    color: var(--npap-primary);
+}
+
+.sidebar-primary-items__start .nav-link.active {
+    font-weight: 600;
+}
+
+/* Cards */
+.sd-card {
+    border-radius: 10px !important;
+    border: 1px solid var(--npap-border) !important;
+    background: var(--npap-bg) !important;
+    transition: all 0.25s ease !important;
+}
+
+.sd-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--npap-primary) !important;
+    background: var(--npap-primary-light) !important;
+    box-shadow: 0 4px 16px rgba(41, 147, 181, 0.15) !important;
+}
+
+.sd-card:hover .sd-card-title {
+    color: var(--npap-primary) !important;
+}
+
+html[data-theme="dark"] .sd-card {
+    background: var(--npap-surface) !important;
+}
+
+html[data-theme="dark"] .sd-card:hover {
+    background: var(--npap-primary-light) !important;
+}
+
+/* Admonitions */
+.admonition {
+    border-radius: 10px !important;
+    border: 1px solid var(--npap-border) !important;
+}
+
+.admonition.tip, .admonition.note {
+    border-left: 4px solid var(--npap-primary) !important;
+}
+
+.admonition.warning {
+    border-left: 4px solid #e67e22 !important;
+}
+
+/* Tables */
+table.docutils {
+    border-radius: 10px !important;
+    overflow: hidden;
+    border: 1px solid var(--npap-border) !important;
+}
+
+table.docutils th {
+    background: var(--npap-surface) !important;
+    font-weight: 600;
+}
+
+html[data-theme="dark"] table.docutils th {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Footer */
+.bd-footer {
+    border-top: 1px solid var(--npap-border);
+    background: var(--npap-bg) !important;
+}
+
+/* -----------------------------------------------------------------------------
+   Utilities & Focus States
+   ----------------------------------------------------------------------------- */
+a:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--npap-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Small screens (mobile) */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 1.5rem 1rem 1rem 1rem;
+    }
+
+    .hero-description {
+        font-size: 1.1rem;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .hero-btn {
+        width: 100% !important;
+        max-width: 220px !important;
+    }
+
+    .code-section {
+        padding: 0 1rem 1.5rem 1rem;
+    }
+}
+
+/* Large screens (tall monitors) - allow more breathing room */
+@media (min-height: 900px) {
+    .hero-section {
+        padding: 3rem 2rem 2rem 2rem;
+    }
+
+    .hero-banner {
+        margin: 0 auto 1rem auto;
+    }
+
+    .hero-description {
+        margin: 0 auto 2rem auto;
+    }
+
+    .code-section {
+        padding: 0 2rem 3rem 2rem;
+    }
+}
+
+/* -----------------------------------------------------------------------------
+   IMPORTANT: High-specificity overrides (must be at end of file)
+   ----------------------------------------------------------------------------- */
+
+/* Primary button - prevent ALL movement on hover */
+.landing-page .hero-btn-primary,
+.landing-page .hero-btn-primary:hover,
+.landing-page .hero-btn-primary:active,
+.landing-page .hero-btn-primary:focus,
+.landing-page a.hero-btn-primary,
+.landing-page a.hero-btn-primary:hover,
+.landing-page a.hero-btn-primary:active {
+    transform: none !important;
+    translate: none !important;
+    scale: none !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+}
+
+/* -----------------------------------------------------------------------------
+   Mermaid Diagrams - NPAP Branded Styling
+   ----------------------------------------------------------------------------- */
+
+/* Container styling */
+.mermaid {
+    background: transparent !important;
+    text-align: center;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--npap-border);
+    background-color: var(--npap-surface) !important;
+}
+
+/* Light mode Mermaid styling */
+html[data-theme="light"] .mermaid,
+:root .mermaid {
+    background-color: #f8fafc !important;
+}
+
+/* Dark mode Mermaid styling */
+html[data-theme="dark"] .mermaid {
+    background-color: rgba(41, 147, 181, 0.05) !important;
+    border-color: rgba(41, 147, 181, 0.2);
+}
+
+/* Node styling - Primary nodes (default) */
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node ellipse,
+.mermaid .node polygon,
+.mermaid .node path {
+    fill: var(--npap-primary) !important;
+    stroke: #1d6f8a !important;
+    stroke-width: 2px !important;
+}
+
+.mermaid .node .label,
+.mermaid .nodeLabel {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+    font-weight: 500;
+}
+
+/* Edge/Arrow styling */
+.mermaid .edgePath .path,
+.mermaid .flowchart-link {
+    stroke: var(--npap-text-muted) !important;
+    stroke-width: 2px !important;
+}
+
+.mermaid .edgePath marker path,
+.mermaid marker path {
+    fill: var(--npap-text-muted) !important;
+    stroke: var(--npap-text-muted) !important;
+}
+
+/* Edge labels */
+.mermaid .edgeLabel {
+    background-color: var(--npap-bg) !important;
+    color: var(--npap-text) !important;
+}
+
+.mermaid .edgeLabel rect {
+    fill: var(--npap-bg) !important;
+    opacity: 0.9;
+}
+
+/* Subgraph/Cluster styling */
+.mermaid .cluster rect {
+    fill: rgba(41, 147, 181, 0.08) !important;
+    stroke: var(--npap-primary) !important;
+    stroke-width: 2px !important;
+    stroke-dasharray: none !important;
+    rx: 8px;
+    ry: 8px;
+}
+
+html[data-theme="dark"] .mermaid .cluster rect {
+    fill: rgba(41, 147, 181, 0.12) !important;
+}
+
+.mermaid .cluster .nodeLabel,
+.mermaid .cluster-label .nodeLabel {
+    color: var(--npap-primary) !important;
+    fill: var(--npap-primary) !important;
+    font-weight: 600;
+}
+
+/* Decision nodes (diamonds) */
+.mermaid .node.decision polygon,
+.mermaid .node polygon[points] {
+    fill: var(--npap-yellow) !important;
+    stroke: #cc9900 !important;
+}
+
+/* Special node classes - Optional/dashed nodes */
+.mermaid .node.optional rect,
+.mermaid .node.dashed rect {
+    fill: var(--npap-green) !important;
+    stroke: #076b3f !important;
+    stroke-dasharray: 5, 5 !important;
+}
+
+html[data-theme="dark"] .mermaid .node.optional rect,
+html[data-theme="dark"] .mermaid .node.dashed rect {
+    fill: var(--npap-green) !important;
+    stroke: #0fad6b !important;
+}
+
+/* Secondary color nodes */
+.mermaid .node.secondary rect {
+    fill: var(--npap-green) !important;
+    stroke: #076b3f !important;
+}
+
+/* Tertiary/accent nodes */
+.mermaid .node.accent rect,
+.mermaid .node.tertiary rect {
+    fill: var(--npap-yellow) !important;
+    stroke: #cc9900 !important;
+}
+
+.mermaid .node.accent .label,
+.mermaid .node.tertiary .label,
+.mermaid .node.accent .nodeLabel,
+.mermaid .node.tertiary .nodeLabel {
+    color: #1e293b !important;
+    fill: #1e293b !important;
+}
+
+/* Dashed edge lines */
+.mermaid .edgePath.dashed .path {
+    stroke-dasharray: 5, 5 !important;
+}
+
+/* Dark mode edge adjustments */
+html[data-theme="dark"] .mermaid .edgePath .path,
+html[data-theme="dark"] .mermaid .flowchart-link {
+    stroke: var(--npap-text-muted) !important;
+}
+
+html[data-theme="dark"] .mermaid .edgePath marker path,
+html[data-theme="dark"] .mermaid marker path {
+    fill: var(--npap-text-muted) !important;
+}
+
+html[data-theme="dark"] .mermaid .edgeLabel {
+    background-color: var(--npap-bg) !important;
+    color: var(--npap-text) !important;
+}
+
+/* Flowchart specific overrides */
+.mermaid .flowchart-label {
+    color: var(--npap-text) !important;
+}
+
+/* Ensure text visibility in dark mode */
+html[data-theme="dark"] .mermaid text {
+    fill: var(--npap-text) !important;
+}
+
+html[data-theme="dark"] .mermaid .node .label,
+html[data-theme="dark"] .mermaid .nodeLabel {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+/* Hover effects for nodes */
+.mermaid .node:hover rect,
+.mermaid .node:hover circle,
+.mermaid .node:hover polygon {
+    filter: brightness(1.1);
+    cursor: pointer;
+}
+
+/* Animation for diagram appearance */
+.mermaid svg {
+    animation: mermaidFadeIn 0.3s ease-out;
+}
+
+@keyframes mermaidFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
