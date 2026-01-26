@@ -9,10 +9,43 @@ from npap.logging import LogCategory, log_debug, log_info, log_warning
 
 
 class CSVFilesStrategy(DataLoadingStrategy):
-    """Load graph from separate CSV files for nodes and edges."""
+    """
+    Load graph from separate CSV files for nodes and edges.
+
+    This strategy reads node and edge data from CSV files and constructs
+    a NetworkX directed graph. Supports automatic detection of ID columns
+    and handles parallel edges by creating a MultiDiGraph.
+
+    Examples
+    --------
+    >>> from npap.managers import PartitionAggregatorManager
+    >>> manager = PartitionAggregatorManager()
+    >>> graph = manager.load_data(
+    ...     "csv_files",
+    ...     node_file="buses.csv",
+    ...     edge_file="lines.csv"
+    ... )
+    """
 
     def validate_inputs(self, **kwargs) -> bool:
-        """Validate that required CSV files are provided."""
+        """
+        Validate that required CSV files are provided.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Must contain 'node_file' and 'edge_file' keys.
+
+        Returns
+        -------
+        bool
+            True if validation passes.
+
+        Raises
+        ------
+        DataLoadingError
+            If required files are missing or don't exist.
+        """
         required_files = ["node_file", "edge_file"]
         missing = [file for file in required_files if file not in kwargs or kwargs[file] is None]
         if missing:
@@ -42,7 +75,39 @@ class CSVFilesStrategy(DataLoadingStrategy):
         return True
 
     def load(self, node_file: str, edge_file: str, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
-        """Load graph from CSV files as a directed graph."""
+        """
+        Load graph from CSV files as a directed graph.
+
+        Parameters
+        ----------
+        node_file : str
+            Path to CSV file containing node data.
+        edge_file : str
+            Path to CSV file containing edge data.
+        **kwargs : dict
+            Additional parameters:
+
+            - delimiter : str, default ','
+                CSV delimiter character.
+            - decimal : str, default '.'
+                Decimal separator character.
+            - node_id_col : str, optional
+                Column name for node IDs (auto-detected if not provided).
+            - edge_from_col : str, optional
+                Column name for edge source nodes (auto-detected if not provided).
+            - edge_to_col : str, optional
+                Column name for edge target nodes (auto-detected if not provided).
+
+        Returns
+        -------
+        nx.DiGraph or nx.MultiDiGraph
+            Loaded graph. Returns MultiDiGraph if parallel edges are detected.
+
+        Raises
+        ------
+        DataLoadingError
+            If files are empty, malformed, or contain invalid references.
+        """
         try:
             delimiter = kwargs.get("delimiter", ",")
             decimal = kwargs.get("decimal", ".")
@@ -160,7 +225,21 @@ class CSVFilesStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _detect_id_column(df: pd.DataFrame, prefix: str) -> str:
-        """Detect the ID column for nodes/edges."""
+        """
+        Detect the ID column for nodes/edges.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame to search for ID column.
+        prefix : str
+            Expected prefix for the ID column (e.g., 'node', 'edge').
+
+        Returns
+        -------
+        str
+            Detected column name, or first column if no match found.
+        """
         candidates = [
             f"{prefix}_id",
             f"{prefix}Id",
@@ -181,7 +260,21 @@ class CSVFilesStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _detect_edge_column(df: pd.DataFrame, direction: str) -> str:
-        """Detect from/to columns for edges."""
+        """
+        Detect from/to columns for edges.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame to search for edge columns.
+        direction : str
+            Either 'from' or 'to' to indicate which column to detect.
+
+        Returns
+        -------
+        str
+            Detected column name, or first/second column if no match found.
+        """
         if direction == "from":
             candidates = [
                 "from",

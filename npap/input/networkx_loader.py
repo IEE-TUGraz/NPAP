@@ -6,10 +6,40 @@ from npap.logging import LogCategory, log_debug, log_info, log_warning
 
 
 class NetworkXDirectStrategy(DataLoadingStrategy):
-    """Use NetworkX graph directly, converting to directed graph."""
+    """
+    Load graph directly from an existing NetworkX graph object.
+
+    This strategy accepts any NetworkX graph type and converts it to a
+    directed graph (DiGraph or MultiDiGraph) suitable for partitioning.
+
+    Examples
+    --------
+    >>> import networkx as nx
+    >>> from npap.managers import PartitionAggregatorManager
+    >>> G = nx.karate_club_graph()
+    >>> manager = PartitionAggregatorManager()
+    >>> graph = manager.load_data("networkx_direct", graph=G)
+    """
 
     def validate_inputs(self, **kwargs) -> bool:
-        """Validate that a NetworkX graph is provided."""
+        """
+        Validate that a NetworkX graph is provided.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Must contain 'graph' key with a NetworkX graph object.
+
+        Returns
+        -------
+        bool
+            True if validation passes.
+
+        Raises
+        ------
+        DataLoadingError
+            If graph is missing, not a NetworkX graph, or empty.
+        """
         if "graph" not in kwargs:
             raise DataLoadingError(
                 "Missing required parameter: graph",
@@ -33,24 +63,35 @@ class NetworkXDirectStrategy(DataLoadingStrategy):
 
     def load(self, graph: nx.Graph, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
         """
-        Use graph directly, converting to directed graph if needed.
+        Convert input graph to directed graph if needed.
 
         Supports all NetworkX graph types:
+
         - Graph -> DiGraph (creates both directions for each edge)
         - DiGraph -> DiGraph (copy)
         - MultiGraph -> MultiDiGraph (creates both directions for each edge)
         - MultiDiGraph -> MultiDiGraph (copy)
 
-        Args:
-            graph: Input NetworkX graph
-            **kwargs: Additional parameters
-                - bidirectional: If True (default), convert undirected edges to
-                                 bidirectional directed edges. If False, only
-                                 create edges in the original iteration order.
+        Parameters
+        ----------
+        graph : nx.Graph
+            Input NetworkX graph (any type).
+        **kwargs : dict
+            Additional parameters:
+
+            - bidirectional : bool, default True
+                If True, convert undirected edges to bidirectional directed
+                edges. If False, only create edges in original iteration order.
 
         Returns
         -------
-            DiGraph or MultiDiGraph
+        nx.DiGraph or nx.MultiDiGraph
+            Directed graph suitable for partitioning.
+
+        Raises
+        ------
+        DataLoadingError
+            If graph processing fails.
         """
         try:
             bidirectional = kwargs.get("bidirectional", True)

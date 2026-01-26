@@ -205,13 +205,17 @@ class AggregationManager:
         """
         Get pre-defined aggregation profile for a given mode.
 
-        Args:
-            mode: Aggregation mode
-            **overrides: Override specific profile parameters
+        Parameters
+        ----------
+        mode : AggregationMode
+            Aggregation mode.
+        **overrides : dict
+            Override specific profile parameters.
 
         Returns
         -------
-            AggregationProfile configured for the mode
+        AggregationProfile
+            AggregationProfile configured for the mode.
         """
         from npap.aggregation.modes import get_mode_profile
 
@@ -227,9 +231,24 @@ class AggregationManager:
         Execute aggregation using the specified profile.
 
         Aggregation is a 3-step process:
+
         1. Create topology (nodes + edge structure)
         2. Apply physical aggregation (if specified)
         3. Aggregate remaining properties statistically
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            Graph to aggregate.
+        partition_map : dict[int, list[Any]]
+            Mapping of cluster_id to list of node_ids.
+        profile : AggregationProfile, optional
+            Aggregation profile (uses defaults if not provided).
+
+        Returns
+        -------
+        nx.DiGraph
+            Aggregated graph.
         """
         if profile is None:
             profile = AggregationProfile()
@@ -331,21 +350,29 @@ class AggregationManager:
         For directed graphs, edges (A->B) and (B->A) are treated as separate edges
         and are aggregated independently.
 
-        Args:
-            graph: MultiDiGraph with potential parallel edges
-            edge_properties: Dict mapping property names to aggregation strategies
-                           e.g., {"reactance": "average", "length": "sum"}
-            default_strategy: Strategy to use for properties not specified (default: "sum")
-            warn_on_defaults: Whether to warn when using default strategy
+        Parameters
+        ----------
+        graph : nx.MultiDiGraph
+            MultiDiGraph with potential parallel edges.
+        edge_properties : dict[str, str], optional
+            Dict mapping property names to aggregation strategies.
+            Example: ``{"reactance": "average", "length": "sum"}``.
+        default_strategy : str
+            Strategy to use for properties not specified.
+        warn_on_defaults : bool
+            Whether to warn when using default strategy.
 
         Returns
         -------
-            Simple DiGraph with parallel edges aggregated
+        nx.DiGraph
+            Simple DiGraph with parallel edges aggregated.
 
         Raises
         ------
-            ValueError: If graph is not a MultiDiGraph
-            AggregationError: If aggregation fails
+        ValueError
+            If graph is not a MultiDiGraph.
+        AggregationError
+            If aggregation fails.
         """
         from collections import defaultdict
 
@@ -494,17 +521,25 @@ class AggregationManager:
         """
         Resolve strategies for a set of properties.
 
-        Args:
-            properties: Set of property names to resolve
-            user_specified: User-specified property -> strategy name mapping
-            available_strategies: Available strategy name -> strategy object mapping
-            default_strategy: Default strategy name to use
-            warn_on_defaults: Whether to warn when using default strategy
-            property_type: "Node" or "Edge" for warning messages
+        Parameters
+        ----------
+        properties : set[str]
+            Set of property names to resolve.
+        user_specified : dict[str, str]
+            User-specified property to strategy name mapping.
+        available_strategies : dict[str, Any]
+            Available strategy name to strategy object mapping.
+        default_strategy : str
+            Default strategy name to use.
+        warn_on_defaults : bool
+            Whether to warn when using default strategy.
+        property_type : str
+            "Node" or "Edge" for warning messages.
 
         Returns
         -------
-            Dict mapping property name -> strategy object (or None for fallback)
+        dict[str, Any]
+            Dict mapping property name to strategy object (or None for fallback).
         """
         property_strategies: dict[str, Any] = {}
         warned_properties: set[str] = set()
@@ -730,12 +765,25 @@ class PartitionAggregatorManager:
         """
         Aggregate using partition result and profile.
 
-        Args:
-            partition_result: Partition to use (or use stored partition)
-            profile: Aggregation profile (custom configuration)
-            mode: Aggregation mode (pre-defined configuration)
+        Parameters
+        ----------
+        partition_result : PartitionResult, optional
+            Partition to use (or use stored partition).
+        profile : AggregationProfile, optional
+            Aggregation profile (custom configuration).
+        mode : AggregationMode, optional
+            Aggregation mode (pre-defined configuration).
+        **overrides : dict
+            Override specific profile parameters when using mode.
 
-        Note: If both profile and mode are provided, profile takes precedence
+        Returns
+        -------
+        nx.DiGraph
+            Aggregated graph.
+
+        Notes
+        -----
+        If both profile and mode are provided, profile takes precedence.
         """
         if not self._current_graph:
             raise ValueError("No graph loaded.")
@@ -784,19 +832,25 @@ class PartitionAggregatorManager:
 
         For directed graphs, edges (A->B) and (B->A) are treated as separate edges.
 
-        Args:
-            edge_properties: Dict mapping property names to aggregation strategies
-                           e.g., {"reactance": "average", "length": "sum"}
-            default_strategy: Strategy to use for properties not specified (default: "sum")
-            warn_on_defaults: Whether to warn when using default strategy
+        Parameters
+        ----------
+        edge_properties : dict[str, str], optional
+            Dict mapping property names to aggregation strategies.
+            Example: ``{"reactance": "average", "length": "sum"}``.
+        default_strategy : str
+            Strategy to use for properties not specified.
+        warn_on_defaults : bool
+            Whether to warn when using default strategy.
 
         Returns
         -------
-            Simple DiGraph with parallel edges aggregated
+        nx.DiGraph
+            Simple DiGraph with parallel edges aggregated.
 
         Raises
         ------
-            ValueError: If no graph is loaded or graph is not a MultiDiGraph
+        ValueError
+            If no graph is loaded or graph is not a MultiDiGraph.
         """
         if not self._current_graph:
             raise ValueError("No graph loaded. Call load_data() first.")
@@ -838,16 +892,34 @@ class PartitionAggregatorManager:
         before partitioning. If a voltage-aware partitioning strategy is selected,
         voltage levels will be grouped first in 220kV and 380kV voltage levels.
 
-        Args:
-            data_strategy: Data loading strategy name
-            partition_strategy: Partitioning strategy name
-            aggregation_profile: Aggregation profile (custom)
-            aggregation_mode: Aggregation mode (pre-defined)
-            **kwargs: Parameters for data loading, parallel edge aggregation, partitioning
+        Parameters
+        ----------
+        data_strategy : str
+            Data loading strategy name.
+        partition_strategy : str
+            Partitioning strategy name.
+        aggregation_profile : AggregationProfile, optional
+            Aggregation profile (custom).
+        aggregation_mode : AggregationMode, optional
+            Aggregation mode (pre-defined).
+        **kwargs : dict
+            Parameters for data loading, parallel edge aggregation, and partitioning.
 
         Returns
         -------
-            Aggregated graph
+        nx.DiGraph
+            Aggregated graph.
+
+        Examples
+        --------
+        >>> manager = PartitionAggregatorManager()
+        >>> result = manager.full_workflow(
+        ...     data_strategy="csv_files",
+        ...     partition_strategy="geographical_kmeans",
+        ...     node_file="buses.csv",
+        ...     edge_file="lines.csv",
+        ...     n_clusters=10
+        ... )
         """
         log_info("Starting full workflow", LogCategory.MANAGER)
 
@@ -917,16 +989,42 @@ class PartitionAggregatorManager:
         return result
 
     def get_current_graph(self) -> nx.DiGraph | None:
-        """Get the current graph."""
+        """
+        Get the current graph.
+
+        Returns
+        -------
+        nx.DiGraph or None
+            Current graph, or None if no graph is loaded.
+        """
         return self._current_graph
 
     def get_current_partition(self) -> PartitionResult | None:
-        """Get the current partition result."""
+        """
+        Get the current partition result.
+
+        Returns
+        -------
+        PartitionResult or None
+            Current partition result, or None if not partitioned.
+        """
         return self._current_partition
 
     @staticmethod
     def _compute_graph_hash(graph: nx.DiGraph) -> str:
-        """Compute hash for graph validation."""
+        """
+        Compute hash for graph validation.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            Graph to compute hash for.
+
+        Returns
+        -------
+        str
+            Hash string for the graph.
+        """
         from npap.utils import compute_graph_hash
 
         return compute_graph_hash(graph)
@@ -942,39 +1040,38 @@ class PartitionAggregatorManager:
         """
         Plot the network on an interactive map.
 
-        Args:
-            style: Plot style
-                - 'simple': All edges same color (fast, minimal)
-                - 'voltage_aware': Edges colored by type (line/trafo/dc_link),
-                                   thickness by voltage level
-                - 'clustered': Nodes colored by cluster assignment (requires
-                               prior partitioning)
-            graph: Optional graph to plot (uses current graph if not provided)
-            show: Whether to display immediately (default: True)
-            config: Optional PlotConfig instance to override defaults. If provided,
-                   kwargs will further override values from this config.
-            **kwargs: Additional configuration options:
-                - show_lines: bool = True
-                - show_trafos: bool = True
-                - show_dc_links: bool = True
-                - show_nodes: bool = True
-                - line_high_voltage_color: str = "#029E73" (green)
-                - line_low_voltage_color: str = "#CA9161" (brown)
-                - trafo_color: str = "#ECE133" (yellow)
-                - dc_link_color: str = "#CC78BC" (pink)
-                - node_color: str = "#0173B2" (blue)
-                - edge_width: float = 1.5
-                - node_size: int = 5
-                - title: str = None
-                - map_style: str = "carto-positron"
-                - map_center_lat: float = 57.5
-                - map_center_lon: float = 14.0
-                - map_zoom: float = 3.7
-                - cluster_colorscale: str = "Viridis" (for clustered style)
+        Parameters
+        ----------
+        style : str
+            Plot style:
+
+            - 'simple': All edges same color (fast, minimal)
+            - 'voltage_aware': Edges colored by type (line/trafo/dc_link)
+            - 'clustered': Nodes colored by cluster assignment
+        graph : nx.DiGraph, optional
+            Graph to plot (uses current graph if not provided).
+        show : bool
+            Whether to display immediately.
+        config : PlotConfig, optional
+            PlotConfig instance to override defaults. If provided,
+            kwargs will further override values from this config.
+        **kwargs : dict
+            Additional configuration options (see PlotConfig for full list).
 
         Returns
         -------
-            Plotly Figure object
+        go.Figure
+            Plotly Figure object.
+
+        Raises
+        ------
+        ValueError
+            If no graph is loaded or clustered style without partition.
+
+        Examples
+        --------
+        >>> manager.plot_network(style="voltage_aware", title="My Network")
+        >>> manager.plot_network(style="clustered")  # After partitioning
         """
         from npap.visualization import plot_network
 
@@ -1010,34 +1107,48 @@ class PartitionAggregatorManager:
         handle_missing: str = "infer",
     ) -> dict[str, Any]:
         """
-        Group buses voltage levels to predefined target values.
+        Group bus voltage levels to predefined target values.
 
         This method reassigns each node's voltage to the nearest target voltage level,
         creating clean voltage "islands" for subsequent voltage-aware partitioning.
 
-        Args:
-            target_levels: List of target voltage levels (kV) to harmonize to.
-                          Example: [220, 380] for European transmission grid.
-            voltage_attr: Node attribute containing voltage level (default: 'voltage').
-            store_original: If True, stores original voltage in 'original_{voltage_attr}'.
-            handle_missing: How to handle nodes without voltage data:
-                           - 'infer': Infer from connected neighbors
-                           - 'nearest': Assign to nearest target level
-                           - 'error': Raise an error
-                           - 'skip': Leave as None
+        Parameters
+        ----------
+        target_levels : list[float]
+            List of target voltage levels (kV) to harmonize to.
+            Example: ``[220, 380]`` for European transmission grid.
+        voltage_attr : str
+            Node attribute containing voltage level.
+        store_original : bool
+            If True, stores original voltage in 'original_{voltage_attr}'.
+        handle_missing : str
+            How to handle nodes without voltage data:
+
+            - 'infer': Infer from connected neighbors
+            - 'nearest': Assign to nearest target level
+            - 'error': Raise an error
+            - 'skip': Leave as None
 
         Returns
         -------
+        dict[str, Any]
             Summary dict with:
-                - 'total_nodes': Total number of nodes processed
-                - 'reassignments': Dict mapping original_voltage -> (target_voltage, count)
-                - 'missing_handled': Number of nodes with missing voltage
-                - 'voltage_distribution': Dict mapping target_voltage -> node_count
+
+            - 'total_nodes': Total number of nodes processed
+            - 'reassignments': Dict mapping original_voltage to (target_voltage, count)
+            - 'missing_handled': Number of nodes with missing voltage
+            - 'voltage_distribution': Dict mapping target_voltage to node_count
 
         Raises
         ------
-            ValueError: If no graph loaded, target_levels empty, or handle_missing='error'
-                       with missing voltages.
+        ValueError
+            If no graph loaded, target_levels empty, or handle_missing='error'
+            with missing voltages.
+
+        Examples
+        --------
+        >>> manager.group_by_voltage_levels([220, 380])
+        {'total_nodes': 6000, 'voltage_distribution': {220: 3500, 380: 2500}, ...}
         """
         if not self._current_graph:
             raise ValueError("No graph loaded. Call load_data() first.")

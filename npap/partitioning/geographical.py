@@ -28,14 +28,19 @@ class GeographicalConfig:
 
     Attributes
     ----------
-        random_state: Random seed for reproducibility in stochastic algorithms
-        max_iter: Maximum iterations for iterative algorithms (K-means, K-medoids)
-        n_init: Number of initializations for K-means
-        hierarchical_linkage: Linkage criterion for hierarchical clustering
-                             ('ward' for Euclidean, or 'complete'/'average'/'single')
-        infinite_distance: Value used to represent "infinite" distance between
-                          nodes in different DC islands. Using a large finite value instead of np.inf
-                          to avoid numerical issues in clustering algorithms.
+    random_state : int
+        Random seed for reproducibility in stochastic algorithms.
+    max_iter : int
+        Maximum iterations for iterative algorithms (K-means, K-medoids).
+    n_init : int
+        Number of initializations for K-means.
+    hierarchical_linkage : str
+        Linkage criterion for hierarchical clustering
+        ('ward' for Euclidean, or 'complete'/'average'/'single').
+    infinite_distance : float
+        Value used to represent "infinite" distance between nodes in different
+        DC islands. Using a large finite value instead of np.inf to avoid
+        numerical issues in clustering algorithms.
     """
 
     random_state: int = 42
@@ -103,16 +108,22 @@ class GeographicalPartitioning(PartitioningStrategy):
         """
         Initialize geographical partitioning strategy.
 
-        Args:
-            algorithm: Clustering algorithm ('kmeans', 'kmedoids', 'dbscan',
-                       'hierarchical', 'hdbscan')
-            distance_metric: Distance metric ('haversine', 'euclidean')
-            dc_island_attr: Node attribute name containing DC island ID
-            config: Configuration parameters for the algorithm
+        Parameters
+        ----------
+        algorithm : str, default='kmeans'
+            Clustering algorithm ('kmeans', 'kmedoids', 'dbscan',
+            'hierarchical', 'hdbscan').
+        distance_metric : str, default='euclidean'
+            Distance metric ('haversine', 'euclidean').
+        dc_island_attr : str, default='dc_island'
+            Node attribute name containing DC island ID.
+        config : GeographicalConfig, optional
+            Configuration parameters for the algorithm.
 
         Raises
         ------
-            ValueError: If unsupported algorithm or distance metric specified
+        ValueError
+            If unsupported algorithm or distance metric specified.
         """
         self.algorithm = algorithm
         self.distance_metric = distance_metric
@@ -156,27 +167,33 @@ class GeographicalPartitioning(PartitioningStrategy):
         DC islands are detected, infinite distance is assigned between nodes
         in different DC islands.
 
-        Args:
-            graph: NetworkX graph with lat, lon attributes on nodes
-            **kwargs: Additional parameters:
-                - n_clusters: Number of clusters (required for kmeans, kmedoids, hierarchical)
-                - eps: Epsilon (required for dbscan)
-                - min_samples: Minimum samples (required for dbscan)
-                - min_cluster_size: Minimum cluster size for HDBSCAN (default: 5)
-                - config: GeographicalConfig instance to override instance config
-                - random_state: Override config parameter
-                - max_iter: Override config parameter
-                - n_init: Override config parameter
-                - hierarchical_linkage: Override config parameter
-                - infinite_distance: Override config parameter
+        Parameters
+        ----------
+        graph : nx.Graph
+            NetworkX graph with lat, lon attributes on nodes.
+        **kwargs : dict
+            Additional parameters:
+
+            - n_clusters : Number of clusters (required for kmeans, kmedoids, hierarchical)
+            - eps : Epsilon (required for dbscan)
+            - min_samples : Minimum samples (required for dbscan)
+            - min_cluster_size : Minimum cluster size for HDBSCAN (default: 5)
+            - config : GeographicalConfig instance to override instance config
+            - random_state : Override config parameter
+            - max_iter : Override config parameter
+            - n_init : Override config parameter
+            - hierarchical_linkage : Override config parameter
+            - infinite_distance : Override config parameter
 
         Returns
         -------
-            Dictionary mapping cluster_id -> list of node_ids
+        dict[int, list[Any]]
+            Dictionary mapping cluster_id -> list of node_ids.
 
         Raises
         ------
-            PartitioningError: If partitioning fails
+        PartitioningError
+            If partitioning fails.
         """
         try:
             # Get effective config (injected by decorator)
@@ -263,11 +280,14 @@ class GeographicalPartitioning(PartitioningStrategy):
         that work directly on raw coordinates (kmeans, hierarchical with ward)
         cannot support this feature.
 
-        Args:
-            config: Current configuration
+        Parameters
+        ----------
+        config : GeographicalConfig
+            Current configuration.
 
         Returns
         -------
+        bool
             True if DC-island awareness is supported, False otherwise.
         """
         if self.algorithm in self.DC_ISLAND_AWARE_ALGORITHMS:
@@ -280,7 +300,26 @@ class GeographicalPartitioning(PartitioningStrategy):
         return False
 
     def _extract_coordinates(self, graph: nx.Graph, nodes: list[Any]) -> np.ndarray:
-        """Extract coordinates from graph nodes."""
+        """
+        Extract coordinates from graph nodes.
+
+        Parameters
+        ----------
+        graph : nx.Graph
+            NetworkX graph with lat, lon attributes on nodes.
+        nodes : list[Any]
+            List of node IDs.
+
+        Returns
+        -------
+        np.ndarray
+            Array of coordinates (n x 2).
+
+        Raises
+        ------
+        PartitioningError
+            If any node is missing latitude or longitude.
+        """
         coordinates = []
 
         for node in nodes:
@@ -302,7 +341,23 @@ class GeographicalPartitioning(PartitioningStrategy):
     def _run_clustering(
         self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
-        """Dispatch to appropriate clustering algorithm."""
+        """
+        Dispatch to appropriate clustering algorithm.
+
+        Parameters
+        ----------
+        coordinates : np.ndarray
+            Array of coordinates (n x 2).
+        config : GeographicalConfig
+            Configuration parameters.
+        **kwargs : dict
+            Additional clustering parameters.
+
+        Returns
+        -------
+        np.ndarray
+            Array of cluster labels.
+        """
         if self.algorithm == "kmeans":
             return self._kmeans_clustering(coordinates, config, **kwargs)
         elif self.algorithm == "kmedoids":
@@ -322,7 +377,28 @@ class GeographicalPartitioning(PartitioningStrategy):
     def _kmeans_clustering(
         self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
-        """Perform K-means clustering on geographical coordinates."""
+        """
+        Perform K-means clustering on geographical coordinates.
+
+        Parameters
+        ----------
+        coordinates : np.ndarray
+            Array of coordinates (n x 2).
+        config : GeographicalConfig
+            Configuration parameters.
+        **kwargs : dict
+            Must include 'n_clusters'.
+
+        Returns
+        -------
+        np.ndarray
+            Array of cluster labels.
+
+        Raises
+        ------
+        PartitioningError
+            If distance metric is not euclidean or n_clusters is invalid.
+        """
         # K-means requires Euclidean distance
         if self.distance_metric != "euclidean":
             raise PartitioningError(
@@ -346,7 +422,28 @@ class GeographicalPartitioning(PartitioningStrategy):
     def _kmedoids_clustering(
         self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
-        """Perform K-medoids clustering on geographical coordinates."""
+        """
+        Perform K-medoids clustering on geographical coordinates.
+
+        Parameters
+        ----------
+        coordinates : np.ndarray
+            Array of coordinates (n x 2).
+        config : GeographicalConfig
+            Configuration parameters.
+        **kwargs : dict
+            Must include 'n_clusters'. May include 'dc_islands'.
+
+        Returns
+        -------
+        np.ndarray
+            Array of cluster labels.
+
+        Raises
+        ------
+        PartitioningError
+            If n_clusters is invalid.
+        """
         n_clusters = kwargs.get("n_clusters")
         if n_clusters is None or n_clusters <= 0:
             raise PartitioningError(
@@ -377,7 +474,28 @@ class GeographicalPartitioning(PartitioningStrategy):
     def _dbscan_clustering(
         self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
-        """Perform DBSCAN clustering on geographical coordinates."""
+        """
+        Perform DBSCAN clustering on geographical coordinates.
+
+        Parameters
+        ----------
+        coordinates : np.ndarray
+            Array of coordinates (n x 2).
+        config : GeographicalConfig
+            Configuration parameters.
+        **kwargs : dict
+            Must include 'eps' and 'min_samples'. May include 'dc_islands'.
+
+        Returns
+        -------
+        np.ndarray
+            Array of cluster labels.
+
+        Raises
+        ------
+        PartitioningError
+            If eps or min_samples is missing.
+        """
         eps = kwargs.get("eps")
         min_samples = kwargs.get("min_samples")
 
@@ -409,7 +527,28 @@ class GeographicalPartitioning(PartitioningStrategy):
     def _hierarchical_clustering(
         self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
-        """Perform Hierarchical Clustering on geographical coordinates."""
+        """
+        Perform Hierarchical Clustering on geographical coordinates.
+
+        Parameters
+        ----------
+        coordinates : np.ndarray
+            Array of coordinates (n x 2).
+        config : GeographicalConfig
+            Configuration parameters.
+        **kwargs : dict
+            Must include 'n_clusters'. May include 'dc_islands'.
+
+        Returns
+        -------
+        np.ndarray
+            Array of cluster labels.
+
+        Raises
+        ------
+        PartitioningError
+            If n_clusters is invalid or ward linkage used with non-euclidean.
+        """
         n_clusters = kwargs.get("n_clusters")
         if n_clusters is None or n_clusters <= 0:
             raise PartitioningError(
@@ -463,7 +602,23 @@ class GeographicalPartitioning(PartitioningStrategy):
     def _hdbscan_clustering(
         self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
-        """Perform HDBSCAN clustering on geographical coordinates."""
+        """
+        Perform HDBSCAN clustering on geographical coordinates.
+
+        Parameters
+        ----------
+        coordinates : np.ndarray
+            Array of coordinates (n x 2).
+        config : GeographicalConfig
+            Configuration parameters.
+        **kwargs : dict
+            May include 'min_cluster_size' and 'dc_islands'.
+
+        Returns
+        -------
+        np.ndarray
+            Array of cluster labels.
+        """
         min_cluster_size = kwargs.get("min_cluster_size", 5)
         dc_islands = kwargs.get("dc_islands")
 
@@ -501,12 +656,16 @@ class GeographicalPartitioning(PartitioningStrategy):
         attribute on nodes, which is set by the VoltageAwareStrategy (va_loader)
         when loading power system data with DC links.
 
-        Args:
-            graph: NetworkX graph
-            nodes: List of node IDs
+        Parameters
+        ----------
+        graph : nx.Graph
+            NetworkX graph.
+        nodes : list[Any]
+            List of node IDs.
 
         Returns
         -------
+        bool
             True if all nodes have the dc_island attribute, False otherwise.
         """
         for node in nodes:
@@ -518,17 +677,22 @@ class GeographicalPartitioning(PartitioningStrategy):
         """
         Extract DC island IDs from graph nodes.
 
-        Args:
-            graph: NetworkX graph
-            nodes: List of node IDs
+        Parameters
+        ----------
+        graph : nx.Graph
+            NetworkX graph.
+        nodes : list[Any]
+            List of node IDs.
 
         Returns
         -------
+        np.ndarray
             Array of DC island IDs for each node.
 
         Raises
         ------
-            PartitioningError: If any node is missing the dc_island attribute.
+        PartitioningError
+            If any node is missing the dc_island attribute.
         """
         dc_islands = []
         missing_nodes = []
@@ -562,17 +726,23 @@ class GeographicalPartitioning(PartitioningStrategy):
         Nodes in the same DC island use geographical distance.
         Nodes in different DC islands get infinite distance.
 
-        Args:
-            coordinates: Array of [lat, lon] coordinates (n x 2)
-            dc_islands: Array of DC island IDs (n)
-            config: GeographicalConfig instance
+        Parameters
+        ----------
+        coordinates : np.ndarray
+            Array of [lat, lon] coordinates (n x 2).
+        dc_islands : np.ndarray
+            Array of DC island IDs (n).
+        config : GeographicalConfig
+            Configuration instance.
 
         Returns
         -------
+        np.ndarray
             Distance matrix (n x n) where:
-                - d[i,j] = geographical_distance if same DC island
-                - d[i,j] = infinite_distance if different DC islands
-                - d[i,i] = 0 (diagonal)
+
+            - d[i,j] = geographical_distance if same DC island
+            - d[i,j] = infinite_distance if different DC islands
+            - d[i,i] = 0 (diagonal)
         """
         # Calculate geographical distances
         geo_distances = compute_geographical_distances(coordinates, self.distance_metric)
@@ -609,9 +779,12 @@ class GeographicalPartitioning(PartitioningStrategy):
         With infinite distances between DC islands, clusters should never
         contain nodes from multiple DC islands.
 
-        Args:
-            graph: Original NetworkX graph
-            partition_map: Resulting partition mapping
+        Parameters
+        ----------
+        graph : nx.Graph
+            Original NetworkX graph.
+        partition_map : dict[int, list[Any]]
+            Resulting partition mapping.
         """
         for cluster_id, nodes in partition_map.items():
             dc_islands_in_cluster = set()
