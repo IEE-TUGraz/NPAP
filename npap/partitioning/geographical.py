@@ -645,7 +645,6 @@ class GeographicalPartitioning(PartitioningStrategy):
         -------
             Array of [x, y, z] Cartesian coordinates (n x 3)
         """
-
         coords = np.asarray(coordinates)
         if coords.ndim != 2 or coords.shape[1] != 2:
             raise PartitioningError(
