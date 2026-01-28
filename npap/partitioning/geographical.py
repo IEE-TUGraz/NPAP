@@ -94,11 +94,11 @@ class GeographicalPartitioning(PartitioningStrategy):
     }
 
     def __init__(
-            self,
-            algorithm: str = "kmeans",
-            distance_metric: str = "euclidean",
-            dc_island_attr: str = "dc_island",
-            config: GeographicalConfig | None = None,
+        self,
+        algorithm: str = "kmeans",
+        distance_metric: str = "euclidean",
+        dc_island_attr: str = "dc_island",
+        config: GeographicalConfig | None = None,
     ):
         """
         Initialize geographical partitioning strategy.
@@ -300,7 +300,7 @@ class GeographicalPartitioning(PartitioningStrategy):
         return np.array(coordinates)
 
     def _run_clustering(
-            self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
+        self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
         """Dispatch to appropriate clustering algorithm."""
         if self.algorithm == "kmeans":
@@ -320,7 +320,7 @@ class GeographicalPartitioning(PartitioningStrategy):
             )
 
     def _kmeans_clustering(
-            self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
+        self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
         """Perform K-means clustering on geographical coordinates."""
         # K-means requires Euclidean distance
@@ -346,7 +346,7 @@ class GeographicalPartitioning(PartitioningStrategy):
         )
 
     def _kmedoids_clustering(
-            self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
+        self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
         """Perform K-medoids clustering on geographical coordinates."""
         n_clusters = kwargs.get("n_clusters")
@@ -377,7 +377,7 @@ class GeographicalPartitioning(PartitioningStrategy):
         return run_kmedoids(distance_matrix, n_clusters)
 
     def _dbscan_clustering(
-            self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
+        self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
         """Perform DBSCAN clustering on geographical coordinates."""
         eps = kwargs.get("eps")
@@ -409,7 +409,7 @@ class GeographicalPartitioning(PartitioningStrategy):
         return run_dbscan(distance_matrix, eps, min_samples)
 
     def _hierarchical_clustering(
-            self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
+        self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
         """Perform Hierarchical Clustering on geographical coordinates."""
         n_clusters = kwargs.get("n_clusters")
@@ -463,7 +463,7 @@ class GeographicalPartitioning(PartitioningStrategy):
             return run_hierarchical(distance_matrix, n_clusters, linkage)
 
     def _hdbscan_clustering(
-            self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
+        self, coordinates: np.ndarray, config: GeographicalConfig, **kwargs
     ) -> np.ndarray:
         """Perform HDBSCAN clustering on geographical coordinates."""
         min_cluster_size = kwargs.get("min_cluster_size", 5)
@@ -553,10 +553,10 @@ class GeographicalPartitioning(PartitioningStrategy):
         return np.array(dc_islands)
 
     def _build_dc_island_aware_distance_matrix(
-            self,
-            coordinates: np.ndarray,
-            dc_islands: np.ndarray,
-            config: GeographicalConfig,
+        self,
+        coordinates: np.ndarray,
+        dc_islands: np.ndarray,
+        config: GeographicalConfig,
     ) -> np.ndarray:
         """
         Build distance matrix with DC island awareness.
@@ -603,7 +603,7 @@ class GeographicalPartitioning(PartitioningStrategy):
 
     @staticmethod
     def _validate_cluster_dc_island_consistency(
-            graph: nx.Graph, partition_map: dict[int, list[Any]]
+        graph: nx.Graph, partition_map: dict[int, list[Any]]
     ) -> None:
         """
         Validate that clusters don't mix different DC islands.

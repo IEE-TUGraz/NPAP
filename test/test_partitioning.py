@@ -347,7 +347,7 @@ class TestGeographicalPartitioning:
                 assert nodes_in_different_clusters(partition, i, j)
 
     def test_hierarchical_complete_respects_dc_island_boundaries(
-            self, geographical_dc_island_graph
+        self, geographical_dc_island_graph
     ):
         """Test hierarchical clustering with complete linkage respects DC island boundaries."""
         config = GeographicalConfig(hierarchical_linkage="complete")
@@ -718,8 +718,8 @@ class TestElectricalDistancePartitioning:
         strategy = ElectricalDistancePartitioning()
 
         with pytest.raises(
-                PartitioningError,
-                match="Cannot compute electrical distances without AC connectivity",
+            PartitioningError,
+            match="Cannot compute electrical distances without AC connectivity",
         ):
             strategy.partition(G, n_clusters=1)
 
