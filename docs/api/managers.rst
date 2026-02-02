@@ -9,8 +9,10 @@ PartitionAggregatorManager
 --------------------------
 
 .. autoclass:: PartitionAggregatorManager
-   :members:
    :show-inheritance:
+   :no-index:
+
+   See :class:`npap.PartitionAggregatorManager` for full member documentation.
 
 InputDataManager
 ----------------

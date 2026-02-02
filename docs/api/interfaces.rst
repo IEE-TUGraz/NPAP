@@ -9,16 +9,22 @@ Data Classes
 ------------
 
 .. autoclass:: AggregationProfile
-   :members:
    :show-inheritance:
+   :no-index:
+
+   See :class:`npap.AggregationProfile` for full member documentation.
 
 .. autoclass:: AggregationMode
-   :members:
    :show-inheritance:
+   :no-index:
+
+   See :class:`npap.AggregationMode` for full member documentation.
 
 .. autoclass:: PartitionResult
-   :members:
    :show-inheritance:
+   :no-index:
+
+   See :class:`npap.PartitionResult` for full member documentation.
 
 Strategy Interfaces
 -------------------

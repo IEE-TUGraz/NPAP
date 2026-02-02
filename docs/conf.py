@@ -48,7 +48,7 @@ redirects = {
 }
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "diagram_prompts/**"]
 
 # Source file suffixes
 source_suffix = {
@@ -77,19 +77,7 @@ html_theme_options = {
         "image_dark": "assets/NPAP.svg",
         "text": "NPAP",
     },
-    # Override PyData theme colors (removes purple, uses NPAP blue)
-    "light_css_variables": {
-        "color-brand-primary": "#2993B5",
-        "color-brand-content": "#2993B5",
-        "pst-color-secondary": "#2993B5",
-        "pst-color-link-hover": "#2993B5",
-    },
-    "dark_css_variables": {
-        "color-brand-primary": "#2993B5",
-        "color-brand-content": "#2993B5",
-        "pst-color-secondary": "#2993B5",
-        "pst-color-link-hover": "#2993B5",
-    },
+    # Note: CSS variables are set in _static/custom.css for full control
     # Navbar configuration - clean header with search on right
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-nav"],
