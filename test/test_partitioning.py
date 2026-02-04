@@ -24,13 +24,11 @@ from npap.partitioning.va_geographical import (
     VAGeographicalConfig,
     VAGeographicalPartitioning,
 )
-
 from test.conftest import (
     all_nodes_assigned,
     nodes_in_different_clusters,
     nodes_in_same_cluster,
 )
-
 
 # =============================================================================
 # GEOGRAPHICAL PARTITIONING TESTS
