@@ -338,9 +338,11 @@ class GeographicalPartitioning(PartitioningStrategy):
                 strategy=self._get_strategy_name(),
             )
 
+        cartesian_coordinates = self._convert_spherical_to_cartesian(coordinates)
+
         log_debug(f"Running K-means with {n_clusters} clusters", LogCategory.PARTITIONING)
         return run_kmeans(
-            coordinates, n_clusters, config.random_state, config.max_iter, config.n_init
+            cartesian_coordinates, n_clusters, config.random_state, config.max_iter, config.n_init
         )
 
     def _kmedoids_clustering(
@@ -628,3 +630,34 @@ class GeographicalPartitioning(PartitioningStrategy):
                     LogCategory.PARTITIONING,
                     warn_user=False,
                 )
+
+    @staticmethod
+    def _convert_spherical_to_cartesian(coordinates: np.ndarray) -> np.ndarray:
+        """
+        Convert spherical coordinates (lat, lon) to Cartesian (x, y, z).
+
+        This is used for K-means clustering which operates in Euclidean space.
+
+        Args:
+            coordinates: Array of [lat, lon] in degrees (n x 2)
+
+        Returns
+        -------
+            Array of [x, y, z] Cartesian coordinates (n x 3)
+        """
+        coords = np.asarray(coordinates)
+        if coords.ndim != 2 or coords.shape[1] != 2:
+            raise PartitioningError(
+                "Coordinates must be a (n, 2) array of [lat, lon] pairs.",
+                strategy="geographical_conversion",
+            )
+
+        lat_rad = np.radians(coords[:, 0])
+        lon_rad = np.radians(coords[:, 1])
+
+        cos_lat = np.cos(lat_rad)
+        x = cos_lat * np.cos(lon_rad)
+        y = cos_lat * np.sin(lon_rad)
+        z = np.sin(lat_rad)
+
+        return np.column_stack((x, y, z))
