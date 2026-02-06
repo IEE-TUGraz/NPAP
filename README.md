@@ -24,6 +24,13 @@ complexity while preserving essential properties.
 Whether you're working with power grids, transportation networks, or any graph-based spatial data, NPAP helps you simplify complex networks into
 manageable pieces.
 
+> [!NOTE]
+> Project contributors from [IEE](https://www.tugraz.at/institute/iee/home) (Institute of Electricity Economics and Energy Innovation) at the [Technical University of Graz](https://www.tugraz.at/)
+are supported by the [Research Center Energetic](https://www.tugraz.at/forschung/forschung-an-der-tu-graz/research-centers/research-center-for-energy-economics-and-energy-analytics-energetic) and funded by the European Union (ERC,
+NetZero-Opt, [101116212](https://cordis.europa.eu/project/id/101116212)). Views and opinions expressed are however those of the author(s) only and do not necessarily
+reflect those of the European Union or the European Research Council. Neither the European Union nor the granting
+authority can be held responsible for them.
+
 ## Features
 
 - **Multiple Partitioning Algorithms** - K-means, K-medoids, DBSCAN, HDBSCAN, and hierarchical clustering
@@ -90,15 +97,19 @@ every contribution matters.
 
 Please read our [Contributing Guide](CONTRIBUTING.md) to get started. Don't hesitate to open an issue if you have questions or ideas!
 
-## Acknowledgements
-
-Funded by the European Union (ERC, NetZero-Opt, 101116212). Views and opinions expressed are however those of the author(s) only and do not
-necessarily reflect those of the European Union or the European Research Council. Neither the European Union nor the granting authority can be held
-responsible for them.
-
 ## License
 
 NPAP is released under the [MIT License](LICENSE).
+
+## Acknowledgements
+
+Funded by the European Union (ERC, NetZero-Opt, 101116212). Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or the European Research Council. Neither the European Union nor the granting authority can be held responsible for them.
+
+<p align="center">
+  <img src="docs/assets/ERC.png" alt="ERC" height="80">
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/assets/Netzero-opt.png" alt="NetZero-Opt" height="80">
+</p>
 
 ---
 
