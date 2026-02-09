@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://npap.readthedocs.io
+    about: Check the documentation for guides and API reference.
+  - name: Questions
+    url: https://github.com/IEE-TUGraz/NPAP/discussions
+    about: Ask questions and discuss ideas in GitHub Discussions.
