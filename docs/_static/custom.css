@@ -753,6 +753,11 @@ button:focus-visible {
     .code-section {
         padding: 0 1rem 1.5rem 1rem;
     }
+
+    /* Hide terminal code block on mobile - too wide for small screens */
+    .code-block-wrapper {
+        display: none;
+    }
 }
 
 /* Large screens (tall monitors) - allow more breathing room */
