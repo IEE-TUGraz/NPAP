@@ -37,10 +37,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/npap"
+Homepage = "https://github.com/IEE-TUGraz/NPAP"
 Documentation = "https://npap.readthedocs.io"
-Repository = "https://github.com/your-org/npap"
-Changelog = "https://github.com/your-org/npap/releases"
+Repository = "https://github.com/IEE-TUGraz/NPAP"
+Changelog = "https://github.com/IEE-TUGraz/NPAP/releases"
 
 [project.optional-dependencies]
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
