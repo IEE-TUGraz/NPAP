@@ -26,7 +26,7 @@ test/htmlcov
 docs/_build/
 
 # Auto-generated API documentation
-docs/api/generaqted/
+docs/api/generated/
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
