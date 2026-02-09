@@ -238,5 +238,5 @@ aggregated = manager.aggregate(profile=profile)
 
 - **[Available Strategies](available-strategies.md)** - Explore all partitioning and aggregation options
 - **[Data Loading](data-loading.md)** - Detailed guide on loading different data formats
-- **[Partitioning](partitioning.md)** - Deep dive into clustering algorithms
+- **[Partitioning](partitioning/index.md)** - Deep dive into clustering algorithms
 - **[Aggregation](aggregation.md)** - Learn about the three-tier aggregation system

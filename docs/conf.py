@@ -45,6 +45,7 @@ extensions = [
 # Redirects for old URLs
 redirects = {
     "user-guide/getting-started": "installation.html",
+    "user-guide/partitioning": "partitioning/index.html",
 }
 
 templates_path = ["_templates"]

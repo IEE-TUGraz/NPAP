@@ -16,7 +16,7 @@ available-strategies
 :caption: Architecture
 
 data-loading
-partitioning
+partitioning/index
 aggregation
 visualization
 extending
@@ -75,7 +75,7 @@ Load networks from CSV files, NetworkX graphs, or voltage-aware power system for
 :::
 
 :::{grid-item-card} Partitioning
-:link: partitioning
+:link: partitioning/index
 :link-type: doc
 
 Geographical, electrical, and voltage-aware partitioning strategies.

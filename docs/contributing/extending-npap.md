@@ -162,7 +162,7 @@ class TestMyPartitioning:
 
 ### Step 4: Update Documentation
 
-Add documentation in `docs/user-guide/partitioning.md`.
+Add documentation in `docs/user-guide/partitioning/`.
 
 ## Adding an Aggregation Strategy
 

@@ -190,7 +190,7 @@ flowchart TD
     style L fill:#0fad6b,stroke:#076b3f,color:#fff
 ```
 
-See [Partitioning](partitioning.md) for detailed documentation.
+See [Partitioning](partitioning/index.md) for detailed documentation.
 
 ## Aggregation Profiles
 
