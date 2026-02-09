@@ -33,7 +33,7 @@ class VAElectricalConfig:
         mild regularization that prevents singular matrix issues.
     infinite_distance : float
         Value used to represent "infinite" distance between nodes in different
-        voltage levels, DC islands, or disconnected components. Using a large
+        voltage levels, AC islands, or disconnected components. Using a large
         finite value instead of np.inf to avoid numerical issues in clustering.
     voltage_tolerance : float
         Tolerance for voltage comparison (kV). Nodes with voltages within
@@ -58,13 +58,15 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
     over the complete AC network (lines AND transformers), while enforcing
     voltage level boundaries as hard clustering constraints via post-processing.
 
-    Physical Rationale
-    ------------------
+    Notes
+    -----
+    **Physical Rationale**
+
     In power systems, PTDF (Power Transfer Distribution Factor) describes how
     power injections affect line flows within an AC network. This strategy:
 
     1. Computes PTDF for the complete AC network (lines + transformers) per
-       DC island, capturing full electrical coupling including through transformers.
+       AC island, capturing full electrical coupling including through transformers.
     2. Post-processes distances to enforce voltage level separation: nodes at
        different voltage levels receive infinite distance, ensuring they never
        cluster together.
@@ -72,37 +74,40 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
        infinite distance, preserving voltage hierarchy in the partitioning.
 
     This approach is physically meaningful because:
+
     - The full PTDF captures how power flows through the entire AC network
     - Voltage level boundaries are then enforced as hard clustering constraints
     - Transformers become inter-cluster edges after aggregation
 
-    Constraint Hierarchy
-    --------------------
-    1. DC Islands: Nodes in different DC islands have infinite distance
+    **Constraint Hierarchy**
+
+    1. AC Islands: Nodes in different AC islands have infinite distance
        (computed via separate PTDF matrices).
     2. Voltage Levels: Nodes at different voltage levels have infinite distance
        (enforced via post-processing).
 
-    Algorithm
-    ---------
-    1. Group nodes by DC island
-    2. For each DC island:
+    **Algorithm**
+
+    1. Group nodes by AC island
+    2. For each AC island:
+
        a. Extract full AC subgraph (lines + transformers, exclude DC links)
-       b. Select ONE slack bus for the entire DC island
+       b. Select ONE slack bus for the entire AC island
        c. Compute PTDF including ALL AC elements
        d. Calculate electrical distances from PTDF columns
+
     3. Combine into full distance matrix with infinite inter-island distances
     4. Post-process: Set infinite distance for node pairs at different voltage levels
     5. Run clustering algorithm on the distance matrix
 
-    Supported Algorithms
-    --------------------
-    - 'kmedoids': K-Medoids clustering (works with precomputed distance matrices)
-    - 'hierarchical': Agglomerative clustering with precomputed distances
+    **Supported Algorithms**
+
+    - ``kmedoids``: K-Medoids clustering (works with precomputed distance matrices)
+    - ``hierarchical``: Agglomerative clustering with precomputed distances
 
     See Also
     --------
-    ElectricalDistancePartitioning : Standard electrical partitioning (DC-island aware)
+    ElectricalDistancePartitioning : Standard electrical partitioning (AC-island aware)
     VAGeographicalPartitioning : Voltage-aware geographical partitioning
     """
 
@@ -126,7 +131,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         algorithm: str = "kmedoids",
         slack_bus: Any | None = None,
         voltage_attr: str = "voltage",
-        dc_island_attr: str = "dc_island",
+        ac_island_attr: str = "ac_island",
         config: VAElectricalConfig | None = None,
     ):
         """
@@ -140,8 +145,8 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
             Specific node to use as slack bus, or None for auto-selection.
         voltage_attr : str, default='voltage'
             Node attribute name containing voltage level.
-        dc_island_attr : str, default='dc_island'
-            Node attribute name containing DC island ID.
+        ac_island_attr : str, default='ac_island'
+            Node attribute name containing AC island ID.
         config : VAElectricalConfig, optional
             Configuration parameters for distance calculations.
 
@@ -153,7 +158,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         self.algorithm = algorithm
         self.slack_bus = slack_bus
         self.voltage_attr = voltage_attr
-        self.dc_island_attr = dc_island_attr
+        self.ac_island_attr = ac_island_attr
         self.config = config or VAElectricalConfig()
 
         if algorithm not in self.SUPPORTED_ALGORITHMS:
@@ -171,7 +176,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
 
         log_debug(
             f"Initialized VAElectricalDistancePartitioning: algorithm={algorithm}, "
-            f"voltage_attr={voltage_attr}, dc_island_attr={dc_island_attr}",
+            f"voltage_attr={voltage_attr}, ac_island_attr={ac_island_attr}",
             LogCategory.PARTITIONING,
         )
 
@@ -179,7 +184,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
     def required_attributes(self) -> dict[str, list[str]]:
         """Required attributes for voltage-aware electrical partitioning."""
         return {
-            "nodes": [self.voltage_attr, self.dc_island_attr],
+            "nodes": [self.voltage_attr, self.ac_island_attr],
             "edges": [],  # Reactance validated separately for AC edges
         }
 
@@ -192,22 +197,21 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         """
         Partition nodes based on voltage-aware electrical distance using PTDF.
 
-        Computes PTDF for the full AC network (lines + transformers) per DC island,
+        Computes PTDF for the full AC network (lines + transformers) per AC island,
         then enforces voltage level separation via post-processing.
 
         Parameters
         ----------
         graph : nx.DiGraph
-            NetworkX DiGraph with voltage and dc_island on nodes,
+            NetworkX DiGraph with voltage and ac_island on nodes,
             reactance on AC edges (lines and transformers).
         **kwargs : dict
-            Additional parameters:
-            - n_clusters : int
-                Number of clusters (required).
-            - config : VAElectricalConfig, optional
-                Override instance config.
-            - hierarchical_linkage : str, optional
-                Override linkage for hierarchical clustering.
+            Additional parameters including:
+
+            - ``n_clusters`` (int): Number of clusters (required).
+            - ``config`` (VAElectricalConfig, optional): Override instance config.
+            - ``hierarchical_linkage`` (str, optional): Override linkage for
+              hierarchical clustering.
             - Individual config parameters to override.
 
         Returns
@@ -255,22 +259,22 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
             # Validate required attributes
             self._validate_node_attributes(graph, nodes)
 
-            # Group nodes by DC island
-            dc_islands = self._group_nodes_by_dc_island(graph, nodes)
+            # Group nodes by AC island
+            ac_islands = self._group_nodes_by_ac_island(graph, nodes)
 
             # Build voltage key array for post-processing
             voltage_keys = self._build_voltage_key_array(graph, nodes, effective_config)
 
             log_info(
                 f"Starting VA electrical partitioning (PTDF): {self.algorithm}, "
-                f"n_clusters={n_clusters}, dc_islands={len(dc_islands)}, "
+                f"n_clusters={n_clusters}, ac_islands={len(ac_islands)}, "
                 f"voltage_levels={len(np.unique(voltage_keys))}",
                 LogCategory.PARTITIONING,
             )
 
-            # Calculate electrical distance matrix (full PTDF per DC island)
+            # Calculate electrical distance matrix (full PTDF per AC island)
             distance_matrix = self._calculate_electrical_distance_matrix(
-                graph, nodes, dc_islands, effective_config, effective_slack
+                graph, nodes, ac_islands, effective_config, effective_slack
             )
 
             # Post-process: enforce voltage level constraints
@@ -359,7 +363,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         nodes: list[Any],
     ) -> None:
         """
-        Validate that all nodes have required dc_island and voltage attributes.
+        Validate that all nodes have required ac_island and voltage attributes.
 
         Parameters
         ----------
@@ -378,7 +382,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
 
         for node in nodes:
             node_data = graph.nodes[node]
-            if self.dc_island_attr not in node_data:
+            if self.ac_island_attr not in node_data:
                 missing_dc.append(node)
             if self.voltage_attr not in node_data:
                 missing_voltage.append(node)
@@ -386,10 +390,10 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         if missing_dc:
             sample = missing_dc[:5]
             raise ValidationError(
-                f"VA electrical partitioning requires '{self.dc_island_attr}' attribute "
+                f"VA electrical partitioning requires '{self.ac_island_attr}' attribute "
                 f"on all nodes. {len(missing_dc)} node(s) missing (first few: {sample}). "
-                f"Use 'va_loader' to automatically detect DC islands.",
-                missing_attributes={"nodes": [self.dc_island_attr]},
+                f"Use 'va_loader' to automatically detect AC islands.",
+                missing_attributes={"nodes": [self.ac_island_attr]},
                 strategy=self._get_strategy_name(),
             )
 
@@ -433,33 +437,33 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
             )
 
     # =========================================================================
-    # DC ISLAND GROUPING
+    # AC ISLAND GROUPING
     # =========================================================================
 
-    def _group_nodes_by_dc_island(
+    def _group_nodes_by_ac_island(
         self,
         graph: nx.DiGraph,
         nodes: list[Any],
     ) -> dict[Any, list[Any]]:
         """
-        Group nodes by DC island attribute.
+        Group nodes by AC island attribute.
 
         Parameters
         ----------
         graph : nx.DiGraph
-            NetworkX DiGraph with dc_island attribute on nodes.
+            NetworkX DiGraph with ac_island attribute on nodes.
         nodes : list[Any]
             List of nodes to group.
 
         Returns
         -------
         dict[Any, list[Any]]
-            Dictionary mapping dc_island_id -> list of nodes.
+            Dictionary mapping ac_island_id -> list of nodes.
         """
         islands: dict[Any, list[Any]] = defaultdict(list)
 
         for node in nodes:
-            island_id = graph.nodes[node].get(self.dc_island_attr)
+            island_id = graph.nodes[node].get(self.ac_island_attr)
             islands[island_id].append(node)
 
         return dict(islands)
@@ -532,15 +536,15 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         self,
         graph: nx.DiGraph,
         nodes: list[Any],
-        dc_islands: dict[Any, list[Any]],
+        ac_islands: dict[Any, list[Any]],
         config: VAElectricalConfig,
         slack_bus: Any | None,
     ) -> np.ndarray:
         """
-        Calculate electrical distance matrix with per-DC-island PTDF.
+        Calculate electrical distance matrix with per-AC-island PTDF.
 
         Computes PTDF including ALL AC elements (lines + transformers) for each
-        DC island, then combines into a full distance matrix with infinite
+        AC island, then combines into a full distance matrix with infinite
         inter-island distances.
 
         Parameters
@@ -549,8 +553,8 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
             NetworkX DiGraph with reactance on AC edges.
         nodes : list[Any]
             Ordered list of all nodes.
-        dc_islands : dict[Any, list[Any]]
-            Mapping of dc_island_id -> list of nodes.
+        ac_islands : dict[Any, list[Any]]
+            Mapping of ac_island_id -> list of nodes.
         config : VAElectricalConfig
             Configuration parameters.
         slack_bus : Any, optional
@@ -560,7 +564,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         -------
         np.ndarray
             Distance matrix (n_nodes x n_nodes) with infinite distances
-            between different DC islands.
+            between different AC islands.
         """
         node_to_idx = {node: idx for idx, node in enumerate(nodes)}
         n_nodes = len(nodes)
@@ -569,17 +573,17 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         distance_matrix = np.full((n_nodes, n_nodes), config.infinite_distance)
         np.fill_diagonal(distance_matrix, 0.0)
 
-        # Process each DC island
-        for island_id, island_nodes in dc_islands.items():
+        # Process each AC island
+        for island_id, island_nodes in ac_islands.items():
             log_debug(
-                f"Processing DC island {island_id}: {len(island_nodes)} nodes",
+                f"Processing AC island {island_id}: {len(island_nodes)} nodes",
                 LogCategory.PARTITIONING,
             )
 
             # Skip single-node islands
             if len(island_nodes) == 1:
                 log_debug(
-                    f"DC island {island_id} has single node, distance = 0",
+                    f"AC island {island_id} has single node, distance = 0",
                     LogCategory.PARTITIONING,
                 )
                 continue
@@ -593,7 +597,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
             # Validate island connectivity
             self._validate_island_connectivity(ac_subgraph, island_id, island_nodes)
 
-            # Select ONE slack bus for the entire DC island
+            # Select ONE slack bus for the entire AC island
             island_slack = self._select_slack_bus(ac_subgraph, island_nodes, slack_bus, island_id)
 
             # Compute PTDF-based distances for this island
@@ -606,7 +610,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
             distance_matrix[np.ix_(island_indices, island_indices)] = island_distances
 
         log_info(
-            f"Processed {len(dc_islands)} DC island(s) for PTDF computation",
+            f"Processed {len(ac_islands)} AC island(s) for PTDF computation",
             LogCategory.PARTITIONING,
         )
 
@@ -625,7 +629,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         graph : nx.DiGraph
             Full NetworkX DiGraph.
         island_nodes : list[Any]
-            Nodes in this DC island.
+            Nodes in this AC island.
 
         Returns
         -------
@@ -661,7 +665,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         ac_subgraph : nx.DiGraph
             AC-only subgraph.
         island_id : Any
-            DC island identifier.
+            AC island identifier.
 
         Raises
         ------
@@ -676,7 +680,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         if missing_edges:
             sample = missing_edges[:5]
             raise ValidationError(
-                f"AC edges in DC island {island_id} require 'x' (reactance) "
+                f"AC edges in AC island {island_id} require 'x' (reactance) "
                 f"attribute. {len(missing_edges)} edge(s) missing (first few: {sample}).",
                 missing_attributes={"edges": ["x"]},
                 strategy=self._get_strategy_name(),
@@ -689,14 +693,14 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         island_nodes: list[Any],
     ) -> None:
         """
-        Validate that a DC island's AC subgraph is connected.
+        Validate that a AC island's AC subgraph is connected.
 
         Parameters
         ----------
         ac_subgraph : nx.DiGraph
             AC-only subgraph for the island.
         island_id : Any
-            DC island identifier.
+            AC island identifier.
         island_nodes : list[Any]
             Nodes in this island.
 
@@ -707,7 +711,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         """
         if ac_subgraph.number_of_edges() == 0:
             raise PartitioningError(
-                f"DC island {island_id} has no AC edges (lines/transformers). "
+                f"AC island {island_id} has no AC edges (lines/transformers). "
                 f"Cannot compute electrical distances without AC connectivity.",
                 strategy=self._get_strategy_name(),
                 graph_info={"island_id": island_id, "n_nodes": len(island_nodes)},
@@ -716,9 +720,9 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         if not nx.is_weakly_connected(ac_subgraph):
             n_components = nx.number_weakly_connected_components(ac_subgraph)
             raise PartitioningError(
-                f"DC island {island_id} is not AC-connected. Found {n_components} "
+                f"AC island {island_id} is not AC-connected. Found {n_components} "
                 f"disconnected AC components within the island. This may indicate "
-                f"missing line/transformer data or incorrect DC island assignment.",
+                f"missing line/transformer data or incorrect AC island assignment.",
                 strategy=self._get_strategy_name(),
                 graph_info={
                     "island_id": island_id,
@@ -777,7 +781,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         config: VAElectricalConfig,
     ) -> None:
         """
-        Validate that clusters don't mix incompatible DC islands or voltage levels.
+        Validate that clusters don't mix incompatible AC islands or voltage levels.
 
         Parameters
         ----------
@@ -789,24 +793,24 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
             Configuration with voltage_tolerance.
         """
         for cluster_id, cluster_nodes in partition_map.items():
-            dc_islands_in_cluster = set()
+            ac_islands_in_cluster = set()
             voltages_in_cluster = set()
 
             for node in cluster_nodes:
                 node_data = graph.nodes[node]
 
-                dc_island = node_data.get(self.dc_island_attr)
-                if dc_island is not None:
-                    dc_islands_in_cluster.add(dc_island)
+                ac_island = node_data.get(self.ac_island_attr)
+                if ac_island is not None:
+                    ac_islands_in_cluster.add(ac_island)
 
                 voltage = node_data.get(self.voltage_attr)
                 if voltage is not None:
                     voltages_in_cluster.add(self._get_voltage_key(voltage, config))
 
-            if len(dc_islands_in_cluster) > 1:
+            if len(ac_islands_in_cluster) > 1:
                 log_warning(
-                    f"Cluster {cluster_id} contains nodes from multiple DC islands: "
-                    f"{dc_islands_in_cluster}. This should not happen with infinite distances.",
+                    f"Cluster {cluster_id} contains nodes from multiple AC islands: "
+                    f"{ac_islands_in_cluster}. This should not happen with infinite distances.",
                     LogCategory.PARTITIONING,
                     warn_user=False,
                 )
@@ -831,18 +835,18 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         island_id: Any,
     ) -> Any:
         """
-        Select slack bus for a DC island.
+        Select slack bus for a AC island.
 
         Parameters
         ----------
         ac_subgraph : nx.DiGraph
-            AC subgraph for this DC island.
+            AC subgraph for this AC island.
         island_nodes : list[Any]
-            Nodes in this DC island.
+            Nodes in this AC island.
         user_slack : Any, optional
             User-specified slack bus.
         island_id : Any
-            DC island identifier for logging.
+            AC island identifier for logging.
 
         Returns
         -------
@@ -853,7 +857,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
 
         if user_slack is not None and user_slack in island_node_set:
             log_debug(
-                f"Using user-specified slack bus {user_slack} for DC island {island_id}",
+                f"Using user-specified slack bus {user_slack} for AC island {island_id}",
                 LogCategory.PARTITIONING,
             )
             return user_slack
@@ -863,7 +867,7 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         selected = max(island_nodes, key=lambda n: degrees[n])
 
         log_debug(
-            f"Auto-selected slack bus {selected} for DC island {island_id} "
+            f"Auto-selected slack bus {selected} for AC island {island_id} "
             f"(degree={degrees[selected]})",
             LogCategory.PARTITIONING,
         )
@@ -882,12 +886,12 @@ class VAElectricalDistancePartitioning(PartitioningStrategy):
         config: VAElectricalConfig,
     ) -> np.ndarray:
         """
-        Compute PTDF-based electrical distances for a DC island.
+        Compute PTDF-based electrical distances for a AC island.
 
         Parameters
         ----------
         ac_subgraph : nx.DiGraph
-            AC subgraph (lines + transformers) for this DC island.
+            AC subgraph (lines + transformers) for this AC island.
         island_nodes : list[Any]
             Ordered list of nodes in this island.
         slack_bus : Any

@@ -3,8 +3,8 @@ Test suite for partitioning strategies.
 
 Tests cover:
 - GeographicalPartitioning (all algorithms and distance metrics)
-- ElectricalDistancePartitioning (kmeans, kmedoids, PTDF-based distance, DC island isolation)
-- VAGeographicalPartitioning (with DC island and voltage awareness)
+- ElectricalDistancePartitioning (kmeans, kmedoids, PTDF-based distance, AC island isolation)
+- VAGeographicalPartitioning (with AC island and voltage awareness)
 """
 
 import networkx as nx
@@ -247,191 +247,191 @@ class TestGeographicalPartitioning:
         assert partition1 == partition2
 
     # -------------------------------------------------------------------------
-    # DC-Island Auto-Detection Tests
+    # AC-Island Auto-Detection Tests
     # -------------------------------------------------------------------------
 
-    def test_dc_island_auto_detection(self, geographical_dc_island_graph):
-        """Test that DC islands are automatically detected from graph attributes."""
+    def test_ac_island_auto_detection(self, geographical_ac_island_graph):
+        """Test that AC islands are automatically detected from graph attributes."""
         strategy = GeographicalPartitioning(algorithm="kmedoids", distance_metric="euclidean")
-        nodes = list(geographical_dc_island_graph.nodes())
+        nodes = list(geographical_ac_island_graph.nodes())
 
-        # Should detect DC island data
-        assert strategy._has_dc_island_data(geographical_dc_island_graph, nodes)
+        # Should detect AC island data
+        assert strategy._has_ac_island_data(geographical_ac_island_graph, nodes)
 
-    def test_no_dc_island_detection_without_attribute(self, geographical_cluster_graph):
-        """Test that DC islands are not detected when attribute is missing."""
+    def test_no_ac_island_detection_without_attribute(self, geographical_cluster_graph):
+        """Test that AC islands are not detected when attribute is missing."""
         strategy = GeographicalPartitioning(algorithm="kmedoids", distance_metric="euclidean")
         nodes = list(geographical_cluster_graph.nodes())
 
-        # Should NOT detect DC island data (no dc_island attribute)
-        assert not strategy._has_dc_island_data(geographical_cluster_graph, nodes)
+        # Should NOT detect AC island data (no ac_island attribute)
+        assert not strategy._has_ac_island_data(geographical_cluster_graph, nodes)
 
-    def test_dc_island_awareness_support_kmedoids(self):
-        """Test that kmedoids supports DC-island awareness."""
+    def test_ac_island_awareness_support_kmedoids(self):
+        """Test that kmedoids supports AC-island awareness."""
         strategy = GeographicalPartitioning(algorithm="kmedoids")
         config = GeographicalConfig()
-        assert strategy._supports_dc_island_awareness(config)
+        assert strategy._supports_ac_island_awareness(config)
 
-    def test_dc_island_awareness_support_dbscan(self):
-        """Test that dbscan supports DC-island awareness."""
+    def test_ac_island_awareness_support_dbscan(self):
+        """Test that dbscan supports AC-island awareness."""
         strategy = GeographicalPartitioning(algorithm="dbscan")
         config = GeographicalConfig()
-        assert strategy._supports_dc_island_awareness(config)
+        assert strategy._supports_ac_island_awareness(config)
 
-    def test_dc_island_awareness_support_hdbscan(self):
-        """Test that hdbscan supports DC-island awareness."""
+    def test_ac_island_awareness_support_hdbscan(self):
+        """Test that hdbscan supports AC-island awareness."""
         strategy = GeographicalPartitioning(algorithm="hdbscan")
         config = GeographicalConfig()
-        assert strategy._supports_dc_island_awareness(config)
+        assert strategy._supports_ac_island_awareness(config)
 
-    def test_dc_island_awareness_support_hierarchical_non_ward(self):
-        """Test that hierarchical with non-ward linkage supports DC-island awareness."""
+    def test_ac_island_awareness_support_hierarchical_non_ward(self):
+        """Test that hierarchical with non-ward linkage supports AC-island awareness."""
         strategy = GeographicalPartitioning(algorithm="hierarchical")
         config = GeographicalConfig(hierarchical_linkage="complete")
-        assert strategy._supports_dc_island_awareness(config)
+        assert strategy._supports_ac_island_awareness(config)
 
-    def test_dc_island_awareness_no_support_kmeans(self):
-        """Test that kmeans does not support DC-island awareness."""
+    def test_ac_island_awareness_no_support_kmeans(self):
+        """Test that kmeans does not support AC-island awareness."""
         strategy = GeographicalPartitioning(algorithm="kmeans")
         config = GeographicalConfig()
-        assert not strategy._supports_dc_island_awareness(config)
+        assert not strategy._supports_ac_island_awareness(config)
 
-    def test_dc_island_awareness_no_support_hierarchical_ward(self):
-        """Test that hierarchical with ward linkage does not support DC-island awareness."""
+    def test_ac_island_awareness_no_support_hierarchical_ward(self):
+        """Test that hierarchical with ward linkage does not support AC-island awareness."""
         strategy = GeographicalPartitioning(algorithm="hierarchical")
         config = GeographicalConfig(hierarchical_linkage="ward")
-        assert not strategy._supports_dc_island_awareness(config)
+        assert not strategy._supports_ac_island_awareness(config)
 
     # -------------------------------------------------------------------------
-    # DC-Island Aware Partitioning Tests (Supported Algorithms)
+    # AC-Island Aware Partitioning Tests (Supported Algorithms)
     # -------------------------------------------------------------------------
 
-    def test_kmedoids_respects_dc_island_boundaries(self, geographical_dc_island_graph):
-        """Test K-Medoids respects DC island boundaries when detected."""
+    def test_kmedoids_respects_ac_island_boundaries(self, geographical_ac_island_graph):
+        """Test K-Medoids respects AC island boundaries when detected."""
         strategy = GeographicalPartitioning(algorithm="kmedoids", distance_metric="euclidean")
-        partition = strategy.partition(geographical_dc_island_graph, n_clusters=2)
+        partition = strategy.partition(geographical_ac_island_graph, n_clusters=2)
 
-        # Nodes 0,1,2 are in DC island 0
-        # Nodes 3,4,5 are in DC island 1
+        # Nodes 0,1,2 are in AC island 0
+        # Nodes 3,4,5 are in AC island 1
         # They should NEVER be in the same cluster
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j), (
-                    f"Nodes {i} and {j} should be in different clusters (different DC islands)"
+                    f"Nodes {i} and {j} should be in different clusters (different AC islands)"
                 )
 
-    def test_kmedoids_haversine_respects_dc_island_boundaries(self, geographical_dc_island_graph):
-        """Test K-Medoids with haversine respects DC island boundaries."""
+    def test_kmedoids_haversine_respects_ac_island_boundaries(self, geographical_ac_island_graph):
+        """Test K-Medoids with haversine respects AC island boundaries."""
         strategy = GeographicalPartitioning(algorithm="kmedoids", distance_metric="haversine")
-        partition = strategy.partition(geographical_dc_island_graph, n_clusters=2)
+        partition = strategy.partition(geographical_ac_island_graph, n_clusters=2)
 
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
 
-    def test_dbscan_respects_dc_island_boundaries(self, geographical_dc_island_graph):
-        """Test DBSCAN respects DC island boundaries when detected."""
+    def test_dbscan_respects_ac_island_boundaries(self, geographical_ac_island_graph):
+        """Test DBSCAN respects AC island boundaries when detected."""
         strategy = GeographicalPartitioning(algorithm="dbscan", distance_metric="euclidean")
-        partition = strategy.partition(geographical_dc_island_graph, eps=1.0, min_samples=2)
+        partition = strategy.partition(geographical_ac_island_graph, eps=1.0, min_samples=2)
 
-        # Verify nodes from different DC islands are not in the same cluster
+        # Verify nodes from different AC islands are not in the same cluster
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
 
-    def test_hdbscan_respects_dc_island_boundaries(self, geographical_dc_island_graph):
-        """Test HDBSCAN respects DC island boundaries when detected."""
+    def test_hdbscan_respects_ac_island_boundaries(self, geographical_ac_island_graph):
+        """Test HDBSCAN respects AC island boundaries when detected."""
         strategy = GeographicalPartitioning(algorithm="hdbscan", distance_metric="euclidean")
-        partition = strategy.partition(geographical_dc_island_graph, min_cluster_size=2)
+        partition = strategy.partition(geographical_ac_island_graph, min_cluster_size=2)
 
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
 
-    def test_hierarchical_complete_respects_dc_island_boundaries(
-        self, geographical_dc_island_graph
+    def test_hierarchical_complete_respects_ac_island_boundaries(
+        self, geographical_ac_island_graph
     ):
-        """Test hierarchical clustering with complete linkage respects DC island boundaries."""
+        """Test hierarchical clustering with complete linkage respects AC island boundaries."""
         config = GeographicalConfig(hierarchical_linkage="complete")
         strategy = GeographicalPartitioning(
             algorithm="hierarchical", distance_metric="euclidean", config=config
         )
-        partition = strategy.partition(geographical_dc_island_graph, n_clusters=2)
+        partition = strategy.partition(geographical_ac_island_graph, n_clusters=2)
 
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
 
-    def test_hierarchical_average_respects_dc_island_boundaries(self, geographical_dc_island_graph):
-        """Test hierarchical clustering with average linkage respects DC island boundaries."""
+    def test_hierarchical_average_respects_ac_island_boundaries(self, geographical_ac_island_graph):
+        """Test hierarchical clustering with average linkage respects AC island boundaries."""
         config = GeographicalConfig(hierarchical_linkage="average")
         strategy = GeographicalPartitioning(
             algorithm="hierarchical", distance_metric="euclidean", config=config
         )
-        partition = strategy.partition(geographical_dc_island_graph, n_clusters=2)
+        partition = strategy.partition(geographical_ac_island_graph, n_clusters=2)
 
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
 
-    def test_dc_island_aware_with_more_clusters(self, geographical_dc_island_graph):
-        """Test DC island awareness with more clusters than islands."""
+    def test_ac_island_aware_with_more_clusters(self, geographical_ac_island_graph):
+        """Test AC island awareness with more clusters than islands."""
         strategy = GeographicalPartitioning(algorithm="kmedoids", distance_metric="euclidean")
-        partition = strategy.partition(geographical_dc_island_graph, n_clusters=4)
+        partition = strategy.partition(geographical_ac_island_graph, n_clusters=4)
 
-        assert all_nodes_assigned(partition, list(geographical_dc_island_graph.nodes()))
+        assert all_nodes_assigned(partition, list(geographical_ac_island_graph.nodes()))
         assert len(partition) == 4
 
-        # DC island boundaries should still be respected
+        # AC island boundaries should still be respected
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
 
     # -------------------------------------------------------------------------
-    # DC-Island Warning Tests (Unsupported Algorithms)
+    # AC-Island Warning Tests (Unsupported Algorithms)
     # -------------------------------------------------------------------------
 
-    def test_kmeans_warns_with_dc_islands(self, geographical_dc_island_graph):
-        """Test K-Means issues warning when DC islands are detected."""
+    def test_kmeans_warns_with_ac_islands(self, geographical_ac_island_graph):
+        """Test K-Means issues warning when AC islands are detected."""
         strategy = GeographicalPartitioning(algorithm="kmeans", distance_metric="euclidean")
 
-        with pytest.warns(UserWarning, match="DC islands detected.*does not support"):
-            partition = strategy.partition(geographical_dc_island_graph, n_clusters=2)
+        with pytest.warns(UserWarning, match="AC islands detected.*does not support"):
+            partition = strategy.partition(geographical_ac_island_graph, n_clusters=2)
 
-        # Should still produce valid partition (just without DC-island awareness)
-        assert all_nodes_assigned(partition, list(geographical_dc_island_graph.nodes()))
+        # Should still produce valid partition (just without AC-island awareness)
+        assert all_nodes_assigned(partition, list(geographical_ac_island_graph.nodes()))
 
-    def test_hierarchical_ward_warns_with_dc_islands(self, geographical_dc_island_graph):
-        """Test hierarchical with ward linkage issues warning when DC islands are detected."""
+    def test_hierarchical_ward_warns_with_ac_islands(self, geographical_ac_island_graph):
+        """Test hierarchical with ward linkage issues warning when AC islands are detected."""
         config = GeographicalConfig(hierarchical_linkage="ward")
         strategy = GeographicalPartitioning(
             algorithm="hierarchical", distance_metric="euclidean", config=config
         )
 
-        with pytest.warns(UserWarning, match="DC islands detected.*does not support"):
-            partition = strategy.partition(geographical_dc_island_graph, n_clusters=2)
+        with pytest.warns(UserWarning, match="AC islands detected.*does not support"):
+            partition = strategy.partition(geographical_ac_island_graph, n_clusters=2)
 
         # Should still produce valid partition
-        assert all_nodes_assigned(partition, list(geographical_dc_island_graph.nodes()))
+        assert all_nodes_assigned(partition, list(geographical_ac_island_graph.nodes()))
 
     # -------------------------------------------------------------------------
-    # DC-Island Distance Matrix Tests
+    # AC-Island Distance Matrix Tests
     # -------------------------------------------------------------------------
 
-    def test_dc_island_aware_distance_matrix(self, geographical_dc_island_graph):
-        """Test that DC-island-aware distance matrix assigns infinite distance between islands."""
+    def test_ac_island_aware_distance_matrix(self, geographical_ac_island_graph):
+        """Test that AC-island-aware distance matrix assigns infinite distance between islands."""
 
         strategy = GeographicalPartitioning(algorithm="kmedoids", distance_metric="euclidean")
-        nodes = list(geographical_dc_island_graph.nodes())
-        coordinates = strategy._extract_coordinates(geographical_dc_island_graph, nodes)
-        dc_islands = strategy._extract_dc_islands(geographical_dc_island_graph, nodes)
+        nodes = list(geographical_ac_island_graph.nodes())
+        coordinates = strategy._extract_coordinates(geographical_ac_island_graph, nodes)
+        ac_islands = strategy._extract_ac_islands(geographical_ac_island_graph, nodes)
         config = GeographicalConfig(infinite_distance=1e4)
 
-        distance_matrix = strategy._build_dc_island_aware_distance_matrix(
-            coordinates, dc_islands, config
+        distance_matrix = strategy._build_ac_island_aware_distance_matrix(
+            coordinates, ac_islands, config
         )
 
-        # Nodes in same DC island should have finite distances
+        # Nodes in same AC island should have finite distances
         # Nodes 0,1,2 are in island 0
         assert distance_matrix[0, 1] < config.infinite_distance
         assert distance_matrix[1, 2] < config.infinite_distance
@@ -440,7 +440,7 @@ class TestGeographicalPartitioning:
         assert distance_matrix[3, 4] < config.infinite_distance
         assert distance_matrix[4, 5] < config.infinite_distance
 
-        # Nodes in different DC islands should have infinite distance
+        # Nodes in different AC islands should have infinite distance
         assert distance_matrix[0, 3] == config.infinite_distance
         assert distance_matrix[1, 4] == config.infinite_distance
         assert distance_matrix[2, 5] == config.infinite_distance
@@ -449,55 +449,55 @@ class TestGeographicalPartitioning:
         for i in range(len(nodes)):
             assert distance_matrix[i, i] == 0.0
 
-    def test_infinite_distance_config_override(self, geographical_dc_island_graph):
+    def test_infinite_distance_config_override(self, geographical_ac_island_graph):
         """Test that infinite_distance can be configured."""
 
         strategy = GeographicalPartitioning(algorithm="kmedoids", distance_metric="euclidean")
-        nodes = list(geographical_dc_island_graph.nodes())
-        coordinates = strategy._extract_coordinates(geographical_dc_island_graph, nodes)
-        dc_islands = strategy._extract_dc_islands(geographical_dc_island_graph, nodes)
+        nodes = list(geographical_ac_island_graph.nodes())
+        coordinates = strategy._extract_coordinates(geographical_ac_island_graph, nodes)
+        ac_islands = strategy._extract_ac_islands(geographical_ac_island_graph, nodes)
 
         # Use custom infinite distance
         config = GeographicalConfig(infinite_distance=999.0)
-        distance_matrix = strategy._build_dc_island_aware_distance_matrix(
-            coordinates, dc_islands, config
+        distance_matrix = strategy._build_ac_island_aware_distance_matrix(
+            coordinates, ac_islands, config
         )
 
         # Cross-island distances should use the custom infinite distance
         assert distance_matrix[0, 3] == 999.0
 
     # -------------------------------------------------------------------------
-    # DC-Island Consistency Validation Tests
+    # AC-Island Consistency Validation Tests
     # -------------------------------------------------------------------------
 
-    def test_cluster_dc_island_consistency_valid(self, geographical_dc_island_graph):
+    def test_cluster_ac_island_consistency_valid(self, geographical_ac_island_graph):
         """Test consistency validation passes for valid partitions."""
         strategy = GeographicalPartitioning(algorithm="kmedoids")
 
-        # Valid partition: each cluster contains nodes from only one DC island
+        # Valid partition: each cluster contains nodes from only one AC island
         valid_partition = {0: [0, 1, 2], 1: [3, 4, 5]}
 
         # Should not raise or warn
-        strategy._validate_cluster_dc_island_consistency(
-            geographical_dc_island_graph, valid_partition
+        strategy._validate_cluster_ac_island_consistency(
+            geographical_ac_island_graph, valid_partition
         )
 
-    def test_cluster_dc_island_consistency_warning(self, geographical_dc_island_graph, caplog):
+    def test_cluster_ac_island_consistency_warning(self, geographical_ac_island_graph, caplog):
         """Test consistency validation warns for invalid partitions."""
         import logging
 
         strategy = GeographicalPartitioning(algorithm="kmedoids")
 
-        # Invalid partition: cluster 0 mixes nodes from different DC islands
+        # Invalid partition: cluster 0 mixes nodes from different AC islands
         invalid_partition = {0: [0, 1, 3], 1: [2, 4, 5]}
 
         with caplog.at_level(logging.WARNING):
-            strategy._validate_cluster_dc_island_consistency(
-                geographical_dc_island_graph, invalid_partition
+            strategy._validate_cluster_ac_island_consistency(
+                geographical_ac_island_graph, invalid_partition
             )
 
-        # Should have logged a warning about mixed DC islands
-        assert "multiple DC islands" in caplog.text
+        # Should have logged a warning about mixed AC islands
+        assert "multiple AC islands" in caplog.text
 
     # -------------------------------------------------------------------------
     # Spherical to Cartesian Conversion Tests
@@ -594,18 +594,18 @@ class TestElectricalDistancePartitioning:
         strategy = ElectricalDistancePartitioning()
         assert "x" in strategy.required_attributes["edges"]
 
-    def test_init_custom_dc_island_attr(self):
-        """Test initialization with custom dc_island attribute name."""
-        strategy = ElectricalDistancePartitioning(dc_island_attr="my_island")
-        assert strategy.dc_island_attr == "my_island"
+    def test_init_custom_ac_island_attr(self):
+        """Test initialization with custom ac_island attribute name."""
+        strategy = ElectricalDistancePartitioning(ac_island_attr="my_island")
+        assert strategy.ac_island_attr == "my_island"
 
-    def test_init_default_dc_island_attr(self):
-        """Test that default dc_island attribute is 'dc_island'."""
+    def test_init_default_ac_island_attr(self):
+        """Test that default ac_island attribute is 'ac_island'."""
         strategy = ElectricalDistancePartitioning()
-        assert strategy.dc_island_attr == "dc_island"
+        assert strategy.ac_island_attr == "ac_island"
 
     # -------------------------------------------------------------------------
-    # Basic Partition Tests (with dc_island attribute)
+    # Basic Partition Tests (with ac_island attribute)
     # -------------------------------------------------------------------------
 
     def test_kmeans_basic_partition(self, electrical_graph):
@@ -635,70 +635,70 @@ class TestElectricalDistancePartitioning:
         assert all_nodes_assigned(partition, list(electrical_graph.nodes()))
 
     # -------------------------------------------------------------------------
-    # DC Island Isolation Tests
+    # AC Island Isolation Tests
     # -------------------------------------------------------------------------
 
-    def test_dc_island_isolation_respects_boundaries(self, multi_island_electrical_graph):
-        """Test that partitioning respects DC island boundaries."""
+    def test_ac_island_isolation_respects_boundaries(self, multi_island_electrical_graph):
+        """Test that partitioning respects AC island boundaries."""
         strategy = ElectricalDistancePartitioning(algorithm="kmedoids")
         partition = strategy.partition(multi_island_electrical_graph, n_clusters=2, random_state=42)
 
-        # Nodes 0, 1, 2 are in DC island 0
-        # Nodes 3, 4, 5 are in DC island 1
+        # Nodes 0, 1, 2 are in AC island 0
+        # Nodes 3, 4, 5 are in AC island 1
         # They should NEVER be in the same cluster
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j), (
-                    f"Nodes {i} and {j} should be in different clusters (different DC islands)"
+                    f"Nodes {i} and {j} should be in different clusters (different AC islands)"
                 )
 
-    def test_dc_island_isolation_with_more_clusters(self, multi_island_electrical_graph):
-        """Test DC island isolation with more clusters than islands."""
+    def test_ac_island_isolation_with_more_clusters(self, multi_island_electrical_graph):
+        """Test AC island isolation with more clusters than islands."""
         strategy = ElectricalDistancePartitioning(algorithm="kmedoids")
         partition = strategy.partition(multi_island_electrical_graph, n_clusters=4, random_state=42)
 
         assert all_nodes_assigned(partition, list(multi_island_electrical_graph.nodes()))
         assert len(partition) == 4
 
-        # DC island boundaries should still be respected
+        # AC island boundaries should still be respected
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
 
-    def test_dc_island_isolation_kmeans(self, multi_island_electrical_graph):
-        """Test DC island isolation with K-Means algorithm."""
+    def test_ac_island_isolation_kmeans(self, multi_island_electrical_graph):
+        """Test AC island isolation with K-Means algorithm."""
         strategy = ElectricalDistancePartitioning(algorithm="kmeans")
         partition = strategy.partition(multi_island_electrical_graph, n_clusters=2, random_state=42)
 
-        # DC island boundaries should be respected
+        # AC island boundaries should be respected
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
 
     # -------------------------------------------------------------------------
-    # Missing dc_island Attribute Tests
+    # Missing ac_island Attribute Tests
     # -------------------------------------------------------------------------
 
-    def test_missing_dc_island_raises_helpful_error(self, electrical_graph_no_dc_island):
-        """Test that missing dc_island attribute raises ValidationError with helpful message."""
+    def test_missing_ac_island_raises_helpful_error(self, electrical_graph_no_ac_island):
+        """Test that missing ac_island attribute raises ValidationError with helpful message."""
         strategy = ElectricalDistancePartitioning()
 
         with pytest.raises(ValidationError) as exc_info:
-            strategy.partition(electrical_graph_no_dc_island, n_clusters=2)
+            strategy.partition(electrical_graph_no_ac_island, n_clusters=2)
 
         # Check that error message is helpful
         error_msg = str(exc_info.value)
-        assert "dc_island" in error_msg
+        assert "ac_island" in error_msg
         assert "va_loader" in error_msg
 
-    def test_missing_dc_island_with_custom_attr_name(self):
-        """Test that missing custom dc_island attribute raises appropriate error."""
+    def test_missing_ac_island_with_custom_attr_name(self):
+        """Test that missing custom ac_island attribute raises appropriate error."""
         G = nx.DiGraph()
-        G.add_node(0, lat=0.0, lon=0.0, dc_island=0)  # Has dc_island but not custom attr
-        G.add_node(1, lat=1.0, lon=0.0, dc_island=0)
+        G.add_node(0, lat=0.0, lon=0.0, ac_island=0)  # Has ac_island but not custom attr
+        G.add_node(1, lat=1.0, lon=0.0, ac_island=0)
         G.add_edge(0, 1, x=0.1)
 
-        strategy = ElectricalDistancePartitioning(dc_island_attr="custom_island")
+        strategy = ElectricalDistancePartitioning(ac_island_attr="custom_island")
 
         with pytest.raises(ValidationError) as exc_info:
             strategy.partition(G, n_clusters=1)
@@ -713,8 +713,8 @@ class TestElectricalDistancePartitioning:
     def test_disconnected_graph_raises_error(self):
         """Test that disconnected graph raises PartitioningError."""
         G = nx.DiGraph()
-        G.add_node(0, lat=0.0, lon=0.0, dc_island=0)
-        G.add_node(1, lat=1.0, lon=1.0, dc_island=0)
+        G.add_node(0, lat=0.0, lon=0.0, ac_island=0)
+        G.add_node(1, lat=1.0, lon=1.0, ac_island=0)
         # No edges - disconnected
 
         strategy = ElectricalDistancePartitioning()
@@ -728,8 +728,8 @@ class TestElectricalDistancePartitioning:
     def test_missing_reactance_raises_error(self):
         """Test that missing reactance attribute raises ValidationError."""
         G = nx.DiGraph()
-        G.add_node(0, dc_island=0)
-        G.add_node(1, dc_island=0)
+        G.add_node(0, ac_island=0)
+        G.add_node(1, ac_island=0)
         G.add_edge(0, 1, length=100)  # Missing 'x' attribute
 
         strategy = ElectricalDistancePartitioning()
@@ -740,8 +740,8 @@ class TestElectricalDistancePartitioning:
     def test_zero_reactance_warning(self):
         """Test that zero reactance edges produce a warning."""
         G = nx.DiGraph()
-        G.add_node(0, dc_island=0)
-        G.add_node(1, dc_island=0)
+        G.add_node(0, ac_island=0)
+        G.add_node(1, ac_island=0)
         G.add_edge(0, 1, x=0.0)  # Zero reactance
 
         strategy = ElectricalDistancePartitioning()
@@ -776,13 +776,13 @@ class TestElectricalDistancePartitioning:
         assert all_nodes_assigned(partition, list(electrical_graph.nodes()))
 
     def test_infinite_distance_config(self, multi_island_electrical_graph):
-        """Test that infinite_distance config is used for DC island isolation."""
+        """Test that infinite_distance config is used for AC island isolation."""
         config = ElectricalDistanceConfig(infinite_distance=1e6)
         strategy = ElectricalDistancePartitioning(config=config)
 
         partition = strategy.partition(multi_island_electrical_graph, n_clusters=2, random_state=42)
 
-        # DC island boundaries should still be respected
+        # AC island boundaries should still be respected
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
@@ -819,31 +819,31 @@ class TestVAGeographicalPartitioning:
             VAGeographicalPartitioning(algorithm="hierarchical", config=config)
 
     def test_required_attributes(self):
-        """Test that required attributes include voltage and dc_island."""
+        """Test that required attributes include voltage and ac_island."""
         strategy = VAGeographicalPartitioning()
         required = strategy.required_attributes["nodes"]
 
         assert "lat" in required
         assert "lon" in required
         assert "voltage" in required
-        assert "dc_island" in required
+        assert "ac_island" in required
 
     # -------------------------------------------------------------------------
-    # DC Island Respect Tests
+    # AC Island Respect Tests
     # -------------------------------------------------------------------------
 
-    def test_respects_dc_island_boundaries(self, voltage_aware_graph):
-        """Test that partitioning respects DC island boundaries."""
+    def test_respects_ac_island_boundaries(self, voltage_aware_graph):
+        """Test that partitioning respects AC island boundaries."""
         strategy = VAGeographicalPartitioning(algorithm="kmedoids")
         partition = strategy.partition(voltage_aware_graph, n_clusters=2, random_state=42)
 
-        # Nodes 0,1,2 are in DC island 0
-        # Nodes 3,4,5 are in DC island 1
+        # Nodes 0,1,2 are in AC island 0
+        # Nodes 3,4,5 are in AC island 1
         # They should never be in the same cluster
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j), (
-                    f"Nodes {i} and {j} should be in different clusters (different DC islands)"
+                    f"Nodes {i} and {j} should be in different clusters (different AC islands)"
                 )
 
     def test_respects_voltage_boundaries(self, mixed_voltage_graph):
@@ -898,7 +898,7 @@ class TestVAGeographicalPartitioning:
 
         assert all_nodes_assigned(partition, list(voltage_aware_graph.nodes()))
 
-        # DC islands should still be respected
+        # AC islands should still be respected
         for i in [0, 1, 2]:
             for j in [3, 4, 5]:
                 assert nodes_in_different_clusters(partition, i, j)
@@ -918,11 +918,11 @@ class TestVAGeographicalPartitioning:
     # Validation Tests
     # -------------------------------------------------------------------------
 
-    def test_missing_dc_island_raises_error(self):
-        """Test that missing dc_island attribute raises error."""
+    def test_missing_ac_island_raises_error(self):
+        """Test that missing ac_island attribute raises error."""
         G = nx.DiGraph()
-        G.add_node(0, lat=0.0, lon=0.0, voltage=220.0)  # Missing dc_island
-        G.add_node(1, lat=1.0, lon=1.0, voltage=220.0, dc_island=0)
+        G.add_node(0, lat=0.0, lon=0.0, voltage=220.0)  # Missing ac_island
+        G.add_node(1, lat=1.0, lon=1.0, voltage=220.0, ac_island=0)
         G.add_edge(0, 1, x=0.1)
 
         strategy = VAGeographicalPartitioning()
@@ -933,8 +933,8 @@ class TestVAGeographicalPartitioning:
     def test_missing_voltage_raises_error(self):
         """Test that missing voltage attribute raises error."""
         G = nx.DiGraph()
-        G.add_node(0, lat=0.0, lon=0.0, dc_island=0)  # Missing voltage
-        G.add_node(1, lat=1.0, lon=1.0, voltage=220.0, dc_island=0)
+        G.add_node(0, lat=0.0, lon=0.0, ac_island=0)  # Missing voltage
+        G.add_node(1, lat=1.0, lon=1.0, voltage=220.0, ac_island=0)
         G.add_edge(0, 1, x=0.1)
 
         strategy = VAGeographicalPartitioning()
@@ -952,7 +952,7 @@ class TestVAGeographicalPartitioning:
         config = VAGeographicalConfig(voltage_tolerance=200.0)  # Very high tolerance
         strategy = VAGeographicalPartitioning(algorithm="kmedoids", config=config)
 
-        # Note: DC island constraint still applies, so they won't actually cluster together
+        # Note: AC island constraint still applies, so they won't actually cluster together
         partition = strategy.partition(voltage_aware_graph, n_clusters=2, random_state=42)
         assert all_nodes_assigned(partition, list(voltage_aware_graph.nodes()))
 

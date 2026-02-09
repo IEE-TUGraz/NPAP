@@ -609,9 +609,9 @@ class TestVoltageAwareStrategy:
         assert isinstance(graph, (nx.DiGraph, nx.MultiDiGraph))
         assert len(list(graph.nodes())) == 4
 
-        # Check dc_island attribute was added
+        # Check ac_island attribute was added
         for node in graph.nodes():
-            assert "dc_island" in graph.nodes[node]
+            assert "ac_island" in graph.nodes[node]
 
     def test_load_with_dc_links(self, va_test_files_with_dc):
         """Test loading with DC links."""
@@ -626,17 +626,17 @@ class TestVoltageAwareStrategy:
         dc_link_edges = [(u, v) for u, v, d in graph.edges(data=True) if d.get("type") == "dc_link"]
         assert len(dc_link_edges) == 1
 
-    def test_load_detects_dc_islands(self, va_test_files_with_dc):
-        """Test that DC islands are correctly detected."""
+    def test_load_detects_ac_islands(self, va_test_files_with_dc):
+        """Test that AC islands are correctly detected."""
         strategy = VoltageAwareStrategy()
         with pytest.warns(UserWarning, match="Transformers file is empty"):
             graph = strategy.load(**va_test_files_with_dc)
 
         # Before DC links, bus_0/bus_1 and bus_2/bus_3 are separate islands
-        island_0 = graph.nodes["bus_0"].get("dc_island")
-        island_1 = graph.nodes["bus_1"].get("dc_island")
-        island_2 = graph.nodes["bus_2"].get("dc_island")
-        island_3 = graph.nodes["bus_3"].get("dc_island")
+        island_0 = graph.nodes["bus_0"].get("ac_island")
+        island_1 = graph.nodes["bus_1"].get("ac_island")
+        island_2 = graph.nodes["bus_2"].get("ac_island")
+        island_3 = graph.nodes["bus_3"].get("ac_island")
 
         # bus_0 and bus_1 should be in same island
         assert island_0 == island_1

@@ -9,7 +9,18 @@ from npap.utils import validate_required_attributes
 
 
 class EdgeType(Enum):
-    """Types of edges in the voltage-aware strategies"""
+    """
+    Define edge types for voltage-aware strategies.
+
+    Attributes
+    ----------
+    LINE : str
+        Standard transmission or distribution line.
+    TRAFO : str
+        Transformer connecting different voltage levels.
+    DC_LINK : str
+        HVDC link connecting AC islands.
+    """
 
     LINE = "line"
     TRAFO = "trafo"
@@ -18,93 +29,175 @@ class EdgeType(Enum):
 
 @dataclass
 class PartitionResult:
-    """Enhanced partition result with metadata"""
+    """
+    Store partition result with metadata for validation and tracking.
 
-    mapping: dict[int, list[Any]]  # cluster_id -> list of node_ids
-    original_graph_hash: str  # validation hash of original graph
-    strategy_name: str  # which strategy was used
-    strategy_metadata: dict[str, Any]  # strategy-specific data
-    n_clusters: int  # target number of clusters
+    Attributes
+    ----------
+    mapping : dict[int, list[Any]]
+        Dictionary mapping cluster_id to list of node_ids.
+    original_graph_hash : str
+        Hash of the original graph for compatibility validation.
+    strategy_name : str
+        Name of the partitioning strategy used.
+    strategy_metadata : dict[str, Any]
+        Strategy-specific metadata and parameters.
+    n_clusters : int
+        Number of clusters created.
+    """
+
+    mapping: dict[int, list[Any]]
+    original_graph_hash: str
+    strategy_name: str
+    strategy_metadata: dict[str, Any]
+    n_clusters: int
 
 
 class AggregationMode(Enum):
-    """Pre-defined aggregation modes for common use cases"""
+    """
+    Define pre-defined aggregation modes for common use cases.
 
-    SIMPLE = "simple"  # Sum/avg everything, simple topology
-    GEOGRAPHICAL = "geographical"  # Average coordinates, sum other properties
-    DC_KRON = "dc_kron"  # Kron reduction for DC networks
-    CUSTOM = "custom"  # User-defined profile
+    Attributes
+    ----------
+    SIMPLE : str
+        Sum/average everything with simple topology.
+    GEOGRAPHICAL : str
+        Average coordinates, sum other properties.
+    DC_KRON : str
+        Kron reduction for DC networks.
+    CUSTOM : str
+        User-defined aggregation profile.
+    """
+
+    SIMPLE = "simple"
+    GEOGRAPHICAL = "geographical"
+    DC_KRON = "dc_kron"
+    CUSTOM = "custom"
 
 
 @dataclass
 class AggregationProfile:
     """
-    Enhanced aggregation profile separating physical from statistical aggregation
+    Configure aggregation separating physical from statistical operations.
 
     This profile distinguishes between:
-    1. Topology: How the graph structure is reduced
-    2. Physical: Electrical laws that must be preserved (operates on coupled properties)
-    3. Statistical: Simple operations on independent properties
+
+    1. **Topology**: How the graph structure is reduced
+    2. **Physical**: Electrical laws that must be preserved (coupled properties)
+    3. **Statistical**: Simple operations on independent properties
+
+    Attributes
+    ----------
+    topology_strategy : str
+        Strategy for graph structure reduction ("simple", "electrical").
+    physical_strategy : str or None
+        Physical aggregation strategy ("kron_reduction", "equivalent_impedance").
+    physical_properties : list[str]
+        Properties handled by physical strategy (e.g., ["reactance", "resistance"]).
+    physical_parameters : dict[str, Any]
+        Additional parameters for physical strategies.
+    node_properties : dict[str, str]
+        Mapping of node property names to aggregation strategies.
+    edge_properties : dict[str, str]
+        Mapping of edge property names to aggregation strategies.
+    default_node_strategy : str
+        Default strategy for unspecified node properties.
+    default_edge_strategy : str
+        Default strategy for unspecified edge properties.
+    warn_on_defaults : bool
+        Whether to warn when using default strategies.
+    mode : AggregationMode
+        Indicator of which pre-defined mode is being used.
     """
 
-    # Topology: How graph structure is reduced
-    topology_strategy: str = "simple"  # "simple", "electrical", etc.
-
-    # Physical aggregation (operates on coupled electrical properties)
-    physical_strategy: str | None = None  # "kron_reduction", "equivalent_impedance", "ptdf", etc.
-    physical_properties: list[str] = field(default_factory=list)  # ["reactance", "resistance"]
-    physical_parameters: dict[str, Any] = field(
-        default_factory=dict
-    )  # Additional params for physical strategies
-
-    # Statistical aggregation (independent properties)
-    node_properties: dict[str, str] = field(default_factory=dict)  # {demand: "sum", name: "first"}
-    edge_properties: dict[str, str] = field(default_factory=dict)  # {length: "average"}
-
-    # Defaults for unspecified properties
+    topology_strategy: str = "simple"
+    physical_strategy: str | None = None
+    physical_properties: list[str] = field(default_factory=list)
+    physical_parameters: dict[str, Any] = field(default_factory=dict)
+    node_properties: dict[str, str] = field(default_factory=dict)
+    edge_properties: dict[str, str] = field(default_factory=dict)
     default_node_strategy: str = "average"
     default_edge_strategy: str = "sum"
     warn_on_defaults: bool = True
-
-    # Mode indicator
     mode: AggregationMode = AggregationMode.CUSTOM
 
 
 class DataLoadingStrategy(ABC):
-    """Interface for data loading strategies"""
+    """Define interface for data loading strategies."""
 
     @abstractmethod
     def load(self, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
-        """Load data and return NetworkX directed graph"""
+        """
+        Load data and return a NetworkX directed graph.
+
+        Returns
+        -------
+        nx.DiGraph or nx.MultiDiGraph
+            Loaded network graph.
+        """
         pass
 
     @abstractmethod
     def validate_inputs(self, **kwargs) -> bool:
-        """Validate input parameters before loading"""
+        """
+        Validate input parameters before loading.
+
+        Returns
+        -------
+        bool
+            True if validation passes.
+
+        Raises
+        ------
+        DataLoadingError
+            If validation fails.
+        """
         pass
 
 
 class PartitioningStrategy(ABC):
-    """Interface for all partitioning algorithms"""
+    """Define interface for all partitioning algorithms."""
 
     @validate_required_attributes
     @abstractmethod
     def partition(self, graph: nx.DiGraph, **kwargs) -> dict[int, list[Any]]:
-        """Partition nodes into clusters"""
+        """
+        Partition nodes into clusters.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            Input graph to partition.
+        **kwargs : dict
+            Strategy-specific parameters.
+
+        Returns
+        -------
+        dict[int, list[Any]]
+            Mapping of cluster_id to list of node_ids.
+        """
         pass
 
     @property
     @abstractmethod
     def required_attributes(self) -> dict[str, list[str]]:
-        """Required node/edge attributes: {'nodes': [...], 'edges': [...]}"""
+        """
+        Return required node/edge attributes.
+
+        Returns
+        -------
+        dict[str, list[str]]
+            Dictionary with 'nodes' and 'edges' keys listing required attributes.
+        """
         pass
 
 
 class TopologyStrategy(ABC):
     """
-    Interface for topology strategies - defines how graph structure is reduced
+    Define interface for topology strategies.
 
     Topology strategies create the skeleton of the aggregated graph:
+
     - Which nodes exist in the aggregated graph
     - Which edges connect them
     - NO property aggregation at this stage
@@ -113,40 +206,62 @@ class TopologyStrategy(ABC):
     @abstractmethod
     def create_topology(self, graph: nx.DiGraph, partition_map: dict[int, list[Any]]) -> nx.DiGraph:
         """
-        Create aggregated graph structure (nodes + edges, no properties yet)
+        Create aggregated graph structure without properties.
 
-        Args:
-            graph: Original directed graph
-            partition_map: Cluster_id -> list of original node ids
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            Original directed graph.
+        partition_map : dict[int, list[Any]]
+            Mapping of cluster_id to list of original node ids.
 
         Returns
         -------
-            DiGraph with aggregated topology (nodes and edges, but no attributes)
+        nx.DiGraph
+            DiGraph with aggregated topology (nodes and edges, no attributes).
         """
         pass
 
     @property
     def can_create_new_edges(self) -> bool:
-        """Whether this strategy can create edges that didn't exist in original graph"""
+        """
+        Check whether this strategy can create edges not in original graph.
+
+        Returns
+        -------
+        bool
+            True if strategy can create new edges, False otherwise.
+        """
         return False
 
     @staticmethod
     def _clusters_connected(graph: nx.DiGraph, nodes1: list[Any], nodes2: list[Any]) -> bool:
         """
-        Return True if any edge exists between nodes in nodes1 and nodes2.
+        Check if any edge exists between two node sets.
 
         For directed graphs, this checks edges in both directions.
-        Use _clusters_connected_directed for direction-specific checks.
+        Use ``_clusters_connected_directed`` for direction-specific checks.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            The directed graph to check.
+        nodes1 : list[Any]
+            First set of node identifiers.
+        nodes2 : list[Any]
+            Second set of node identifiers.
+
+        Returns
+        -------
+        bool
+            True if any edge exists between the node sets.
         """
         set_n2 = set(nodes2)
 
-        # Check edges from nodes1 to nodes2 or vice versa
         for node in nodes1:
-            # Check outgoing edges
             for neighbor in graph.successors(node):
                 if neighbor in set_n2:
                     return True
-            # Check incoming edges
             for neighbor in graph.predecessors(node):
                 if neighbor in set_n2:
                     return True
@@ -157,7 +272,23 @@ class TopologyStrategy(ABC):
     def _clusters_connected_directed(
         graph: nx.DiGraph, source_nodes: list[Any], target_nodes: list[Any]
     ) -> bool:
-        """Return True if any directed edge exists from source_nodes to target_nodes."""
+        """
+        Check if any directed edge exists from source to target nodes.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            The directed graph to check.
+        source_nodes : list[Any]
+            Source node identifiers.
+        target_nodes : list[Any]
+            Target node identifiers.
+
+        Returns
+        -------
+        bool
+            True if any directed edge exists from source to target.
+        """
         target_set = set(target_nodes)
 
         for node in source_nodes:
@@ -170,7 +301,7 @@ class TopologyStrategy(ABC):
 
 class PhysicalAggregationStrategy(ABC):
     """
-    Interface for physics-aware aggregation strategies
+    Define interface for physics-aware aggregation strategies.
 
     These strategies operate on the entire graph and respect physical laws.
     They work on coupled properties (e.g., reactance and resistance together).
@@ -187,67 +318,137 @@ class PhysicalAggregationStrategy(ABC):
         parameters: dict[str, Any] = None,
     ) -> nx.DiGraph:
         """
-        Apply physical aggregation to the topology graph
+        Apply physical aggregation to the topology graph.
 
-        Args:
-            original_graph: Full resolution directed graph with all properties
-            partition_map: Node-to-cluster mapping
-            topology_graph: DiGraph with aggregated structure but no properties yet
-            properties: Physical properties to aggregate (coupled)
-            parameters: Additional parameters for the strategy
+        Parameters
+        ----------
+        original_graph : nx.DiGraph
+            Full resolution directed graph with all properties.
+        partition_map : dict[int, list[Any]]
+            Mapping of cluster_id to list of node_ids.
+        topology_graph : nx.DiGraph
+            DiGraph with aggregated structure but no properties yet.
+        properties : list[str]
+            Physical properties to aggregate (coupled).
+        parameters : dict[str, Any], optional
+            Additional parameters for the strategy.
 
         Returns
         -------
-            DiGraph with physical properties correctly aggregated
+        nx.DiGraph
+            DiGraph with physical properties correctly aggregated.
         """
         pass
 
     @property
     @abstractmethod
     def required_properties(self) -> list[str]:
-        """Properties this strategy requires (e.g., ['reactance', 'resistance'])"""
+        """
+        Return properties this strategy requires.
+
+        Returns
+        -------
+        list[str]
+            List of required property names (e.g., ['reactance', 'resistance']).
+        """
         pass
 
     @property
     @abstractmethod
     def modifies_properties(self) -> list[str]:
         """
-        Properties that are modified by this physical strategy
+        Return properties modified by this physical strategy.
 
         These properties should NOT be aggregated statistically afterward,
         as they are already handled by the physical strategy.
+
+        Returns
+        -------
+        list[str]
+            List of property names modified by this strategy.
         """
         pass
 
     @property
     def can_create_edges(self) -> bool:
-        """Whether this strategy can create new edges"""
+        """
+        Check whether this strategy can create new edges.
+
+        Returns
+        -------
+        bool
+            True if strategy can create new edges.
+        """
         return False
 
     @property
     def required_topology(self) -> str:
-        """Required topology strategy for this physical aggregation"""
+        """
+        Return required topology strategy for this physical aggregation.
+
+        Returns
+        -------
+        str
+            Name of the required topology strategy.
+        """
         return "simple"
 
 
 class NodePropertyStrategy(ABC):
-    """Interface for node property aggregation strategies"""
+    """Define interface for node property aggregation strategies."""
 
     @abstractmethod
     def aggregate_property(self, graph: nx.DiGraph, nodes: list[Any], property_name: str) -> Any:
-        """Aggregate a specific property across nodes"""
+        """
+        Aggregate a specific property across nodes.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            The graph containing node properties.
+        nodes : list[Any]
+            List of node identifiers to aggregate.
+        property_name : str
+            Name of the property to aggregate.
+
+        Returns
+        -------
+        Any
+            Aggregated property value.
+        """
         pass
 
 
 class EdgePropertyStrategy(ABC):
-    """Interface for edge property aggregation strategies"""
+    """Define interface for edge property aggregation strategies."""
 
     @abstractmethod
     def aggregate_property(self, original_edges: list[dict[str, Any]], property_name: str) -> Any:
-        """Aggregate a specific property across edges"""
+        """
+        Aggregate a specific property across edges.
+
+        Parameters
+        ----------
+        original_edges : list[dict[str, Any]]
+            List of edge attribute dictionaries.
+        property_name : str
+            Name of the property to aggregate.
+
+        Returns
+        -------
+        Any
+            Aggregated property value.
+        """
         pass
 
     @property
     def required_attributes(self) -> dict[str, list[str]]:
-        """Required attributes for this property strategy"""
+        """
+        Return required attributes for this property strategy.
+
+        Returns
+        -------
+        dict[str, list[str]]
+            Dictionary with 'nodes' and 'edges' keys listing required attributes.
+        """
         return {"nodes": [], "edges": []}

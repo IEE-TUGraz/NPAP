@@ -11,11 +11,16 @@ from npap.interfaces import EdgeType
 
 class PlotStyle(Enum):
     """
-    Available visualization styles for power networks.
+    Define available visualization styles for power networks.
 
-    SIMPLE: All edges rendered uniformly (fastest, minimal visual complexity)
-    VOLTAGE_AWARE: Edges colored by type and voltage level (recommended for power systems)
-    CLUSTERED: Nodes colored by cluster assignment (requires prior partitioning)
+    Attributes
+    ----------
+    SIMPLE : str
+        All edges rendered uniformly (fastest, minimal visual complexity).
+    VOLTAGE_AWARE : str
+        Edges colored by type and voltage level (recommended for power systems).
+    CLUSTERED : str
+        Nodes colored by cluster assignment (requires prior partitioning).
     """
 
     SIMPLE = "simple"
@@ -26,72 +31,111 @@ class PlotStyle(Enum):
 @dataclass
 class PlotConfig:
     """
-    Configuration for network visualization.
+    Configure network visualization parameters.
 
     This centralized configuration allows users to customize every aspect of the
     visualization without modifying code. All parameters have sensible defaults
     optimized for power system networks.
+
+    Attributes
+    ----------
+    show_lines : bool
+        Whether to display transmission lines.
+    show_trafos : bool
+        Whether to display transformers.
+    show_dc_links : bool
+        Whether to display DC links.
+    show_nodes : bool
+        Whether to display nodes/buses.
+    line_voltage_threshold : float
+        Voltage threshold (kV) for high/low voltage line classification.
+    line_high_voltage_color : str
+        Hex color for high voltage lines.
+    line_low_voltage_color : str
+        Hex color for low voltage lines.
+    trafo_color : str
+        Hex color for transformers.
+    dc_link_color : str
+        Hex color for DC links.
+    node_color : str
+        Hex color for nodes/buses.
+    edge_width : float
+        Width of edge lines in pixels.
+    node_size : int
+        Size of node markers in pixels.
+    map_style : str
+        Mapbox style for the base map.
+    map_center_lat : float
+        Initial map center latitude.
+    map_center_lon : float
+        Initial map center longitude.
+    map_zoom : float
+        Initial map zoom level.
+    title : str or None
+        Figure title.
+    width : int or None
+        Figure width in pixels.
+    height : int or None
+        Figure height in pixels.
+    cluster_colorscale : str
+        Plotly colorscale for cluster coloring.
     """
 
-    # === Display Toggles ===
     show_lines: bool = True
     show_trafos: bool = True
     show_dc_links: bool = True
     show_nodes: bool = True
-
-    # === Voltage Thresholds ===
-    # Lines above this voltage (kV) are considered "high voltage" for color differentiation
     line_voltage_threshold: float = 300.0
-
-    # === Color Scheme ===
-    line_high_voltage_color: str = "#029E73"  # Green: high voltage transmission
-    line_low_voltage_color: str = "#CA9161"  # Brown: lower voltage distribution
-    trafo_color: str = "#ECE133"  # Yellow: transformers (voltage change)
-    dc_link_color: str = "#CC78BC"  # Pink: DC links (special transmission)
-    node_color: str = "#0173B2"  # Blue: buses/substations
-
-    # === Geometry Settings ===
+    line_high_voltage_color: str = "#029E73"
+    line_low_voltage_color: str = "#CA9161"
+    trafo_color: str = "#ECE133"
+    dc_link_color: str = "#CC78BC"
+    node_color: str = "#0173B2"
     edge_width: float = 1.5
     node_size: int = 5
-
-    # === Map Configuration ===
-    map_style: str = "carto-positron"  # Light theme for readability
+    map_style: str = "carto-positron"
     map_center_lat: float = 57.5
     map_center_lon: float = 14.0
     map_zoom: float = 3.7
-
-    # === Figure Settings ===
     title: str | None = None
     width: int | None = None
     height: int | None = None
-
-    # === Cluster Visualization ===
-    cluster_colorscale: str = "Viridis"  # Perceptually uniform for cluster coloring
+    cluster_colorscale: str = "Viridis"
 
 
 @dataclass
 class EdgeGroup:
     """
-    Container for aggregated edge coordinates by type/voltage category.
+    Store aggregated edge coordinates by type/voltage category.
 
     This grouping strategy is crucial for performance: instead of creating
     separate Plotly traces for each edge (which would be O(n) traces for n edges),
     we create one trace per group (typically 4-5 traces total).
 
-    Plotly renders this faster, and the user experience is
-    significantly improved for networks with thousands of edges.
+    Attributes
+    ----------
+    edge_type : str
+        Type of edge ('line', 'trafo', or 'dc_link').
+    voltage_category : str
+        Voltage category ('high', 'low', 'trafo', or 'dc_link').
+    lats : list[float or None]
+        List of latitude coordinates with None separators.
+    lons : list[float or None]
+        List of longitude coordinates with None separators.
+    count : int
+        Number of edges in this group.
     """
 
-    edge_type: str  # 'line', 'trafo', or 'dc_link'
-    voltage_category: str  # 'high', 'low', 'trafo', or 'dc_link'
+    edge_type: str
+    voltage_category: str
     lats: list[float | None] = field(default_factory=list)
     lons: list[float | None] = field(default_factory=list)
-    count: int = 0  # Number of edges in this group
+    count: int = 0
 
 
 class EdgeStyleRegistry:
     """
-    Centralized registry for edge styling rules.
+    Provide centralized registry for edge styling rules.
 
     This class eliminates code duplication by providing a single source of truth
     for edge colors, display names, and rendering order. Adding new edge categories
@@ -106,13 +150,17 @@ class EdgeStyleRegistry:
         """
         Map group keys to colors from configuration.
 
-        Args:
-            group_key: Identifier like "line_high", "trafo", etc.
-            config: Plot configuration with color definitions
+        Parameters
+        ----------
+        group_key : str
+            Identifier like "line_high", "trafo", etc.
+        config : PlotConfig
+            Plot configuration with color definitions.
 
         Returns
         -------
-            Hex color string
+        str
+            Hex color string.
         """
         color_map = {
             "line_high": config.line_high_voltage_color,
@@ -127,13 +175,17 @@ class EdgeStyleRegistry:
         """
         Map group keys to human-readable display names for the legend.
 
-        Args:
-            group_key: Identifier like "line_high", "trafo", etc.
-            config: Plot configuration with threshold values
+        Parameters
+        ----------
+        group_key : str
+            Identifier like "line_high", "trafo", etc.
+        config : PlotConfig
+            Plot configuration with threshold values.
 
         Returns
         -------
-            Display name string for legend
+        str
+            Display name string for legend.
         """
         threshold = int(config.line_voltage_threshold)
         names = {
@@ -147,21 +199,37 @@ class EdgeStyleRegistry:
 
 class NetworkPlotter:
     """
-    High-performance interactive visualization for power system networks.
+    Create high-performance interactive visualizations for power networks.
 
     This class handles the complete visualization pipeline:
+
     1. Data preparation (coordinate extraction, edge grouping)
     2. Trace generation (edges, nodes)
     3. Figure assembly (layout, styling)
+
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        NetworkX DiGraph with geographical coordinates (lat, lon).
+    partition_map : dict[int, list[Any]] or None
+        Optional mapping of cluster_id to node_ids for cluster visualization.
+
+    Examples
+    --------
+    >>> plotter = NetworkPlotter(graph, partition_map=partition.mapping)
+    >>> fig = plotter.plot_clustered()
     """
 
     def __init__(self, graph: nx.DiGraph, partition_map: dict[int, list[Any]] | None = None):
         """
         Initialize plotter with network data.
 
-        Args:
-            graph: NetworkX DiGraph with geographical coordinates (lat, lon)
-            partition_map: Optional mapping of cluster_id -> [node_ids] for cluster visualization
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            NetworkX DiGraph with geographical coordinates (lat, lon).
+        partition_map : dict[int, list[Any]] or None
+            Optional mapping of cluster_id to node_ids for cluster visualization.
         """
         self._graph = graph
         self._partition_map = partition_map
@@ -176,13 +244,14 @@ class NetworkPlotter:
         """
         Extract and cache all node coordinates for fast lookup.
 
-        This caching strategy is critical for performance: with 6000 nodes and 8000 edges,
-        we'd perform 16,000+ coordinate lookups during edge rendering. By caching,
-        we reduce this to a single O(n) pass at initialization.
+        This caching strategy is critical for performance: with 6000 nodes and
+        8000 edges, we'd perform 16,000+ coordinate lookups during edge rendering.
+        By caching, we reduce this to a single O(n) pass at initialization.
 
         Returns
         -------
-            Dictionary mapping node_id -> (lat, lon) tuple
+        dict[Any, tuple[float, float]]
+            Dictionary mapping node_id to (lat, lon) tuple.
         """
         coords = {}
         for node, data in self._graph.nodes(data=True):
@@ -203,7 +272,8 @@ class NetworkPlotter:
 
         Returns
         -------
-            Dictionary mapping node_id -> cluster_id
+        dict[Any, int]
+            Dictionary mapping node_id to cluster_id.
         """
         if not self._partition_map:
             return {}
@@ -219,13 +289,17 @@ class NetworkPlotter:
         """
         Determine if an edge type should be displayed based on configuration.
 
-        Args:
-            edge_type: Type of edge ('line', 'trafo', 'dc_link')
-            config: Plot configuration with display toggles
+        Parameters
+        ----------
+        edge_type : str
+            Type of edge ('line', 'trafo', 'dc_link').
+        config : PlotConfig
+            Plot configuration with display toggles.
 
         Returns
         -------
-            True if this edge type should be displayed
+        bool
+            True if this edge type should be displayed.
         """
         visibility_map = {
             EdgeType.LINE.value: config.show_lines,
@@ -240,16 +314,21 @@ class NetworkPlotter:
         Determine edge type and voltage category for grouping.
 
         This method implements the classification logic:
+
         - Lines are split by voltage threshold (transmission vs distribution)
         - Transformers and DC links have their own categories
 
-        Args:
-            edge_data: Edge attributes dictionary
-            config: Plot configuration with voltage threshold
+        Parameters
+        ----------
+        edge_data : dict
+            Edge attributes dictionary.
+        config : PlotConfig
+            Plot configuration with voltage threshold.
 
         Returns
         -------
-            Tuple of (group_key, voltage_category)
+        tuple[str, str]
+            Tuple of (group_key, voltage_category).
         """
         edge_type = edge_data.get("type", EdgeType.LINE.value)
 
@@ -279,12 +358,15 @@ class NetworkPlotter:
         arranged as [x1, x2, None, x3, x4, None, ...] where None breaks the line.
         This allows thousands of line segments in a single trace.
 
-        Args:
-            config: Plot configuration with display toggles and thresholds
+        Parameters
+        ----------
+        config : PlotConfig
+            Plot configuration with display toggles and thresholds.
 
         Returns
         -------
-            Dictionary mapping group_key -> EdgeGroup with aggregated coordinates
+        dict[str, EdgeGroup]
+            Dictionary mapping group_key to EdgeGroup with aggregated coordinates.
         """
         groups: dict[str, EdgeGroup] = {}
 
@@ -329,12 +411,15 @@ class NetworkPlotter:
         allowing users to toggle edge types in the legend and providing
         visual differentiation by color.
 
-        Args:
-            config: Plot configuration with colors and styling
+        Parameters
+        ----------
+        config : PlotConfig
+            Plot configuration with colors and styling.
 
         Returns
         -------
-            List of Scattermapbox traces for edges
+        list[go.Scattermapbox]
+            List of Scattermapbox traces for edges.
         """
         groups = self._group_edges_by_type(config)
         traces = []
@@ -368,12 +453,15 @@ class NetworkPlotter:
         This is the fastest rendering option: all edges in one trace with one color.
         Useful for initial network overview or when edge differentiation isn't needed.
 
-        Args:
-            config: Plot configuration with basic styling
+        Parameters
+        ----------
+        config : PlotConfig
+            Plot configuration with basic styling.
 
         Returns
         -------
-            List containing single edge trace (or empty if no valid edges)
+        list[go.Scattermapbox]
+            List containing single edge trace (or empty if no valid edges).
         """
         lons = []
         lats = []
@@ -411,13 +499,17 @@ class NetworkPlotter:
         each cluster gets a distinct color from the colorscale, making it easy
         to visualize the partitioning results.
 
-        Args:
-            config: Plot configuration with node styling
-            color_by_cluster: If True, color nodes by cluster assignment
+        Parameters
+        ----------
+        config : PlotConfig
+            Plot configuration with node styling.
+        color_by_cluster : bool
+            If True, color nodes by cluster assignment.
 
         Returns
         -------
-            Scattermapbox trace for nodes, or None if nodes are hidden
+        go.Scattermapbox or None
+            Scattermapbox trace for nodes, or None if nodes are hidden.
         """
         if not config.show_nodes:
             return None
@@ -494,13 +586,17 @@ class NetworkPlotter:
         configuring the mapbox layout, and setting up the legend for optimal
         user interaction.
 
-        Args:
-            traces: List of all Scattermapbox traces (edges + nodes)
-            config: Plot configuration with layout settings
+        Parameters
+        ----------
+        traces : list[go.Scattermapbox]
+            List of all Scattermapbox traces (edges + nodes).
+        config : PlotConfig
+            Plot configuration with layout settings.
 
         Returns
         -------
-            Complete Plotly Figure ready for display
+        go.Figure
+            Complete Plotly Figure ready for display.
         """
         fig = go.Figure(data=traces)
         layout_kwargs = dict(
@@ -549,24 +645,30 @@ class NetworkPlotter:
         self, style: PlotStyle, config: PlotConfig | None = None, show: bool = True
     ) -> go.Figure:
         """
-        Centralized plotting method for all visualization styles.
+        Execute centralized plotting for all visualization styles.
 
         This method consolidates the logic from plot_simple, plot_voltage_aware,
         and plot_clustered into a single implementation, eliminating code duplication
         while maintaining the distinct visual styles.
 
-        Args:
-            style: Visualization style (SIMPLE, VOLTAGE_AWARE, or CLUSTERED)
-            config: Optional plot configuration (uses defaults if not provided)
-            show: Whether to display the figure immediately in browser
+        Parameters
+        ----------
+        style : PlotStyle
+            Visualization style (SIMPLE, VOLTAGE_AWARE, or CLUSTERED).
+        config : PlotConfig or None
+            Optional plot configuration (uses defaults if not provided).
+        show : bool
+            Whether to display the figure immediately in browser.
 
         Returns
         -------
-            Plotly Figure object
+        go.Figure
+            Plotly Figure object.
 
         Raises
         ------
-            ValueError: If CLUSTERED style requested without partition_map
+        ValueError
+            If CLUSTERED style requested without partition_map.
         """
         config = config or PlotConfig()
 
@@ -608,15 +710,19 @@ class NetworkPlotter:
         """
         Create simple visualization with uniform edge styling.
 
-        Best for: Initial network overview, maximum performance
+        Best for: Initial network overview, maximum performance.
 
-        Args:
-            config: Optional plot configuration
-            show: Whether to display immediately
+        Parameters
+        ----------
+        config : PlotConfig or None
+            Optional plot configuration.
+        show : bool
+            Whether to display immediately.
 
         Returns
         -------
-            Plotly Figure object
+        go.Figure
+            Plotly Figure object.
         """
         return self._plot(PlotStyle.SIMPLE, config, show)
 
@@ -624,15 +730,19 @@ class NetworkPlotter:
         """
         Create voltage-aware visualization with edges colored by type and voltage.
 
-        Best for: Understanding network structure, distinguishing transmission levels
+        Best for: Understanding network structure, distinguishing transmission levels.
 
-        Args:
-            config: Optional plot configuration
-            show: Whether to display immediately
+        Parameters
+        ----------
+        config : PlotConfig or None
+            Optional plot configuration.
+        show : bool
+            Whether to display immediately.
 
         Returns
         -------
-            Plotly Figure object
+        go.Figure
+            Plotly Figure object.
         """
         return self._plot(PlotStyle.VOLTAGE_AWARE, config, show)
 
@@ -640,19 +750,24 @@ class NetworkPlotter:
         """
         Create clustered visualization with nodes colored by cluster assignment.
 
-        Best for: Visualizing partitioning results, understanding cluster geography
+        Best for: Visualizing partitioning results, understanding cluster geography.
 
-        Args:
-            config: Optional plot configuration
-            show: Whether to display immediately
+        Parameters
+        ----------
+        config : PlotConfig or None
+            Optional plot configuration.
+        show : bool
+            Whether to display immediately.
 
         Returns
         -------
-            Plotly Figure object
+        go.Figure
+            Plotly Figure object.
 
         Raises
         ------
-            ValueError: If partition_map was not provided during initialization
+        ValueError
+            If partition_map was not provided during initialization.
         """
         return self._plot(PlotStyle.CLUSTERED, config, show)
 
@@ -662,39 +777,67 @@ def plot_network(
     style: str = "simple",
     partition_map: dict[int, list[Any]] | None = None,
     show: bool = True,
+    config: PlotConfig | None = None,
     **kwargs,
 ) -> go.Figure:
     """
-    Convenience function for quick network visualization.
+    Create a quick network visualization.
 
     This function provides a simple interface for one-line plotting without
     needing to instantiate the NetworkPlotter class explicitly.
 
-    Args:
-        graph: NetworkX DiGraph with geographical coordinates (lat, lon)
-        style: Visualization style ('simple', 'voltage_aware', or 'clustered')
-        partition_map: Optional cluster mapping for 'clustered' style
-        show: Whether to display the figure immediately
-        **kwargs: Additional configuration parameters passed to PlotConfig
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        NetworkX DiGraph with geographical coordinates (lat, lon).
+    style : str
+        Visualization style ('simple', 'voltage_aware', or 'clustered').
+    partition_map : dict[int, list[Any]] or None
+        Optional cluster mapping for 'clustered' style.
+    show : bool
+        Whether to display the figure immediately.
+    config : PlotConfig or None
+        Optional PlotConfig instance to override defaults. If provided,
+        kwargs will further override values from this config.
+    **kwargs : dict
+        Additional configuration parameters passed to PlotConfig.
+        These override both defaults and any provided config values.
 
     Returns
     -------
-        Plotly Figure object
+    go.Figure
+        Plotly Figure object.
 
     Raises
     ------
-        ValueError: If style is unknown or prerequisites are missing
+    ValueError
+        If style is unknown or prerequisites are missing.
+
+    Examples
+    --------
+    >>> from npap.visualization import plot_network
+    >>> fig = plot_network(graph, style="voltage_aware", title="My Network")
+    >>> fig = plot_network(graph, style="clustered", partition_map=result.mapping)
     """
-    config = PlotConfig(**kwargs)
+    if config is not None:
+        # Start with provided config, then override with kwargs
+        from dataclasses import asdict
+
+        config_dict = asdict(config)
+        config_dict.update(kwargs)
+        effective_config = PlotConfig(**config_dict)
+    else:
+        effective_config = PlotConfig(**kwargs)
+
     plotter = NetworkPlotter(graph, partition_map=partition_map)
 
     # Support both string and enum style specifications
     if style == "simple" or style == PlotStyle.SIMPLE:
-        return plotter.plot_simple(config, show=show)
+        return plotter.plot_simple(effective_config, show=show)
     elif style == "voltage_aware" or style == PlotStyle.VOLTAGE_AWARE:
-        return plotter.plot_voltage_aware(config, show=show)
+        return plotter.plot_voltage_aware(effective_config, show=show)
     elif style == "clustered" or style == PlotStyle.CLUSTERED:
-        return plotter.plot_clustered(config, show=show)
+        return plotter.plot_clustered(effective_config, show=show)
     else:
         raise ValueError(
             f"Unknown plot style: {style}. Valid options: 'simple', 'voltage_aware', 'clustered'"

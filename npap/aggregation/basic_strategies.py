@@ -103,6 +103,7 @@ class SimpleTopologyStrategy(TopologyStrategy):
     Simple topology: one node per cluster, edges only where original connections exist.
 
     This is the most basic topology strategy:
+
     - Creates one node per cluster
     - Creates a directed edge between two clusters only if there was at least one
       directed edge between nodes in those clusters in the original graph

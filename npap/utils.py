@@ -72,12 +72,15 @@ def compute_graph_hash(graph: nx.Graph) -> str:
     Creates a fingerprint based on node count, edge count, and node IDs.
     Used to validate that a partition matches its source graph.
 
-    Args:
-        graph: NetworkX graph
+    Parameters
+    ----------
+    graph : nx.Graph
+        NetworkX graph.
 
     Returns
     -------
-        Hash string (16 characters)
+    str
+        Hash string (16 characters).
     """
     graph_data = {
         "n_nodes": len(list(graph.nodes())),
@@ -92,13 +95,17 @@ def validate_graph_compatibility(partition_result, current_graph_hash: str):
     """
     Validate that a partition result is compatible with the current graph.
 
-    Args:
-        partition_result: PartitionResult object
-        current_graph_hash: Hash of the current graph
+    Parameters
+    ----------
+    partition_result : PartitionResult
+        PartitionResult object.
+    current_graph_hash : str
+        Hash of the current graph.
 
     Raises
     ------
-        GraphCompatibilityError: If hashes don't match
+    GraphCompatibilityError
+        If hashes don't match.
     """
     if partition_result.original_graph_hash != current_graph_hash:
         from npap.exceptions import GraphCompatibilityError
@@ -127,33 +134,43 @@ def resolve_runtime_config(
     Resolve effective configuration for a partition call.
 
     This utility implements a priority-based configuration resolution:
+
     1. Individual config parameters in kwargs (highest priority)
     2. Full config object in kwargs
     3. Instance config (lowest priority)
 
-    Args:
-        instance_config: The strategy's default config instance
-        config_class: The dataclass type for configuration
-        config_params: Set of parameter names that belong to config
-        strategy_name: Strategy name for error messages
-        **kwargs: Parameters passed to partition()
+    Parameters
+    ----------
+    instance_config : ConfigT
+        The strategy's default config instance.
+    config_class : type[ConfigT]
+        The dataclass type for configuration.
+    config_params : set[str]
+        Set of parameter names that belong to config.
+    strategy_name : str
+        Strategy name for error messages.
+    **kwargs : dict
+        Parameters passed to partition().
 
     Returns
     -------
-        Resolved configuration instance
+    ConfigT
+        Resolved configuration instance.
 
     Raises
     ------
-        PartitioningError: If config type is invalid
+    PartitioningError
+        If config type is invalid.
 
-    Example:
-        effective_config = resolve_runtime_config(
-            instance_config=self.config,
-            config_class=ElectricalDistanceConfig,
-            config_params={'zero_reactance_replacement', 'use_sparse'},
-            strategy_name=self._get_strategy_name(),
-            **kwargs
-        )
+    Examples
+    --------
+    >>> effective_config = resolve_runtime_config(
+    ...     instance_config=self.config,
+    ...     config_class=ElectricalDistanceConfig,
+    ...     config_params={'zero_reactance_replacement', 'use_sparse'},
+    ...     strategy_name=self._get_strategy_name(),
+    ...     **kwargs
+    ... )
     """
     from npap.exceptions import PartitioningError
 
@@ -187,19 +204,24 @@ def with_runtime_config(config_class: type[ConfigT], config_params: set[str]):
     The decorator resolves configuration from kwargs and injects it as
     '_effective_config' keyword argument before calling the original method.
 
-    Args:
-        config_class: The dataclass type for configuration
-        config_params: Set of parameter names that belong to config
+    Parameters
+    ----------
+    config_class : type[ConfigT]
+        The dataclass type for configuration.
+    config_params : set[str]
+        Set of parameter names that belong to config.
 
     Returns
     -------
-        Decorator function
+    Callable
+        Decorator function.
 
-    Usage:
-        @with_runtime_config(VAGeographicalConfig, {'voltage_tolerance', 'infinite_distance'})
-        def partition(self, graph, **kwargs):
-            config = kwargs.get('_effective_config')
-            # ... rest of implementation
+    Examples
+    --------
+    >>> @with_runtime_config(VAGeographicalConfig, {'voltage_tolerance', 'infinite_distance'})
+    ... def partition(self, graph, **kwargs):
+    ...     config = kwargs.get('_effective_config')
+    ...     # ... rest of implementation
     """
 
     def decorator(partition_method):
@@ -239,13 +261,17 @@ def create_partition_map(nodes: list[Any], labels: np.ndarray) -> dict[int, list
     """
     Create partition mapping from cluster labels.
 
-    Args:
-        nodes: List of node IDs (must match order of labels)
-        labels: Array of cluster labels from clustering algorithm
+    Parameters
+    ----------
+    nodes : list[Any]
+        List of node IDs (must match order of labels).
+    labels : np.ndarray
+        Array of cluster labels from clustering algorithm.
 
     Returns
     -------
-        Dictionary mapping cluster_id -> list of node_ids
+    dict[int, list[Any]]
+        Dictionary mapping cluster_id -> list of node_ids.
     """
     partition_map: dict[int, list[Any]] = defaultdict(list)
 
@@ -261,14 +287,19 @@ def validate_partition(
     """
     Validate that all nodes were assigned to clusters.
 
-    Args:
-        partition_map: Partition mapping to validate
-        n_nodes: Expected total number of nodes
-        strategy_name: Strategy name for error messages
+    Parameters
+    ----------
+    partition_map : dict[int, list[Any]]
+        Partition mapping to validate.
+    n_nodes : int
+        Expected total number of nodes.
+    strategy_name : str
+        Strategy name for error messages.
 
     Raises
     ------
-        PartitioningError: If node count doesn't match
+    PartitioningError
+        If node count doesn't match.
     """
     from npap.exceptions import PartitioningError
 
@@ -299,20 +330,28 @@ def run_kmeans(
     K-Means uses Euclidean distance internally. For distance matrix input,
     rows are treated as feature vectors representing distance profiles.
 
-    Args:
-        features: Feature matrix (n_samples × n_features) or distance matrix
-        n_clusters: Number of clusters to form
-        random_state: Random seed for reproducibility
-        max_iter: Maximum iterations for convergence
-        n_init: Number of initializations to run
+    Parameters
+    ----------
+    features : np.ndarray
+        Feature matrix (n_samples x n_features) or distance matrix.
+    n_clusters : int
+        Number of clusters to form.
+    random_state : int, default=42
+        Random seed for reproducibility.
+    max_iter : int, default=300
+        Maximum iterations for convergence.
+    n_init : int, default=10
+        Number of initializations to run.
 
     Returns
     -------
-        Array of cluster labels for each sample
+    np.ndarray
+        Array of cluster labels for each sample.
 
     Raises
     ------
-        PartitioningError: If clustering fails
+    PartitioningError
+        If clustering fails.
     """
     from sklearn.cluster import KMeans
 
@@ -341,17 +380,22 @@ def run_kmedoids(distance_matrix: np.ndarray, n_clusters: int) -> np.ndarray:
     K-Medoids is robust to outliers and works naturally with any distance
     metric through precomputed distance matrices.
 
-    Args:
-        distance_matrix: Precomputed distance matrix (n × n), must be symmetric
-        n_clusters: Number of clusters to form
+    Parameters
+    ----------
+    distance_matrix : np.ndarray
+        Precomputed distance matrix (n x n), must be symmetric.
+    n_clusters : int
+        Number of clusters to form.
 
     Returns
     -------
-        Array of cluster labels for each sample
+    np.ndarray
+        Array of cluster labels for each sample.
 
     Raises
     ------
-        PartitioningError: If clustering fails
+    PartitioningError
+        If clustering fails.
     """
     import kmedoids
 
@@ -376,19 +420,25 @@ def run_hierarchical(
 
     Hierarchical clustering builds a tree of clusters and is deterministic.
 
-    Args:
-        distance_matrix: Precomputed distance matrix (n × n)
-        n_clusters: Number of clusters to form
-        linkage: Linkage criterion ('complete', 'average', 'single').
-                Note: 'ward' is NOT supported with precomputed distances.
+    Parameters
+    ----------
+    distance_matrix : np.ndarray
+        Precomputed distance matrix (n x n).
+    n_clusters : int
+        Number of clusters to form.
+    linkage : str, default='complete'
+        Linkage criterion ('complete', 'average', 'single').
+        Note: 'ward' is NOT supported with precomputed distances.
 
     Returns
     -------
-        Array of cluster labels for each sample
+    np.ndarray
+        Array of cluster labels for each sample.
 
     Raises
     ------
-        PartitioningError: If clustering fails or invalid linkage specified
+    PartitioningError
+        If clustering fails or invalid linkage specified.
     """
     from sklearn.cluster import AgglomerativeClustering
 
@@ -424,18 +474,24 @@ def run_dbscan(distance_matrix: np.ndarray, eps: float, min_samples: int) -> np.
     DBSCAN is a density-based algorithm that can find arbitrarily shaped
     clusters and identify noise points (labeled as -1).
 
-    Args:
-        distance_matrix: Precomputed distance matrix (n × n)
-        eps: Maximum distance between two samples to be considered neighbors
-        min_samples: Minimum samples in a neighborhood for a core point
+    Parameters
+    ----------
+    distance_matrix : np.ndarray
+        Precomputed distance matrix (n x n).
+    eps : float
+        Maximum distance between two samples to be considered neighbors.
+    min_samples : int
+        Minimum samples in a neighborhood for a core point.
 
     Returns
     -------
-        Array of cluster labels (-1 indicates noise)
+    np.ndarray
+        Array of cluster labels (-1 indicates noise).
 
     Raises
     ------
-        PartitioningError: If clustering fails
+    PartitioningError
+        If clustering fails.
     """
     from sklearn.cluster import DBSCAN
 
@@ -461,18 +517,24 @@ def run_hdbscan(
     HDBSCAN is a hierarchical density-based algorithm that automatically
     determines the number of clusters.
 
-    Args:
-        features: Feature matrix (coordinates in radians for haversine)
-        min_cluster_size: Minimum size of clusters
-        metric: Distance metric ('euclidean' or 'haversine')
+    Parameters
+    ----------
+    features : np.ndarray
+        Feature matrix (coordinates in radians for haversine).
+    min_cluster_size : int, default=5
+        Minimum size of clusters.
+    metric : str, default='euclidean'
+        Distance metric ('euclidean' or 'haversine').
 
     Returns
     -------
-        Array of cluster labels (-1 indicates noise)
+    np.ndarray
+        Array of cluster labels (-1 indicates noise).
 
     Raises
     ------
-        PartitioningError: If clustering fails
+    PartitioningError
+        If clustering fails.
     """
     import hdbscan
 
@@ -497,12 +559,15 @@ def compute_euclidean_distances(coordinates: np.ndarray) -> np.ndarray:
     """
     Compute Euclidean distance matrix from coordinates.
 
-    Args:
-        coordinates: Array of coordinates (n × 2) as [lat, lon] or [x, y]
+    Parameters
+    ----------
+    coordinates : np.ndarray
+        Array of coordinates (n x 2) as [lat, lon] or [x, y].
 
     Returns
     -------
-        Distance matrix (n × n)
+    np.ndarray
+        Distance matrix (n x n).
     """
     from sklearn.metrics.pairwise import euclidean_distances
 
@@ -513,12 +578,15 @@ def compute_haversine_distances(coordinates: np.ndarray) -> np.ndarray:
     """
     Compute Haversine (great-circle) distance matrix from coordinates.
 
-    Args:
-        coordinates: Array of coordinates (n × 2) as [lat, lon] in DEGREES
+    Parameters
+    ----------
+    coordinates : np.ndarray
+        Array of coordinates (n x 2) as [lat, lon] in DEGREES.
 
     Returns
     -------
-        Distance matrix (n × n) in kilometers
+    np.ndarray
+        Distance matrix (n x n) in kilometers.
     """
     from sklearn.metrics.pairwise import haversine_distances
 
@@ -533,17 +601,22 @@ def compute_geographical_distances(
     """
     Compute geographical distance matrix using specified metric.
 
-    Args:
-        coordinates: Array of coordinates (n × 2) as [lat, lon]
-        metric: Distance metric ('euclidean' or 'haversine')
+    Parameters
+    ----------
+    coordinates : np.ndarray
+        Array of coordinates (n x 2) as [lat, lon].
+    metric : str, default='euclidean'
+        Distance metric ('euclidean' or 'haversine').
 
     Returns
     -------
-        Distance matrix (n × n)
+    np.ndarray
+        Distance matrix (n x n).
 
     Raises
     ------
-        PartitioningError: If unsupported metric specified
+    PartitioningError
+        If unsupported metric specified.
     """
     from npap.exceptions import PartitioningError
 

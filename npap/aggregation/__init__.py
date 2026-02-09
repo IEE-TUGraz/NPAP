@@ -1,10 +1,23 @@
 """
-Aggregation strategies for network partitioning and aggregation package.
+Aggregation strategies for network partitioning and aggregation.
 
-Separated into:
-- Topology strategies: Define graph structure
-- Physical strategies: Apply electrical laws
-- Property strategies: Statistical aggregation functions for nodes/edges
+This module provides strategies for aggregating partitioned network graphs.
+
+Strategy Categories
+-------------------
+Topology Strategies
+    Define how the graph structure is reduced (SimpleTopologyStrategy,
+    ElectricalTopologyStrategy).
+Physical Strategies
+    Apply electrical laws during aggregation (KronReductionStrategy).
+Property Strategies
+    Statistical aggregation functions for nodes (SumNodeStrategy,
+    AverageNodeStrategy) and edges (SumEdgeStrategy, AverageEdgeStrategy).
+
+Functions
+---------
+get_mode_profile
+    Get pre-defined aggregation profile for a given mode.
 """
 
 from .basic_strategies import (

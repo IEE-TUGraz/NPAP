@@ -19,10 +19,10 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     - Edges represent transmission lines, transformers, or DC links
     - Edge direction follows defined bus0 -> bus1 convention
 
-    DC Island Detection:
+    AC Island Detection:
         After loading lines and transformers (before DC links), the loader detects
-        disconnected components which represent separate DC islands. Each bus is
-        assigned a 'dc_island' attribute indicating which island it belongs to.
+        disconnected components which represent separate AC islands. Each bus is
+        assigned a 'ac_island' attribute indicating which island it belongs to.
         DC links then connect these islands.
 
     Edge Schema (unified for all types):
@@ -50,17 +50,21 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         """
         Validate that all required CSV files are provided and exist.
 
-        Args:
-            **kwargs: Must include 'node_file', 'line_file', 'transformer_file',
-                      'converter_file', and 'link_file'
+        Parameters
+        ----------
+        **kwargs : dict
+            Must include 'node_file', 'line_file', 'transformer_file',
+            'converter_file', and 'link_file'.
 
         Returns
         -------
-            True if validation passes
+        bool
+            True if validation passes.
 
         Raises
         ------
-            DataLoadingError: If validation fails
+        DataLoadingError
+            If validation fails.
         """
         required_files = [
             "node_file",
@@ -108,31 +112,42 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         Load graph from CSV files: nodes, lines, transformers, and DC links.
 
         The loading process:
+
         1. Load nodes, lines, and transformers
-        2. Detect DC islands (connected components before DC links)
-        3. Assign 'dc_island' attribute to each bus
+        2. Detect AC islands (connected components before DC links)
+        3. Assign 'ac_island' attribute to each bus
         4. Add DC links to connect islands
         5. Remove isolated nodes and warn user
         6. Return fully connected graph
 
-        Args:
-            node_file: Path to nodes CSV file
-            line_file: Path to lines CSV file
-            transformer_file: Path to transformers CSV file
-            converter_file: Path to converters CSV file (required for DC links)
-            link_file: Path to DC links CSV file (required)
-            **kwargs: Additional parameters:
-                - delimiter: CSV delimiter (default: ',')
-                - decimal: Decimal separator (default: '.')
-                - node_id_col: Column name for node IDs (auto-detected if not provided)
+        Parameters
+        ----------
+        node_file : str
+            Path to nodes CSV file.
+        line_file : str
+            Path to lines CSV file.
+        transformer_file : str
+            Path to transformers CSV file.
+        converter_file : str
+            Path to converters CSV file (required for DC links).
+        link_file : str
+            Path to DC links CSV file (required).
+        **kwargs : dict
+            Additional parameters:
+
+            - delimiter : CSV delimiter (default: ',')
+            - decimal : Decimal separator (default: '.')
+            - node_id_col : Column name for node IDs (auto-detected if not provided)
 
         Returns
         -------
-            DiGraph or MultiDiGraph with combined edges and dc_island attributes
+        nx.DiGraph or nx.MultiDiGraph
+            DiGraph or MultiDiGraph with combined edges and ac_island attributes.
 
         Raises
         ------
-            DataLoadingError: If loading fails
+        DataLoadingError
+            If loading fails.
         """
         try:
             delimiter = kwargs.get("delimiter", ",")
@@ -167,7 +182,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             self._validate_edge_references(lines_df, valid_node_ids, "lines")
             self._validate_edge_references(transformers_df, valid_node_ids, "transformers")
 
-            # Prepare node tuples (without dc_island yet)
+            # Prepare node tuples (without ac_island yet)
             node_tuples = self._prepare_node_tuples(nodes_df, node_id_col)
 
             # Prepare AC edge tuples (lines and transformers)
@@ -175,14 +190,14 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             transformer_tuples = self._prepare_transformer_tuples(transformers_df)
             ac_edge_tuples = line_tuples + transformer_tuples
 
-            # Step 1: Detect DC islands before adding DC links
-            dc_island_map = self._detect_dc_islands(node_tuples, ac_edge_tuples)
+            # Step 1: Detect AC islands before adding DC links
+            ac_island_map = self._detect_ac_islands(node_tuples, ac_edge_tuples)
 
-            # Update node tuples with dc_island attribute
-            node_tuples = self._add_dc_island_to_nodes(node_tuples, dc_island_map)
+            # Update node tuples with ac_island attribute
+            node_tuples = self._add_ac_island_to_nodes(node_tuples, ac_island_map)
 
-            # Log DC island summary
-            self._log_dc_island_summary(dc_island_map)
+            # Log AC island summary
+            self._log_ac_island_summary(ac_island_map)
 
             # Prepare DC link tuples
             dc_link_tuples = self._prepare_dc_link_tuples(converters_df, links_df, valid_node_ids)
@@ -237,26 +252,30 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             ) from e
 
     # =========================================================================
-    # DC Island Detection Methods
+    # AC Island Detection Methods
     # =========================================================================
 
     @staticmethod
-    def _detect_dc_islands(
+    def _detect_ac_islands(
         node_tuples: list[tuple[Any, dict]], ac_edge_tuples: list[tuple[Any, Any, dict]]
     ) -> dict[Any, int]:
         """
-        Detect DC islands by finding connected components before DC links are added.
+        Detect AC islands by finding connected components before DC links are added.
 
         Each connected component of lines and transformers represents a separate
-        DC island (AC network that will be connected via DC links).
+        AC island (AC network that will be connected via DC links).
 
-        Args:
-            node_tuples: List of (node_id, attributes) tuples
-            ac_edge_tuples: List of (from, to, attributes) tuples for lines and trafos
+        Parameters
+        ----------
+        node_tuples : list[tuple[Any, dict]]
+            List of (node_id, attributes) tuples.
+        ac_edge_tuples : list[tuple[Any, Any, dict]]
+            List of (from, to, attributes) tuples for lines and transformers.
 
         Returns
         -------
-            Dictionary mapping node_id -> dc_island_id
+        dict[Any, int]
+            Dictionary mapping node_id -> ac_island_id.
         """
         # Create temporary undirected graph for component detection
         temp_graph = nx.Graph()
@@ -272,39 +291,60 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         # Find connected components
         components = list(nx.connected_components(temp_graph))
 
-        # Create mapping: node_id -> dc_island_id
-        dc_island_map: dict[Any, int] = {}
+        # Create mapping: node_id -> ac_island_id
+        ac_island_map: dict[Any, int] = {}
         for island_id, component in enumerate(components):
             for node_id in component:
-                dc_island_map[node_id] = island_id
+                ac_island_map[node_id] = island_id
 
-        return dc_island_map
+        return ac_island_map
 
     @staticmethod
-    def _add_dc_island_to_nodes(
-        node_tuples: list[tuple[Any, dict]], dc_island_map: dict[Any, int]
+    def _add_ac_island_to_nodes(
+        node_tuples: list[tuple[Any, dict]], ac_island_map: dict[Any, int]
     ) -> list[tuple[Any, dict]]:
-        """Add dc_island attribute to node tuples."""
+        """
+        Add ac_island attribute to node tuples.
+
+        Parameters
+        ----------
+        node_tuples : list[tuple[Any, dict]]
+            List of (node_id, attributes) tuples.
+        ac_island_map : dict[Any, int]
+            Mapping of node_id -> ac_island_id.
+
+        Returns
+        -------
+        list[tuple[Any, dict]]
+            Updated node tuples with ac_island attribute.
+        """
         updated_tuples = []
         for node_id, attrs in node_tuples:
             attrs_copy = attrs.copy()
-            attrs_copy["dc_island"] = dc_island_map.get(node_id, -1)
+            attrs_copy["ac_island"] = ac_island_map.get(node_id, -1)
             updated_tuples.append((node_id, attrs_copy))
         return updated_tuples
 
     @staticmethod
-    def _log_dc_island_summary(dc_island_map: dict[Any, int]) -> None:
-        """Log summary of detected DC islands."""
+    def _log_ac_island_summary(ac_island_map: dict[Any, int]) -> None:
+        """
+        Log summary of detected AC islands.
+
+        Parameters
+        ----------
+        ac_island_map : dict[Any, int]
+            Mapping of node_id -> ac_island_id.
+        """
         island_counts: dict[int, int] = {}
-        for island_id in dc_island_map.values():
+        for island_id in ac_island_map.values():
             island_counts[island_id] = island_counts.get(island_id, 0) + 1
 
         n_islands = len(island_counts)
-        log_info(f"Detected {n_islands} DC island(s)", LogCategory.INPUT)
+        log_info(f"Detected {n_islands} AC island(s)", LogCategory.INPUT)
 
         if n_islands > 1:
             for island_id, count in sorted(island_counts.items()):
-                log_debug(f"  DC Island {island_id}: {count} nodes", LogCategory.INPUT)
+                log_debug(f"  AC Island {island_id}: {count} nodes", LogCategory.INPUT)
 
     # =========================================================================
     # Isolated Node Removal Methods
@@ -314,7 +354,19 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     def _remove_isolated_nodes(
         graph: nx.DiGraph | nx.MultiDiGraph,
     ) -> DiGraph | MultiDiGraph:
-        """Remove isolated nodes (nodes with no connections) from the graph."""
+        """
+        Remove isolated nodes (nodes with no connections) from the graph.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph or nx.MultiDiGraph
+            Graph to remove isolated nodes from.
+
+        Returns
+        -------
+        nx.DiGraph or nx.MultiDiGraph
+            Graph with isolated nodes removed.
+        """
         isolated_nodes = list(nx.isolates(graph))
 
         if isolated_nodes:
@@ -331,7 +383,14 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _verify_final_connectivity(graph: nx.DiGraph | nx.MultiDiGraph) -> None:
-        """Verify the final graph connectivity and report status."""
+        """
+        Verify the final graph connectivity and report status.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph or nx.MultiDiGraph
+            Graph to verify connectivity for.
+        """
         undirected = graph.to_undirected()
         n_components = nx.number_connected_components(undirected)
 
@@ -360,7 +419,28 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _load_nodes(file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
-        """Load and validate nodes DataFrame."""
+        """
+        Load and validate nodes DataFrame.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to nodes CSV file.
+        delimiter : str
+            CSV delimiter character.
+        decimal : str
+            Decimal separator character.
+
+        Returns
+        -------
+        pd.DataFrame
+            Loaded nodes DataFrame.
+
+        Raises
+        ------
+        DataLoadingError
+            If node file is empty.
+        """
         nodes_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal)
 
         if nodes_df.empty:
@@ -369,7 +449,28 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         return nodes_df
 
     def _load_lines(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
-        """Load and validate lines DataFrame."""
+        """
+        Load and validate lines DataFrame.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to lines CSV file.
+        delimiter : str
+            CSV delimiter character.
+        decimal : str
+            Decimal separator character.
+
+        Returns
+        -------
+        pd.DataFrame
+            Loaded lines DataFrame.
+
+        Raises
+        ------
+        DataLoadingError
+            If lines file is missing required columns.
+        """
         lines_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
 
         if lines_df.empty:
@@ -390,7 +491,28 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         return lines_df
 
     def _load_transformers(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
-        """Load and validate transformers DataFrame."""
+        """
+        Load and validate transformers DataFrame.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to transformers CSV file.
+        delimiter : str
+            CSV delimiter character.
+        decimal : str
+            Decimal separator character.
+
+        Returns
+        -------
+        pd.DataFrame
+            Loaded transformers DataFrame.
+
+        Raises
+        ------
+        DataLoadingError
+            If transformers file is missing required columns or has invalid values.
+        """
         transformers_df = pd.read_csv(
             file_path, delimiter=delimiter, decimal=decimal, quotechar="'"
         )
@@ -446,7 +568,28 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         return transformers_df
 
     def _load_converters(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
-        """Load and validate converters DataFrame."""
+        """
+        Load and validate converters DataFrame.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to converters CSV file.
+        delimiter : str
+            CSV delimiter character.
+        decimal : str
+            Decimal separator character.
+
+        Returns
+        -------
+        pd.DataFrame
+            Loaded converters DataFrame.
+
+        Raises
+        ------
+        DataLoadingError
+            If converters file is missing required columns.
+        """
         converters_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
 
         if converters_df.empty:
@@ -469,7 +612,28 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         return converters_df
 
     def _load_links(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
-        """Load and validate DC links DataFrame."""
+        """
+        Load and validate DC links DataFrame.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to DC links CSV file.
+        delimiter : str
+            CSV delimiter character.
+        decimal : str
+            Decimal separator character.
+
+        Returns
+        -------
+        pd.DataFrame
+            Loaded DC links DataFrame.
+
+        Raises
+        ------
+        DataLoadingError
+            If links file is missing required columns.
+        """
         links_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
 
         if links_df.empty:
@@ -494,7 +658,23 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     def _validate_edge_references(
         edges_df: pd.DataFrame, valid_node_ids: set, edge_type: str
     ) -> None:
-        """Validate that all edge node references exist in the node set."""
+        """
+        Validate that all edge node references exist in the node set.
+
+        Parameters
+        ----------
+        edges_df : pd.DataFrame
+            DataFrame containing edge data with bus0 and bus1 columns.
+        valid_node_ids : set
+            Set of valid node IDs.
+        edge_type : str
+            Type of edge (for error messages).
+
+        Raises
+        ------
+        DataLoadingError
+            If any edge references a non-existent node.
+        """
         if edges_df.empty:
             return
 
@@ -523,7 +703,21 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _prepare_node_tuples(nodes_df: pd.DataFrame, node_id_col: str) -> list[tuple[Any, dict]]:
-        """Prepare node tuples for graph creation."""
+        """
+        Prepare node tuples for graph creation.
+
+        Parameters
+        ----------
+        nodes_df : pd.DataFrame
+            DataFrame containing node data.
+        node_id_col : str
+            Column name containing node IDs.
+
+        Returns
+        -------
+        list[tuple[Any, dict]]
+            List of (node_id, attributes) tuples.
+        """
         node_records = nodes_df.to_dict("records")
         return [
             (
@@ -535,7 +729,19 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _prepare_line_tuples(lines_df: pd.DataFrame) -> list[tuple[Any, Any, dict]]:
-        """Prepare line edge tuples with unified schema."""
+        """
+        Prepare line edge tuples with unified schema.
+
+        Parameters
+        ----------
+        lines_df : pd.DataFrame
+            DataFrame containing line data.
+
+        Returns
+        -------
+        list[tuple[Any, Any, dict]]
+            List of (bus0, bus1, attributes) tuples.
+        """
         if lines_df.empty:
             return []
 
@@ -565,7 +771,19 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     def _prepare_transformer_tuples(
         transformers_df: pd.DataFrame,
     ) -> list[tuple[Any, Any, dict]]:
-        """Prepare transformer edge tuples with unified schema."""
+        """
+        Prepare transformer edge tuples with unified schema.
+
+        Parameters
+        ----------
+        transformers_df : pd.DataFrame
+            DataFrame containing transformer data.
+
+        Returns
+        -------
+        list[tuple[Any, Any, dict]]
+            List of (bus0, bus1, attributes) tuples.
+        """
         if transformers_df.empty:
             return []
 
@@ -593,7 +811,23 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     def _prepare_dc_link_tuples(
         converters_df: pd.DataFrame, links_df: pd.DataFrame, valid_node_ids: set
     ) -> list[tuple[Any, Any, dict]]:
-        """Prepare DC link edge tuples by resolving converter connections."""
+        """
+        Prepare DC link edge tuples by resolving converter connections.
+
+        Parameters
+        ----------
+        converters_df : pd.DataFrame
+            DataFrame containing converter data.
+        links_df : pd.DataFrame
+            DataFrame containing DC link data.
+        valid_node_ids : set
+            Set of valid node IDs.
+
+        Returns
+        -------
+        list[tuple[Any, Any, dict]]
+            List of (ac_bus0, ac_bus1, attributes) tuples.
+        """
         if converters_df.empty or links_df.empty:
             return []
 
@@ -680,7 +914,19 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _check_parallel_edges(edge_tuples: list[tuple]) -> bool:
-        """Check if there are parallel edges (same source-target pair)."""
+        """
+        Check if there are parallel edges (same source-target pair).
+
+        Parameters
+        ----------
+        edge_tuples : list[tuple]
+            List of edge tuples (bus0, bus1, attributes).
+
+        Returns
+        -------
+        bool
+            True if parallel edges exist, False otherwise.
+        """
         if not edge_tuples:
             return False
 
@@ -689,7 +935,19 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
     @staticmethod
     def _detect_id_column(df: pd.DataFrame) -> str:
-        """Detect the ID column for nodes."""
+        """
+        Detect the ID column for nodes.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame to detect ID column from.
+
+        Returns
+        -------
+        str
+            Detected ID column name.
+        """
         candidates = [
             "node_id",
             "nodeId",

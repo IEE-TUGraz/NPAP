@@ -28,11 +28,14 @@ class ElectricalDistanceConfig:
 
     Attributes
     ----------
-        zero_reactance_replacement: Reactance value used when edge reactance is zero.
-        regularization_factor: Small value added to B matrix diagonal for numerical stability.
-                              Set to 0.0 to disable regularization. Default 1e-10 provides
-                              mild regularization that prevents singular matrix issues.
-        infinite_distance: Value used to represent "infinite" distance between DC islands.
+    zero_reactance_replacement : float
+        Reactance value used when edge reactance is zero.
+    regularization_factor : float
+        Small value added to B matrix diagonal for numerical stability.
+        Set to 0.0 to disable regularization. Default 1e-10 provides
+        mild regularization that prevents singular matrix issues.
+    infinite_distance : float
+        Value used to represent "infinite" distance between AC islands.
     """
 
     zero_reactance_replacement: float = 1e-5
@@ -56,10 +59,10 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         - Compute PTDF = diag{b} · K_sba · B^(-1)
         - Electrical distance: d_ij = ||PTDF[:,i] - PTDF[:,j]||_2
 
-    Multi DC-Island Support:
-        Networks with multiple DC islands (AC zones connected via HVDC) are handled
+    Multi AC-Island Support:
+        Networks with multiple AC islands (AC zones connected via HVDC) are handled
         by computing PTDF matrices independently for each island:
-        1. Group nodes by DC island
+        1. Group nodes by AC island
         2. Select/detect slack bus per island
         3. Extract AC-only subgraph per island (lines + transformers, no DC links)
         4. Compute PTDF and distances per island
@@ -91,26 +94,32 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         self,
         algorithm: str = "kmeans",
         slack_bus: Any | None = None,
-        dc_island_attr: str = "dc_island",
+        ac_island_attr: str = "ac_island",
         config: ElectricalDistanceConfig | None = None,
     ):
         """
         Initialize electrical distance partitioning strategy.
 
-        Args:
-            algorithm: Clustering algorithm ('kmeans', 'kmedoids')
-            slack_bus: Specific node to use as slack bus (applied to its island),
-                      or None for auto-selection per island
-            dc_island_attr: Node attribute name containing DC island ID (default: 'dc_island')
-            config: Configuration parameters for distance calculations
+        Parameters
+        ----------
+        algorithm : str, default='kmeans'
+            Clustering algorithm ('kmeans', 'kmedoids').
+        slack_bus : Any, optional
+            Specific node to use as slack bus (applied to its island),
+            or None for auto-selection per island.
+        ac_island_attr : str, default='ac_island'
+            Node attribute name containing AC island ID.
+        config : ElectricalDistanceConfig, optional
+            Configuration parameters for distance calculations.
 
         Raises
         ------
-            ValueError: If unsupported algorithm is specified
+        ValueError
+            If unsupported algorithm is specified.
         """
         self.algorithm = algorithm
         self.slack_bus = slack_bus
-        self.dc_island_attr = dc_island_attr
+        self.ac_island_attr = ac_island_attr
         self.config = config or ElectricalDistanceConfig()
 
         if algorithm not in self.SUPPORTED_ALGORITHMS:
@@ -121,7 +130,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
 
         log_debug(
             f"Initialized ElectricalDistancePartitioning: algorithm={algorithm}, "
-            f"dc_island_attr={dc_island_attr}",
+            f"ac_island_attr={ac_island_attr}",
             LogCategory.PARTITIONING,
         )
 
@@ -129,7 +138,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
     def required_attributes(self) -> dict[str, list[str]]:
         """Required attributes for electrical distance partitioning."""
         return {
-            "nodes": [],  # dc_island is validated separately with helpful message
+            "nodes": [],  # ac_island is validated separately with helpful message
             "edges": ["x"],  # Reactance attribute required on AC edges
         }
 
@@ -142,26 +151,33 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         """
         Partition nodes based on electrical distance using PTDF.
 
-        Args:
-            graph: NetworkX DiGraph with reactance data on AC edges and dc_island on nodes
-            **kwargs: Additional parameters
-                - n_clusters: Number of clusters (required)
-                - random_state: Random seed for reproducibility
-                - max_iter: Maximum iterations for clustering
-                - config: ElectricalDistanceConfig instance to override instance config
-                - slack_bus: Override the slack bus for this partition call
-                - zero_reactance_replacement: Override config parameter
-                - regularization_factor: Override config parameter
-                - infinite_distance: Override config parameter
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            NetworkX DiGraph with reactance data on AC edges and ac_island on nodes.
+        **kwargs : dict
+            Additional parameters:
+
+            - n_clusters : Number of clusters (required)
+            - random_state : Random seed for reproducibility
+            - max_iter : Maximum iterations for clustering
+            - config : ElectricalDistanceConfig instance to override instance config
+            - slack_bus : Override the slack bus for this partition call
+            - zero_reactance_replacement : Override config parameter
+            - regularization_factor : Override config parameter
+            - infinite_distance : Override config parameter
 
         Returns
         -------
-            Dictionary mapping cluster_id -> list of node_ids
+        dict[int, list[Any]]
+            Dictionary mapping cluster_id -> list of node_ids.
 
         Raises
         ------
-            PartitioningError: If partitioning fails
-            ValidationError: If dc_island attribute is missing
+        PartitioningError
+            If partitioning fails.
+        ValidationError
+            If ac_island attribute is missing.
         """
         try:
             # Get effective config (injected by decorator)
@@ -170,8 +186,8 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             # Resolve slack bus (kwargs override instance default)
             effective_slack = kwargs.get("slack_bus", self.slack_bus)
 
-            # Validate DC island attributes
-            self._validate_dc_island_attributes(graph)
+            # Validate AC island attributes
+            self._validate_ac_island_attributes(graph)
 
             # Validate AC edges have reactance
             self._validate_ac_edge_attributes(graph)
@@ -215,8 +231,8 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             partition_map = create_partition_map(nodes, labels)
             validate_partition(partition_map, n_nodes, self._get_strategy_name())
 
-            # Validate DC island consistency
-            self._validate_cluster_dc_island_consistency(graph, partition_map)
+            # Validate AC island consistency
+            self._validate_cluster_ac_island_consistency(graph, partition_map)
 
             log_info(
                 f"Electrical partitioning complete: {len(partition_map)} clusters",
@@ -238,7 +254,21 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
             ) from e
 
     def _run_clustering(self, distance_matrix: np.ndarray, **kwargs) -> np.ndarray:
-        """Dispatch to appropriate clustering algorithm."""
+        """
+        Dispatch to appropriate clustering algorithm.
+
+        Parameters
+        ----------
+        distance_matrix : np.ndarray
+            Precomputed distance matrix (n_nodes x n_nodes).
+        **kwargs : dict
+            Additional parameters including n_clusters, random_state, max_iter.
+
+        Returns
+        -------
+        np.ndarray
+            Array of cluster labels.
+        """
         n_clusters = kwargs.get("n_clusters")
         random_state = kwargs.get("random_state", 42)
         max_iter = kwargs.get("max_iter", 300)
@@ -259,34 +289,37 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
     # VALIDATION METHODS
     # =========================================================================
 
-    def _validate_dc_island_attributes(self, graph: nx.DiGraph) -> None:
+    def _validate_ac_island_attributes(self, graph: nx.DiGraph) -> None:
         """
-        Validate that all nodes have the DC island attribute.
+        Validate that all nodes have the AC island attribute.
 
         Provides a helpful error message directing users to use va_loader
-        or manually add the dc_island attribute.
+        or manually add the ac_island attribute.
 
-        Args:
-            graph: NetworkX DiGraph to validate
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            NetworkX DiGraph to validate.
 
         Raises
         ------
-            ValidationError: If any node is missing the dc_island attribute
+        ValidationError
+            If any node is missing the ac_island attribute.
         """
         missing_nodes = []
         for node in graph.nodes():
-            if self.dc_island_attr not in graph.nodes[node]:
+            if self.ac_island_attr not in graph.nodes[node]:
                 missing_nodes.append(node)
 
         if missing_nodes:
             sample = missing_nodes[:5]
             raise ValidationError(
-                f"Electrical distance partitioning requires '{self.dc_island_attr}' attribute "
-                f"on all nodes for DC island isolation. "
+                f"Electrical distance partitioning requires '{self.ac_island_attr}' attribute "
+                f"on all nodes for AC island isolation. "
                 f"{len(missing_nodes)} node(s) are missing this attribute (first few: {sample}). "
-                f"Please use 'va_loader' data loading strategy to automatically detect DC islands, "
-                f"or manually add the '{self.dc_island_attr}' attribute to all nodes.",
-                missing_attributes={"nodes": [self.dc_island_attr]},
+                f"Please use 'va_loader' data loading strategy to automatically detect AC islands, "
+                f"or manually add the '{self.ac_island_attr}' attribute to all nodes.",
+                missing_attributes={"nodes": [self.ac_island_attr]},
                 strategy=self._get_strategy_name(),
             )
 
@@ -297,12 +330,15 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         DC links are excluded from this validation as they don't participate
         in AC power flow and don't require reactance.
 
-        Args:
-            graph: NetworkX DiGraph to validate
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            NetworkX DiGraph to validate.
 
         Raises
         ------
-            ValidationError: If any AC edge is missing the 'x' attribute
+        ValidationError
+            If any AC edge is missing the 'x' attribute.
         """
         missing_edges = []
         for u, v, data in graph.edges(data=True):
@@ -328,14 +364,19 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         """
         Validate that an island's AC subgraph is connected.
 
-        Args:
-            ac_subgraph: AC-only subgraph for the island
-            island_id: DC island identifier
-            island_nodes: Nodes in this island
+        Parameters
+        ----------
+        ac_subgraph : nx.DiGraph
+            AC-only subgraph for the island.
+        island_id : Any
+            AC island identifier.
+        island_nodes : list[Any]
+            Nodes in this island.
 
         Raises
         ------
-            PartitioningError: If AC subgraph is not weakly connected
+        PartitioningError
+            If AC subgraph is not weakly connected.
         """
         if len(island_nodes) == 1:
             # Single node is trivially connected
@@ -343,7 +384,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
 
         if ac_subgraph.number_of_edges() == 0:
             raise PartitioningError(
-                f"DC island {island_id} has no AC edges (lines/transformers). "
+                f"AC island {island_id} has no AC edges (lines/transformers). "
                 f"Cannot compute electrical distances without AC connectivity.",
                 strategy=self._get_strategy_name(),
                 graph_info={"island_id": island_id, "n_nodes": len(island_nodes)},
@@ -352,9 +393,9 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         if not nx.is_weakly_connected(ac_subgraph):
             n_components = nx.number_weakly_connected_components(ac_subgraph)
             raise PartitioningError(
-                f"DC island {island_id} is not AC-connected. Found {n_components} "
+                f"AC island {island_id} is not AC-connected. Found {n_components} "
                 f"disconnected AC components within the island. This may indicate "
-                f"missing line/transformer data or incorrect DC island assignment.",
+                f"missing line/transformer data or incorrect AC island assignment.",
                 strategy=self._get_strategy_name(),
                 graph_info={
                     "island_id": island_id,
@@ -364,37 +405,40 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
                 },
             )
 
-    def _validate_cluster_dc_island_consistency(
+    def _validate_cluster_ac_island_consistency(
         self, graph: nx.DiGraph, partition_map: dict[int, list[Any]]
     ) -> None:
         """
-        Validate that clusters don't mix different DC islands.
+        Validate that clusters don't mix different AC islands.
 
-        With infinite distances between DC islands, clusters should never mix
-        nodes from different DC islands.
+        With infinite distances between AC islands, clusters should never mix
+        nodes from different AC islands.
 
-        Args:
-            graph: Original NetworkX graph
-            partition_map: Resulting partition mapping
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            Original NetworkX graph.
+        partition_map : dict[int, list[Any]]
+            Resulting partition mapping.
         """
         for cluster_id, nodes in partition_map.items():
-            dc_islands_in_cluster = set()
+            ac_islands_in_cluster = set()
 
             for node in nodes:
-                dc_island = graph.nodes[node].get(self.dc_island_attr)
-                if dc_island is not None:
-                    dc_islands_in_cluster.add(dc_island)
+                ac_island = graph.nodes[node].get(self.ac_island_attr)
+                if ac_island is not None:
+                    ac_islands_in_cluster.add(ac_island)
 
-            if len(dc_islands_in_cluster) > 1:
+            if len(ac_islands_in_cluster) > 1:
                 log_warning(
-                    f"Cluster {cluster_id} contains nodes from multiple DC islands: "
-                    f"{dc_islands_in_cluster}. This should not happen with infinite distances.",
+                    f"Cluster {cluster_id} contains nodes from multiple AC islands: "
+                    f"{ac_islands_in_cluster}. This should not happen with infinite distances.",
                     LogCategory.PARTITIONING,
                     warn_user=False,
                 )
 
     # =========================================================================
-    # MULTI DC-ISLAND ELECTRICAL DISTANCE CALCULATION
+    # MULTI AC-ISLAND ELECTRICAL DISTANCE CALCULATION
     # =========================================================================
 
     def _calculate_electrical_distance_matrix(
@@ -407,31 +451,39 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         """
         Calculate electrical distance matrix with per-island PTDF computation.
 
-        For networks with multiple DC islands:
-        1. Group nodes by DC island
+        For networks with multiple AC islands:
+
+        1. Group nodes by AC island
         2. For each island: extract AC subgraph, select slack, compute PTDF distances
         3. Combine into block-diagonal matrix with infinite inter-island distances
 
-        Args:
-            graph: NetworkX DiGraph with reactance on AC edges
-            nodes: Ordered list of all nodes
-            config: ElectricalDistanceConfig instance
-            slack_bus: Optional user-specified slack bus
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            NetworkX DiGraph with reactance on AC edges.
+        nodes : list[Any]
+            Ordered list of all nodes.
+        config : ElectricalDistanceConfig
+            Configuration instance.
+        slack_bus : Any, optional
+            User-specified slack bus.
 
         Returns
         -------
-            Distance matrix (n_nodes × n_nodes) with infinite distances between islands
+        np.ndarray
+            Distance matrix (n_nodes × n_nodes) with infinite distances between islands.
 
         Raises
         ------
-            PartitioningError: If distance matrix calculation fails
+        PartitioningError
+            If distance matrix calculation fails.
         """
-        # Group nodes by DC island
-        islands = self._group_nodes_by_dc_island(graph, nodes)
+        # Group nodes by AC island
+        islands = self._group_nodes_by_ac_island(graph, nodes)
         n_islands = len(islands)
 
         log_info(
-            f"Processing {n_islands} DC island(s) for PTDF computation",
+            f"Processing {n_islands} AC island(s) for PTDF computation",
             LogCategory.PARTITIONING,
         )
 
@@ -446,7 +498,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         # Process each island independently
         for island_id, island_nodes in islands.items():
             log_debug(
-                f"Processing DC island {island_id}: {len(island_nodes)} nodes",
+                f"Processing AC island {island_id}: {len(island_nodes)} nodes",
                 LogCategory.PARTITIONING,
             )
 
@@ -481,24 +533,28 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
 
         return distance_matrix
 
-    def _group_nodes_by_dc_island(
+    def _group_nodes_by_ac_island(
         self, graph: nx.DiGraph, nodes: list[Any]
     ) -> dict[Any, list[Any]]:
         """
-        Group nodes by their DC island attribute.
+        Group nodes by their AC island attribute.
 
-        Args:
-            graph: NetworkX DiGraph with dc_island attribute on nodes
-            nodes: List of nodes to group
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            NetworkX DiGraph with ac_island attribute on nodes.
+        nodes : list[Any]
+            List of nodes to group.
 
         Returns
         -------
-            Dictionary mapping island_id -> list of nodes in that island
+        dict[Any, list[Any]]
+            Dictionary mapping island_id -> list of nodes in that island.
         """
         islands: dict[Any, list[Any]] = defaultdict(list)
 
         for node in nodes:
-            island_id = graph.nodes[node].get(self.dc_island_attr)
+            island_id = graph.nodes[node].get(self.ac_island_attr)
             islands[island_id].append(node)
 
         return dict(islands)
@@ -509,13 +565,17 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
 
         Includes only lines and transformers, excluding DC links.
 
-        Args:
-            graph: Full NetworkX DiGraph
-            island_nodes: Nodes to include in subgraph
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            Full NetworkX DiGraph.
+        island_nodes : list[Any]
+            Nodes to include in subgraph.
 
         Returns
         -------
-            Subgraph containing only AC edges between island nodes
+        nx.DiGraph
+            Subgraph containing only AC edges between island nodes.
         """
         island_node_set = set(island_nodes)
         ac_subgraph = nx.DiGraph()
@@ -546,15 +606,21 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         If user specified a slack bus that's in this island, use it.
         Otherwise, select the node with highest total degree in the AC subgraph.
 
-        Args:
-            ac_subgraph: AC-only subgraph for this island
-            island_nodes: Nodes in this island
-            user_slack: User-specified slack bus (may be None or in different island)
-            island_id: DC island identifier for logging
+        Parameters
+        ----------
+        ac_subgraph : nx.DiGraph
+            AC-only subgraph for this island.
+        island_nodes : list[Any]
+            Nodes in this island.
+        user_slack : Any, optional
+            User-specified slack bus (may be None or in different island).
+        island_id : Any
+            AC island identifier for logging.
 
         Returns
         -------
-            Selected slack bus node for this island
+        Any
+            Selected slack bus node for this island.
         """
         island_node_set = set(island_nodes)
 
@@ -587,15 +653,21 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         """
         Compute PTDF-based electrical distances for a single island.
 
-        Args:
-            ac_subgraph: AC-only subgraph for this island
-            island_nodes: Ordered list of nodes in this island
-            slack_bus: Slack bus for this island
-            config: ElectricalDistanceConfig instance
+        Parameters
+        ----------
+        ac_subgraph : nx.DiGraph
+            AC-only subgraph for this island.
+        island_nodes : list[Any]
+            Ordered list of nodes in this island.
+        slack_bus : Any
+            Slack bus for this island.
+        config : ElectricalDistanceConfig
+            Configuration instance.
 
         Returns
         -------
-            Distance matrix for this island (n_island × n_island)
+        np.ndarray
+            Distance matrix for this island (n_island × n_island).
         """
         # Build PTDF matrix for this island
         ptdf_matrix, active_nodes = self._build_ptdf_matrix(
@@ -627,11 +699,16 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         """
         Insert island distance matrix into the full distance matrix.
 
-        Args:
-            full_matrix: Full distance matrix (modified in place)
-            island_distances: Distance matrix for this island
-            island_nodes: Ordered list of nodes in this island
-            node_to_idx: Mapping from node to index in full matrix
+        Parameters
+        ----------
+        full_matrix : np.ndarray
+            Full distance matrix (modified in place).
+        island_distances : np.ndarray
+            Distance matrix for this island.
+        island_nodes : list[Any]
+            Ordered list of nodes in this island.
+        node_to_idx : dict[Any, int]
+            Mapping from node to index in full matrix.
         """
         # Build index array for island nodes in full matrix
         island_indices = np.array([node_to_idx[node] for node in island_nodes])
@@ -656,26 +733,34 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         PTDF = diag{b} · K_sba · (K_sba^T · diag{b} · K_sba)^(-1)
 
         Where:
-            - K_sba is the slack-bus-adjusted incidence matrix
-            - b is the vector of susceptances (1/reactance)
-            - The resulting PTDF has shape (n_edges × n_active_nodes)
+
+        - K_sba is the slack-bus-adjusted incidence matrix
+        - b is the vector of susceptances (1/reactance)
+        - The resulting PTDF has shape (n_edges × n_active_nodes)
 
         Instead of computing B^(-1) explicitly, we solve the linear system
         directly which is significantly faster for large networks.
 
-        Args:
-            ac_subgraph: AC-only DiGraph for this island
-            island_nodes: Ordered list of nodes in this island
-            slack_bus: Slack bus node for this island
-            config: ElectricalDistanceConfig instance
+        Parameters
+        ----------
+        ac_subgraph : nx.DiGraph
+            AC-only DiGraph for this island.
+        island_nodes : list[Any]
+            Ordered list of nodes in this island.
+        slack_bus : Any
+            Slack bus node for this island.
+        config : ElectricalDistanceConfig
+            Configuration instance.
 
         Returns
         -------
-            Tuple of (PTDF matrix [n_edges × n_active], list of active nodes)
+        tuple[np.ndarray, list[Any]]
+            Tuple of (PTDF matrix [n_edges × n_active], list of active nodes).
 
         Raises
         ------
-            PartitioningError: If matrix construction fails
+        PartitioningError
+            If matrix construction fails.
         """
         try:
             # Extract edges and susceptances (AC edges only)
@@ -719,17 +804,22 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         Only processes lines and transformers (AC edges).
         Susceptance b = 1/x where x is the reactance.
 
-        Args:
-            ac_subgraph: AC-only subgraph
-            config: ElectricalDistanceConfig instance
+        Parameters
+        ----------
+        ac_subgraph : nx.DiGraph
+            AC-only subgraph.
+        config : ElectricalDistanceConfig
+            Configuration instance.
 
         Returns
         -------
-            Tuple of (list of (from, to) edges, array of susceptances)
+        tuple[list[tuple[Any, Any]], np.ndarray]
+            Tuple of (list of (from, to) edges, array of susceptances).
 
         Raises
         ------
-            PartitioningError: If reactance values are invalid
+        PartitioningError
+            If reactance values are invalid.
         """
         edges = []
         susceptances = []
@@ -775,19 +865,25 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         Build slack-bus-adjusted incidence matrix K_sba.
 
         For each directed edge (u → v):
-            - K[edge_idx, u] = -1 (edge leaves u)
-            - K[edge_idx, v] = +1 (edge enters v)
+
+        - K[edge_idx, u] = -1 (edge leaves u)
+        - K[edge_idx, v] = +1 (edge enters v)
 
         The slack bus column is removed to make B invertible.
 
-        Args:
-            edges: List of (from_node, to_node) tuples
-            nodes: Ordered list of all nodes in island
-            slack_bus: Node to exclude (slack bus)
+        Parameters
+        ----------
+        edges : list[tuple[Any, Any]]
+            List of (from_node, to_node) tuples.
+        nodes : list[Any]
+            Ordered list of all nodes in island.
+        slack_bus : Any
+            Node to exclude (slack bus).
 
         Returns
         -------
-            Tuple of (K_sba matrix [n_edges × n_active], list of active nodes)
+        tuple[np.ndarray, list[Any]]
+            Tuple of (K_sba matrix [n_edges × n_active], list of active nodes).
         """
         # Active nodes (without slack bus)
         active_nodes = [n for n in nodes if n != slack_bus]
@@ -823,13 +919,17 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         Uses efficient broadcasting: B = (K^T * b) @ K, avoiding explicit
         diagonal matrix construction.
 
-        Args:
-            K_sba: Slack-bus-adjusted incidence matrix (n_edges × n_active)
-            susceptances: Array of susceptance values (n_edges,)
+        Parameters
+        ----------
+        K_sba : np.ndarray
+            Slack-bus-adjusted incidence matrix (n_edges × n_active).
+        susceptances : np.ndarray
+            Array of susceptance values (n_edges,).
 
         Returns
         -------
-            Symmetric susceptance matrix (n_active × n_active)
+        np.ndarray
+            Symmetric susceptance matrix (n_active × n_active).
         """
         # Efficient: (K.T * b) @ K where b is broadcast along columns
         # K.T shape: (n_active, n_edges), susceptances shape: (n_edges,)
@@ -850,20 +950,26 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         Compute PTDF matrix by solving linear system directly.
 
         To avoid computing B^(-1) explicitly, we solve:
-            B @ X = A^T  where A = diag(b) @ K_sba
+        B @ X = A^T  where A = diag(b) @ K_sba
         Then PTDF = X^T
 
         This is mathematically equivalent but 3-5x faster for large matrices.
 
-        Args:
-            K_sba: Slack-bus-adjusted incidence matrix (n_edges × n_active)
-            susceptances: Array of susceptance values (n_edges,)
-            B_matrix: Susceptance matrix (n_active × n_active)
-            config: ElectricalDistanceConfig instance
+        Parameters
+        ----------
+        K_sba : np.ndarray
+            Slack-bus-adjusted incidence matrix (n_edges × n_active).
+        susceptances : np.ndarray
+            Array of susceptance values (n_edges,).
+        B_matrix : np.ndarray
+            Susceptance matrix (n_active × n_active).
+        config : ElectricalDistanceConfig
+            Configuration instance.
 
         Returns
         -------
-            PTDF matrix (n_edges × n_active)
+        np.ndarray
+            PTDF matrix (n_edges × n_active).
         """
         # Apply Tikhonov regularization for numerical stability
         if config.regularization_factor > 0:
@@ -903,16 +1009,20 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         pairwise distances via a single matrix multiplication (Gram matrix),
         which is highly optimized by BLAS libraries.
 
-        Args:
-            ptdf_matrix: PTDF matrix (n_edges × n_active)
+        Parameters
+        ----------
+        ptdf_matrix : np.ndarray
+            PTDF matrix (n_edges × n_active).
 
         Returns
         -------
-            Distance matrix for active nodes (n_active × n_active)
+        np.ndarray
+            Distance matrix for active nodes (n_active × n_active).
 
         Raises
         ------
-            PartitioningError: If distance calculation produces invalid values
+        PartitioningError
+            If distance calculation produces invalid values.
         """
         # Use float32 for faster computation
         X = ptdf_matrix.T.astype(np.float32, copy=False)
@@ -958,16 +1068,23 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         The slack bus has an implicit PTDF column of zeros (reference bus).
         Distance from slack to node i = ||PTDF[:,i] - 0||_2 = ||PTDF[:,i]||_2
 
-        Args:
-            distance_matrix_active: Distance matrix for active nodes (n_active × n_active)
-            ptdf_matrix: PTDF matrix (n_edges × n_active)
-            island_nodes: Complete list of nodes in this island
-            slack_bus: Slack bus node for this island
-            active_nodes: List of active nodes (excluding slack bus)
+        Parameters
+        ----------
+        distance_matrix_active : np.ndarray
+            Distance matrix for active nodes (n_active × n_active).
+        ptdf_matrix : np.ndarray
+            PTDF matrix (n_edges × n_active).
+        island_nodes : list[Any]
+            Complete list of nodes in this island.
+        slack_bus : Any
+            Slack bus node for this island.
+        active_nodes : list[Any]
+            List of active nodes (excluding slack bus).
 
         Returns
         -------
-            Full island distance matrix including slack bus (n_island × n_island)
+        np.ndarray
+            Full island distance matrix including slack bus (n_island × n_island).
         """
         n_island = len(island_nodes)
 

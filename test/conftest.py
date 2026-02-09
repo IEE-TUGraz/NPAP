@@ -98,20 +98,20 @@ def electrical_graph() -> nx.DiGraph:
     Nodes 1,2 have low reactance to 0 (electrically close)
     Nodes 3,4 have high reactance to 0 (electrically far)
 
-    All nodes are in the same DC island (dc_island=0).
+    All nodes are in the same AC island (ac_island=0).
     """
     G = nx.DiGraph()
 
     # Central node
-    G.add_node(0, lat=0.0, lon=0.0, dc_island=0)
+    G.add_node(0, lat=0.0, lon=0.0, ac_island=0)
 
     # Electrically close nodes (low reactance)
-    G.add_node(1, lat=1.0, lon=0.0, dc_island=0)
-    G.add_node(2, lat=0.0, lon=1.0, dc_island=0)
+    G.add_node(1, lat=1.0, lon=0.0, ac_island=0)
+    G.add_node(2, lat=0.0, lon=1.0, ac_island=0)
 
     # Electrically far nodes (high reactance)
-    G.add_node(3, lat=-1.0, lon=0.0, dc_island=0)
-    G.add_node(4, lat=0.0, lon=-1.0, dc_island=0)
+    G.add_node(3, lat=-1.0, lon=0.0, ac_island=0)
+    G.add_node(4, lat=0.0, lon=-1.0, ac_island=0)
 
     # Low reactance edges (close)
     G.add_edge(0, 1, x=0.01)
@@ -131,36 +131,36 @@ def electrical_graph() -> nx.DiGraph:
 @pytest.fixture
 def multi_island_electrical_graph() -> nx.DiGraph:
     """
-    Graph with two separate DC islands for testing DC island isolation.
+    Graph with two separate AC islands for testing AC island isolation.
 
-    DC Island 0: nodes 0, 1, 2 (connected via low reactance)
-    DC Island 1: nodes 3, 4, 5 (connected via low reactance)
+    AC Island 0: nodes 0, 1, 2 (connected via low reactance)
+    AC Island 1: nodes 3, 4, 5 (connected via low reactance)
 
     The two islands are connected by a DC link (edge 2->3), making the graph
-    connected for PTDF calculation. However, the dc_island attribute ensures
+    connected for PTDF calculation. However, the ac_island attribute ensures
     nodes from different islands get infinite electrical distance and thus
     are never clustered together.
 
-    This fixture tests that nodes in different DC islands are never clustered together.
+    This fixture tests that nodes in different AC islands are never clustered together.
     """
     G = nx.DiGraph()
 
-    # DC Island 0 - nodes near origin
-    G.add_node(0, lat=0.0, lon=0.0, dc_island=0)
-    G.add_node(1, lat=0.5, lon=0.5, dc_island=0)
-    G.add_node(2, lat=0.3, lon=0.8, dc_island=0)
+    # AC Island 0 - nodes near origin
+    G.add_node(0, lat=0.0, lon=0.0, ac_island=0)
+    G.add_node(1, lat=0.5, lon=0.5, ac_island=0)
+    G.add_node(2, lat=0.3, lon=0.8, ac_island=0)
 
-    # DC Island 1 - nodes far from origin
-    G.add_node(3, lat=10.0, lon=10.0, dc_island=1)
-    G.add_node(4, lat=10.5, lon=10.5, dc_island=1)
-    G.add_node(5, lat=10.3, lon=10.8, dc_island=1)
+    # AC Island 1 - nodes far from origin
+    G.add_node(3, lat=10.0, lon=10.0, ac_island=1)
+    G.add_node(4, lat=10.5, lon=10.5, ac_island=1)
+    G.add_node(5, lat=10.3, lon=10.8, ac_island=1)
 
-    # Edges within DC Island 0
+    # Edges within AC Island 0
     G.add_edge(0, 1, x=0.1)
     G.add_edge(1, 2, x=0.15)
     G.add_edge(0, 2, x=0.12)
 
-    # Edges within DC Island 1
+    # Edges within AC Island 1
     G.add_edge(3, 4, x=0.08)
     G.add_edge(4, 5, x=0.12)
     G.add_edge(3, 5, x=0.1)
@@ -172,16 +172,16 @@ def multi_island_electrical_graph() -> nx.DiGraph:
 
 
 @pytest.fixture
-def electrical_graph_no_dc_island() -> nx.DiGraph:
+def electrical_graph_no_ac_island() -> nx.DiGraph:
     """
-    Graph without dc_island attribute for testing error handling.
+    Graph without ac_island attribute for testing error handling.
 
     This fixture tests that appropriate error messages are shown
-    when dc_island attribute is missing.
+    when ac_island attribute is missing.
     """
     G = nx.DiGraph()
 
-    # Nodes WITHOUT dc_island attribute
+    # Nodes WITHOUT ac_island attribute
     G.add_node(0, lat=0.0, lon=0.0)
     G.add_node(1, lat=1.0, lon=0.0)
     G.add_node(2, lat=0.0, lon=1.0)
@@ -196,30 +196,30 @@ def electrical_graph_no_dc_island() -> nx.DiGraph:
 @pytest.fixture
 def voltage_aware_graph() -> nx.DiGraph:
     """
-    Graph with DC islands and voltage levels for VA partitioning test.
+    Graph with AC islands and voltage levels for VA partitioning test.
 
-    DC Island 0: nodes 0,1,2 (voltage 220kV)
-    DC Island 1: nodes 3,4,5 (voltage 380kV)
+    AC Island 0: nodes 0,1,2 (voltage 220kV)
+    AC Island 1: nodes 3,4,5 (voltage 380kV)
 
-    Nodes within same island have same dc_island and voltage attributes.
+    Nodes within same island have same ac_island and voltage attributes.
     """
     G = nx.DiGraph()
 
-    # DC Island 0 - 220kV network
-    G.add_node(0, lat=0.0, lon=0.0, voltage=220.0, dc_island=0)
-    G.add_node(1, lat=0.5, lon=0.5, voltage=220.0, dc_island=0)
-    G.add_node(2, lat=0.3, lon=0.8, voltage=220.0, dc_island=0)
+    # AC Island 0 - 220kV network
+    G.add_node(0, lat=0.0, lon=0.0, voltage=220.0, ac_island=0)
+    G.add_node(1, lat=0.5, lon=0.5, voltage=220.0, ac_island=0)
+    G.add_node(2, lat=0.3, lon=0.8, voltage=220.0, ac_island=0)
 
-    # DC Island 1 - 380kV network
-    G.add_node(3, lat=5.0, lon=5.0, voltage=380.0, dc_island=1)
-    G.add_node(4, lat=5.5, lon=5.5, voltage=380.0, dc_island=1)
-    G.add_node(5, lat=5.3, lon=5.8, voltage=380.0, dc_island=1)
+    # AC Island 1 - 380kV network
+    G.add_node(3, lat=5.0, lon=5.0, voltage=380.0, ac_island=1)
+    G.add_node(4, lat=5.5, lon=5.5, voltage=380.0, ac_island=1)
+    G.add_node(5, lat=5.3, lon=5.8, voltage=380.0, ac_island=1)
 
-    # Edges within DC Island 0
+    # Edges within AC Island 0
     G.add_edge(0, 1, x=0.1, type="line", primary_voltage=220.0, secondary_voltage=220.0)
     G.add_edge(1, 2, x=0.15, type="line", primary_voltage=220.0, secondary_voltage=220.0)
 
-    # Edges within DC Island 1
+    # Edges within AC Island 1
     G.add_edge(3, 4, x=0.08, type="line", primary_voltage=380.0, secondary_voltage=380.0)
     G.add_edge(4, 5, x=0.12, type="line", primary_voltage=380.0, secondary_voltage=380.0)
 
@@ -230,34 +230,34 @@ def voltage_aware_graph() -> nx.DiGraph:
 
 
 @pytest.fixture
-def geographical_dc_island_graph() -> nx.DiGraph:
+def geographical_ac_island_graph() -> nx.DiGraph:
     """
-    Graph with DC islands for testing DC-island-aware geographical partitioning.
+    Graph with AC islands for testing AC-island-aware geographical partitioning.
 
-    DC Island 0: nodes 0, 1, 2 (located around origin)
-    DC Island 1: nodes 3, 4, 5 (located far from origin)
+    AC Island 0: nodes 0, 1, 2 (located around origin)
+    AC Island 1: nodes 3, 4, 5 (located far from origin)
 
     Both islands have nodes with lat/lon attributes for geographical partitioning.
-    The dc_island attribute enables automatic DC-island awareness.
+    The ac_island attribute enables automatic AC-island awareness.
     """
     G = nx.DiGraph()
 
-    # DC Island 0 - nodes near origin
-    G.add_node(0, lat=0.0, lon=0.0, dc_island=0)
-    G.add_node(1, lat=0.1, lon=0.1, dc_island=0)
-    G.add_node(2, lat=0.05, lon=-0.05, dc_island=0)
+    # AC Island 0 - nodes near origin
+    G.add_node(0, lat=0.0, lon=0.0, ac_island=0)
+    G.add_node(1, lat=0.1, lon=0.1, ac_island=0)
+    G.add_node(2, lat=0.05, lon=-0.05, ac_island=0)
 
-    # DC Island 1 - nodes far from origin
-    G.add_node(3, lat=10.0, lon=10.0, dc_island=1)
-    G.add_node(4, lat=10.1, lon=10.1, dc_island=1)
-    G.add_node(5, lat=10.05, lon=9.95, dc_island=1)
+    # AC Island 1 - nodes far from origin
+    G.add_node(3, lat=10.0, lon=10.0, ac_island=1)
+    G.add_node(4, lat=10.1, lon=10.1, ac_island=1)
+    G.add_node(5, lat=10.05, lon=9.95, ac_island=1)
 
-    # Edges within DC Island 0
+    # Edges within AC Island 0
     G.add_edge(0, 1, x=0.1)
     G.add_edge(1, 2, x=0.1)
     G.add_edge(0, 2, x=0.15)
 
-    # Edges within DC Island 1
+    # Edges within AC Island 1
     G.add_edge(3, 4, x=0.1)
     G.add_edge(4, 5, x=0.1)
     G.add_edge(3, 5, x=0.15)
@@ -271,11 +271,11 @@ def geographical_dc_island_graph() -> nx.DiGraph:
 @pytest.fixture
 def mixed_voltage_graph() -> nx.DiGraph:
     """
-    Graph with multiple voltage levels within same DC island.
+    Graph with multiple voltage levels within same AC island.
 
     Used to test voltage-aware partitioning respects voltage boundaries.
 
-    DC Island 0:
+    AC Island 0:
         - 220kV: nodes 0, 1
         - 380kV: nodes 2, 3
         - Transformer connecting 220kV to 380kV
@@ -283,12 +283,12 @@ def mixed_voltage_graph() -> nx.DiGraph:
     G = nx.DiGraph()
 
     # 220kV nodes
-    G.add_node(0, lat=0.0, lon=0.0, voltage=220.0, dc_island=0)
-    G.add_node(1, lat=0.5, lon=0.5, voltage=220.0, dc_island=0)
+    G.add_node(0, lat=0.0, lon=0.0, voltage=220.0, ac_island=0)
+    G.add_node(1, lat=0.5, lon=0.5, voltage=220.0, ac_island=0)
 
     # 380kV nodes
-    G.add_node(2, lat=1.0, lon=1.0, voltage=380.0, dc_island=0)
-    G.add_node(3, lat=1.5, lon=1.5, voltage=380.0, dc_island=0)
+    G.add_node(2, lat=1.0, lon=1.0, voltage=380.0, ac_island=0)
+    G.add_node(3, lat=1.5, lon=1.5, voltage=380.0, ac_island=0)
 
     # 220kV lines
     G.add_edge(0, 1, x=0.1, type="line", primary_voltage=220.0, secondary_voltage=220.0)

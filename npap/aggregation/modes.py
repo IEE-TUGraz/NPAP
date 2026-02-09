@@ -12,18 +12,23 @@ from npap.interfaces import AggregationMode, AggregationProfile
 
 def get_mode_profile(mode: AggregationMode, **overrides) -> AggregationProfile:
     """
-    Get pre-configured aggregation profile for a given mode
+    Get pre-configured aggregation profile for a given mode.
 
-    Args:
-        mode: Aggregation mode enum
-        **overrides: Override any profile parameters
+    Parameters
+    ----------
+    mode : AggregationMode
+        Aggregation mode enum.
+    **overrides
+        Override any profile parameters.
 
     Returns
     -------
-        AggregationProfile configured for the mode
+    AggregationProfile
+        AggregationProfile configured for the mode.
 
-    Example:
-        profile = get_mode_profile(AggregationMode.GEOGRAPHICAL)
+    Examples
+    --------
+    >>> profile = get_mode_profile(AggregationMode.GEOGRAPHICAL)
     """
     if mode == AggregationMode.SIMPLE:
         profile = _simple_mode()
