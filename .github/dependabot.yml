@@ -11,6 +11,8 @@ updates:
       dependencies:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "pydata-sphinx-theme"
 
   # Maintain GitHub Actions (checkout, setup-python, etc.)
   - package-ecosystem: "github-actions"
