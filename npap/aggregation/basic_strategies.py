@@ -7,7 +7,7 @@ import numpy as np
 
 from npap.exceptions import AggregationError
 from npap.interfaces import EdgePropertyStrategy, NodePropertyStrategy, TopologyStrategy
-from npap.logging import LogCategory, log_debug
+from npap.logging import LogCategory, log_debug, log_warning
 
 # ============================================================================
 # PRECOMPUTATION UTILITIES - Build mappings for fast lookups
@@ -318,7 +318,17 @@ class AverageNodeStrategy(NodePropertyStrategy):
         """Average property values across nodes using NumPy."""
         try:
             values = _extract_numeric_node_values(graph, nodes, property_name)
-            return float(np.mean(values)) if len(values) > 0 else 0.0
+            if len(values) > 0:
+                return float(np.mean(values))
+
+            # No numeric values found — fall back to first available value
+            log_warning(
+                f"No numeric values found for node property '{property_name}'. "
+                f"Falling back to first available value.",
+                LogCategory.AGGREGATION,
+                warn_user=True,
+            )
+            FirstNodeStrategy.aggregate_property(graph, nodes, property_name)
         except Exception as e:
             raise AggregationError(
                 f"Failed to average node property '{property_name}': {e}",

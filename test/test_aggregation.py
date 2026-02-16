@@ -972,3 +972,46 @@ class TestTypedEdgeAggregation:
 
         # Untyped edge falls back to edge_properties "sum"
         assert edge_by_type["_untyped"]["x"] == pytest.approx(0.2)
+
+
+# =============================================================================
+# AVERAGE NODE STRATEGY FALLBACK TESTS
+# =============================================================================
+
+
+class TestAverageNodeStrategyFallback:
+    """Tests for AverageNodeStrategy fallback when values are non-numeric."""
+
+    def test_warns_and_falls_back_for_non_numeric(self, simple_digraph, caplog):
+        """Test that non-numeric properties warn and fall back to first value."""
+        import logging
+
+        strategy = AverageNodeStrategy()
+        nodes = [0, 1, 2]
+
+        with caplog.at_level(logging.WARNING):
+            result = strategy.aggregate_property(simple_digraph, nodes, "name")
+
+        assert result == "node_0"
+        assert "No numeric values found for node property 'name'" in caplog.text
+
+    def test_no_warning_for_numeric(self, simple_digraph, caplog):
+        """Test that numeric properties produce no warning."""
+        import logging
+
+        strategy = AverageNodeStrategy()
+        nodes = [0, 1, 2, 3]
+
+        with caplog.at_level(logging.WARNING):
+            result = strategy.aggregate_property(simple_digraph, nodes, "demand")
+
+        assert result == 25.0
+        assert "No numeric values" not in caplog.text
+
+    def test_returns_none_when_property_missing(self, simple_digraph):
+        """Test that completely missing property returns None."""
+        strategy = AverageNodeStrategy()
+        nodes = [0, 1]
+
+        result = strategy.aggregate_property(simple_digraph, nodes, "nonexistent")
+        assert result is None
