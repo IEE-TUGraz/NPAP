@@ -395,7 +395,8 @@ class TestAggregationManager:
         manager = AggregationManager()
         profile = get_mode_profile(AggregationMode.GEOGRAPHICAL, warn_on_defaults=False)
 
-        result = manager.aggregate(simple_digraph, simple_partition_map, profile)
+        with pytest.warns(UserWarning, match="No numeric values found for node property 'name'"):
+            result = manager.aggregate(simple_digraph, simple_partition_map, profile)
 
         # Verify lat/lon are averaged
         # Cluster 0: nodes [0, 2] -> lats [0, 1] -> avg 0.5
@@ -429,7 +430,8 @@ class TestAggregationManager:
             warn_on_defaults=False,
         )
 
-        result = manager.aggregate(simple_digraph, simple_partition_map, profile)
+        with pytest.warns(UserWarning, match="No numeric values found for node property 'name'"):
+            result = manager.aggregate(simple_digraph, simple_partition_map, profile)
 
         # Cluster 0: nodes [0, 2] -> lats [0, 1] -> avg 0.5, lons [0, 0] -> avg 0.0
         assert result.nodes[0]["lat"] == pytest.approx(0.5)
@@ -982,31 +984,24 @@ class TestTypedEdgeAggregation:
 class TestAverageNodeStrategyFallback:
     """Tests for AverageNodeStrategy fallback when values are non-numeric."""
 
-    def test_warns_and_falls_back_for_non_numeric(self, simple_digraph, caplog):
+    def test_warns_and_falls_back_for_non_numeric(self, simple_digraph):
         """Test that non-numeric properties warn and fall back to first value."""
-        import logging
-
         strategy = AverageNodeStrategy()
         nodes = [0, 1, 2]
 
-        with caplog.at_level(logging.WARNING):
+        with pytest.warns(UserWarning, match="No numeric values found for node property 'name'"):
             result = strategy.aggregate_property(simple_digraph, nodes, "name")
 
         assert result == "node_0"
-        assert "No numeric values found for node property 'name'" in caplog.text
 
-    def test_no_warning_for_numeric(self, simple_digraph, caplog):
+    def test_no_warning_for_numeric(self, simple_digraph):
         """Test that numeric properties produce no warning."""
-        import logging
-
         strategy = AverageNodeStrategy()
         nodes = [0, 1, 2, 3]
 
-        with caplog.at_level(logging.WARNING):
-            result = strategy.aggregate_property(simple_digraph, nodes, "demand")
+        result = strategy.aggregate_property(simple_digraph, nodes, "demand")
 
         assert result == 25.0
-        assert "No numeric values" not in caplog.text
 
     def test_returns_none_when_property_missing(self, simple_digraph):
         """Test that completely missing property returns None."""

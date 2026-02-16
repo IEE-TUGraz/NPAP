@@ -322,13 +322,15 @@ class AverageNodeStrategy(NodePropertyStrategy):
                 return float(np.mean(values))
 
             # No numeric values found — fall back to first available value
-            log_warning(
-                f"No numeric values found for node property '{property_name}'. "
-                f"Falling back to first available value.",
-                LogCategory.AGGREGATION,
-                warn_user=True,
-            )
-            FirstNodeStrategy.aggregate_property(graph, nodes, property_name)
+            first_value = FirstNodeStrategy().aggregate_property(graph, nodes, property_name)
+            if first_value is not None:
+                log_warning(
+                    f"No numeric values found for node property '{property_name}'. "
+                    f"Falling back to first available value.",
+                    LogCategory.AGGREGATION,
+                    warn_user=True,
+                )
+            return first_value
         except Exception as e:
             raise AggregationError(
                 f"Failed to average node property '{property_name}': {e}",
