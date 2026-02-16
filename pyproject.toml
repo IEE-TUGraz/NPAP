@@ -37,7 +37,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/IEE-TUGraz/NPAP"
+Homepage = "https://npap.readthedocs.io"
 Documentation = "https://npap.readthedocs.io"
 Repository = "https://github.com/IEE-TUGraz/NPAP"
 Changelog = "https://github.com/IEE-TUGraz/NPAP/releases"
