@@ -1,8 +1,9 @@
+<!-- GitHub dark/light mode banner -->
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/NPAP-Banner-light.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/NPAP-Banner-dark.svg">
-    <img alt="NPAP - Network Partitioning & Aggregation Package" src="docs/assets/NPAP-Banner-light.svg" width="800">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/IEE-TUGraz/NPAP/main/docs/assets/NPAP-Banner-light.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/IEE-TUGraz/NPAP/main/docs/assets/NPAP-Banner-dark.svg">
+    <img alt="NPAP - Network Partitioning & Aggregation Package" src="https://raw.githubusercontent.com/IEE-TUGraz/NPAP/main/docs/assets/NPAP-Banner-dark.svg" width="800">
   </picture>
 </p>
 
@@ -111,9 +112,9 @@ NPAP is released under the [MIT License](LICENSE).
 Funded by the European Union (ERC, NetZero-Opt, 101116212). Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or the European Research Council. Neither the European Union nor the granting authority can be held responsible for them.
 
 <p align="center">
-  <img src="docs/assets/ERC.png" alt="ERC" height="80">
+  <img src="https://raw.githubusercontent.com/IEE-TUGraz/NPAP/main/docs/assets/ERC.png" alt="ERC" height="80">
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/assets/Netzero-opt.png" alt="NetZero-Opt" height="80">
+  <img src="https://raw.githubusercontent.com/IEE-TUGraz/NPAP/main/docs/assets/Netzero-opt.png" alt="NetZero-Opt" height="80">
 </p>
 
 ---
