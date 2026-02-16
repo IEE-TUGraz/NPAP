@@ -340,6 +340,78 @@ def parallel_edge_multigraph() -> nx.MultiDiGraph:
 
 
 # =============================================================================
+# TYPED-EDGE GRAPH FIXTURES
+# =============================================================================
+
+
+@pytest.fixture
+def typed_edge_digraph() -> nx.DiGraph:
+    """
+    DiGraph with mixed edge types for testing per-type aggregation.
+
+    Structure (6 nodes, 2 clusters):
+        Cluster 0: nodes 0, 1, 2
+        Cluster 1: nodes 3, 4, 5
+
+    Edge types:
+        - "line": 0->3 (x=0.1, s_nom=100), 1->4 (x=0.2, s_nom=200)
+        - "trafo": 2->3 (x=0.05, s_nom=50)
+        - "link": 1->5 (p_nom=500)
+        - no type: 0->1 (internal, same cluster — should be skipped)
+    """
+    G = nx.DiGraph()
+
+    G.add_node(0, lat=0.0, lon=0.0, demand=10.0)
+    G.add_node(1, lat=0.1, lon=0.1, demand=20.0)
+    G.add_node(2, lat=0.2, lon=0.0, demand=30.0)
+    G.add_node(3, lat=5.0, lon=5.0, demand=40.0)
+    G.add_node(4, lat=5.1, lon=5.1, demand=50.0)
+    G.add_node(5, lat=5.2, lon=5.0, demand=60.0)
+
+    # Internal edge (same cluster) — should be excluded from aggregation
+    G.add_edge(0, 1, x=0.3, type="line")
+
+    # Inter-cluster lines
+    G.add_edge(0, 3, x=0.1, s_nom=100.0, type="line")
+    G.add_edge(1, 4, x=0.2, s_nom=200.0, type="line")
+
+    # Inter-cluster transformer
+    G.add_edge(2, 3, x=0.05, s_nom=50.0, type="trafo")
+
+    # Inter-cluster DC link
+    G.add_edge(1, 5, p_nom=500.0, type="link")
+
+    return G
+
+
+@pytest.fixture
+def typed_edge_partition_map() -> dict:
+    """Partition for typed_edge_digraph: two clusters."""
+    return {0: [0, 1, 2], 1: [3, 4, 5]}
+
+
+@pytest.fixture
+def untyped_mixed_digraph() -> nx.DiGraph:
+    """
+    DiGraph where some edges have a type attribute and some do not.
+
+    Used to test that untyped edges are collected under ``"_untyped"``.
+    """
+    G = nx.DiGraph()
+
+    G.add_node(0, lat=0.0, lon=0.0)
+    G.add_node(1, lat=1.0, lon=1.0)
+    G.add_node(2, lat=2.0, lon=2.0)
+
+    # Typed edge
+    G.add_edge(0, 1, x=0.1, type="line")
+    # Untyped edge
+    G.add_edge(1, 2, x=0.2)
+
+    return G
+
+
+# =============================================================================
 # PARTITION RESULT FIXTURES
 # =============================================================================
 

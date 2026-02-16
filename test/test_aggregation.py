@@ -23,6 +23,7 @@ from npap.aggregation.basic_strategies import (
     SimpleTopologyStrategy,
     SumEdgeStrategy,
     SumNodeStrategy,
+    build_typed_cluster_edge_map,
 )
 from npap.aggregation.modes import get_mode_profile
 from npap.interfaces import AggregationMode, AggregationProfile
@@ -632,3 +633,342 @@ class TestAggregationEdgeCases:
         result = manager.aggregate(simple_digraph, partition, profile)
 
         assert len(list(result.nodes())) == 2
+
+
+# =============================================================================
+# TYPED EDGE AGGREGATION TESTS
+# =============================================================================
+
+
+class TestBuildTypedClusterEdgeMap:
+    """Tests for build_typed_cluster_edge_map utility."""
+
+    def test_groups_edges_by_type(self, typed_edge_digraph, typed_edge_partition_map):
+        """Test edges are correctly grouped by their type attribute."""
+        from npap.aggregation.basic_strategies import build_node_to_cluster_map
+
+        node_to_cluster = build_node_to_cluster_map(typed_edge_partition_map)
+        result = build_typed_cluster_edge_map(typed_edge_digraph, node_to_cluster)
+
+        assert "line" in result
+        assert "trafo" in result
+        assert "link" in result
+
+    def test_excludes_intra_cluster_edges(self, typed_edge_digraph, typed_edge_partition_map):
+        """Test that edges within the same cluster are excluded."""
+        from npap.aggregation.basic_strategies import build_node_to_cluster_map
+
+        node_to_cluster = build_node_to_cluster_map(typed_edge_partition_map)
+        result = build_typed_cluster_edge_map(typed_edge_digraph, node_to_cluster)
+
+        # Edge 0->1 is internal to cluster 0, so "line" should only have
+        # the two inter-cluster line edges (0->3, 1->4)
+        line_edges = result["line"]
+        total_line_edges = sum(len(v) for v in line_edges.values())
+        assert total_line_edges == 2
+
+    def test_correct_cluster_pair_mapping(self, typed_edge_digraph, typed_edge_partition_map):
+        """Test cluster pair keys are correct."""
+        from npap.aggregation.basic_strategies import build_node_to_cluster_map
+
+        node_to_cluster = build_node_to_cluster_map(typed_edge_partition_map)
+        result = build_typed_cluster_edge_map(typed_edge_digraph, node_to_cluster)
+
+        # All inter-cluster edges go from cluster 0 to cluster 1
+        for edge_type in result:
+            for cluster_pair in result[edge_type]:
+                assert cluster_pair == (0, 1)
+
+    def test_untyped_edges_collected_under_untyped_key(self, untyped_mixed_digraph):
+        """Test edges without type attribute go to '_untyped'."""
+        from npap.aggregation.basic_strategies import build_node_to_cluster_map
+
+        partition = {0: [0], 1: [1], 2: [2]}
+        node_to_cluster = build_node_to_cluster_map(partition)
+        result = build_typed_cluster_edge_map(untyped_mixed_digraph, node_to_cluster)
+
+        assert "line" in result
+        assert "_untyped" in result
+        assert (1, 2) in result["_untyped"]
+
+    def test_custom_type_attribute(self):
+        """Test using a custom attribute name instead of 'type'."""
+        from npap.aggregation.basic_strategies import build_node_to_cluster_map
+
+        G = nx.DiGraph()
+        G.add_node(0)
+        G.add_node(1)
+        G.add_edge(0, 1, x=0.1, edge_class="cable")
+
+        partition = {0: [0], 1: [1]}
+        node_to_cluster = build_node_to_cluster_map(partition)
+        result = build_typed_cluster_edge_map(G, node_to_cluster, type_attribute="edge_class")
+
+        assert "cable" in result
+        assert "_untyped" not in result
+
+    def test_empty_graph_returns_empty(self):
+        """Test with graph that has no inter-cluster edges."""
+        from npap.aggregation.basic_strategies import build_node_to_cluster_map
+
+        G = nx.DiGraph()
+        G.add_node(0)
+        G.add_node(1)
+
+        partition = {0: [0], 1: [1]}
+        node_to_cluster = build_node_to_cluster_map(partition)
+        result = build_typed_cluster_edge_map(G, node_to_cluster)
+
+        assert result == {}
+
+
+class TestTypedEdgeAggregation:
+    """Tests for _aggregate_typed_edge_properties and aggregate() dispatch."""
+
+    def test_returns_multidigraph(self, typed_edge_digraph, typed_edge_partition_map):
+        """Test that aggregate() returns MultiDiGraph when edge_type_properties is set."""
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            edge_type_properties={
+                "line": {"x": "equivalent_reactance", "s_nom": "sum"},
+                "trafo": {"x": "first", "s_nom": "sum"},
+                "link": {"p_nom": "sum"},
+            },
+            warn_on_defaults=False,
+        )
+
+        result = manager.aggregate(typed_edge_digraph, typed_edge_partition_map, profile)
+
+        assert isinstance(result, nx.MultiDiGraph)
+
+    def test_preserves_node_data(self, typed_edge_digraph, typed_edge_partition_map):
+        """Test that node properties are aggregated and preserved."""
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            node_properties={"demand": "sum", "lat": "average", "lon": "average"},
+            edge_type_properties={
+                "line": {"x": "sum", "s_nom": "sum"},
+                "trafo": {"x": "sum", "s_nom": "sum"},
+                "link": {"p_nom": "sum"},
+            },
+            warn_on_defaults=False,
+        )
+
+        result = manager.aggregate(typed_edge_digraph, typed_edge_partition_map, profile)
+
+        # Cluster 0: nodes 0,1,2 -> demands 10+20+30 = 60
+        assert result.nodes[0]["demand"] == pytest.approx(60.0)
+        # Cluster 1: nodes 3,4,5 -> demands 40+50+60 = 150
+        assert result.nodes[1]["demand"] == pytest.approx(150.0)
+
+    def test_one_edge_per_type_per_cluster_pair(self, typed_edge_digraph, typed_edge_partition_map):
+        """Test that each type produces one edge per cluster pair."""
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            edge_type_properties={
+                "line": {"x": "sum", "s_nom": "sum"},
+                "trafo": {"x": "first", "s_nom": "sum"},
+                "link": {"p_nom": "sum"},
+            },
+            warn_on_defaults=False,
+        )
+
+        result = manager.aggregate(typed_edge_digraph, typed_edge_partition_map, profile)
+
+        edges = list(result.edges(data=True))
+        types_found = {e[2]["type"] for e in edges}
+        assert types_found == {"line", "trafo", "link"}
+        assert len(edges) == 3  # one per type between cluster 0 and 1
+
+    def test_per_type_strategy_application(self, typed_edge_digraph, typed_edge_partition_map):
+        """Test that strategies are applied independently per type."""
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            edge_type_properties={
+                "line": {"x": "equivalent_reactance", "s_nom": "sum"},
+                "trafo": {"x": "first", "s_nom": "first"},
+                "link": {"p_nom": "sum"},
+            },
+            warn_on_defaults=False,
+        )
+
+        result = manager.aggregate(typed_edge_digraph, typed_edge_partition_map, profile)
+
+        edge_by_type = {}
+        for u, v, data in result.edges(data=True):
+            edge_by_type[data["type"]] = data
+
+        # Lines: x=0.1 and x=0.2 -> equivalent_reactance = 1/(1/0.1 + 1/0.2)
+        expected_x = 1.0 / (1.0 / 0.1 + 1.0 / 0.2)
+        assert edge_by_type["line"]["x"] == pytest.approx(expected_x)
+
+        # Lines: s_nom sum = 100 + 200 = 300
+        assert edge_by_type["line"]["s_nom"] == pytest.approx(300.0)
+
+        # Trafo: x first = 0.05
+        assert edge_by_type["trafo"]["x"] == pytest.approx(0.05)
+
+        # Trafo: s_nom first = 50
+        assert edge_by_type["trafo"]["s_nom"] == pytest.approx(50.0)
+
+        # Link: p_nom sum = 500
+        assert edge_by_type["link"]["p_nom"] == pytest.approx(500.0)
+
+    def test_fallback_to_edge_properties(self, typed_edge_digraph, typed_edge_partition_map):
+        """Test unlisted types fall back to edge_properties dict."""
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            edge_properties={"x": "average", "s_nom": "average", "p_nom": "average"},
+            edge_type_properties={
+                # Only specify "line" — trafo and link should fall back
+                "line": {"x": "equivalent_reactance", "s_nom": "sum"},
+            },
+            warn_on_defaults=False,
+        )
+
+        result = manager.aggregate(typed_edge_digraph, typed_edge_partition_map, profile)
+
+        edge_by_type = {}
+        for u, v, data in result.edges(data=True):
+            edge_by_type[data["type"]] = data
+
+        # Lines use specific strategies
+        expected_x = 1.0 / (1.0 / 0.1 + 1.0 / 0.2)
+        assert edge_by_type["line"]["x"] == pytest.approx(expected_x)
+        assert edge_by_type["line"]["s_nom"] == pytest.approx(300.0)
+
+        # Trafo falls back to edge_properties -> average
+        assert edge_by_type["trafo"]["x"] == pytest.approx(0.05)  # single edge
+        assert edge_by_type["trafo"]["s_nom"] == pytest.approx(50.0)  # single edge
+
+        # Link falls back to edge_properties -> average
+        assert edge_by_type["link"]["p_nom"] == pytest.approx(500.0)  # single edge
+
+    def test_type_attribute_not_aggregated(self, typed_edge_digraph, typed_edge_partition_map):
+        """Test that the type attribute is preserved, not aggregated."""
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            edge_type_properties={
+                "line": {"x": "sum", "s_nom": "sum"},
+                "trafo": {"x": "sum", "s_nom": "sum"},
+                "link": {"p_nom": "sum"},
+            },
+            warn_on_defaults=False,
+        )
+
+        result = manager.aggregate(typed_edge_digraph, typed_edge_partition_map, profile)
+
+        for u, v, data in result.edges(data=True):
+            assert "type" in data
+            assert isinstance(data["type"], str)
+            assert data["type"] in {"line", "trafo", "link"}
+
+    def test_without_edge_type_properties_returns_digraph(
+        self, typed_edge_digraph, typed_edge_partition_map
+    ):
+        """Test that empty edge_type_properties uses original DiGraph path."""
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            edge_properties={"x": "sum"},
+            warn_on_defaults=False,
+        )
+
+        result = manager.aggregate(typed_edge_digraph, typed_edge_partition_map, profile)
+
+        assert isinstance(result, nx.DiGraph)
+        assert not isinstance(result, nx.MultiDiGraph)
+
+    def test_validation_rejects_invalid_per_type_strategy(self):
+        """Test that invalid strategy in edge_type_properties is caught."""
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            edge_type_properties={
+                "line": {"x": "nonexistent_strategy"},
+            },
+        )
+
+        G = nx.DiGraph()
+        G.add_node(0)
+        G.add_node(1)
+        G.add_edge(0, 1, x=0.1, type="line")
+
+        with pytest.raises(ValueError, match="Unknown edge strategy.*edge type 'line'"):
+            manager.aggregate(G, {0: [0], 1: [1]}, profile)
+
+    def test_custom_edge_type_attribute(self):
+        """Test aggregation with a non-default type attribute name."""
+        G = nx.DiGraph()
+        G.add_node(0, lat=0.0, lon=0.0)
+        G.add_node(1, lat=1.0, lon=0.0)
+        G.add_node(2, lat=2.0, lon=0.0)
+        G.add_edge(0, 2, x=0.1, branch_class="cable")
+        G.add_edge(1, 2, x=0.2, branch_class="overhead")
+
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            edge_type_properties={
+                "cable": {"x": "sum"},
+                "overhead": {"x": "sum"},
+            },
+            edge_type_attribute="branch_class",
+            warn_on_defaults=False,
+        )
+
+        partition = {0: [0, 1], 1: [2]}
+        result = manager.aggregate(G, partition, profile)
+
+        assert isinstance(result, nx.MultiDiGraph)
+
+        edge_by_type = {}
+        for u, v, data in result.edges(data=True):
+            edge_by_type[data["branch_class"]] = data
+
+        assert "cable" in edge_by_type
+        assert "overhead" in edge_by_type
+        assert edge_by_type["cable"]["x"] == pytest.approx(0.1)
+        assert edge_by_type["overhead"]["x"] == pytest.approx(0.2)
+
+    def test_untyped_edges_aggregated_with_fallback(self):
+        """Test _untyped edges get edge_properties fallback strategies."""
+        G = nx.DiGraph()
+        G.add_node(0, lat=0.0, lon=0.0)
+        G.add_node(1, lat=1.0, lon=1.0)
+        G.add_node(2, lat=2.0, lon=2.0)
+
+        # One typed, one untyped
+        G.add_edge(0, 1, x=0.1, type="line")
+        G.add_edge(0, 2, x=0.2)  # no type
+
+        manager = AggregationManager()
+        profile = AggregationProfile(
+            topology_strategy="simple",
+            edge_properties={"x": "sum"},
+            edge_type_properties={
+                "line": {"x": "average"},
+            },
+            warn_on_defaults=False,
+        )
+
+        partition = {0: [0], 1: [1], 2: [2]}
+        result = manager.aggregate(G, partition, profile)
+
+        assert isinstance(result, nx.MultiDiGraph)
+
+        edge_by_type = {}
+        for u, v, data in result.edges(data=True):
+            edge_by_type[data["type"]] = data
+
+        # Typed edge uses "average" from edge_type_properties
+        assert edge_by_type["line"]["x"] == pytest.approx(0.1)
+
+        # Untyped edge falls back to edge_properties "sum"
+        assert edge_by_type["_untyped"]["x"] == pytest.approx(0.2)

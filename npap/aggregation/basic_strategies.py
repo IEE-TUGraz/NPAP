@@ -65,6 +65,52 @@ def build_cluster_edge_map(
     return dict(cluster_edges)
 
 
+def build_typed_cluster_edge_map(
+    graph: nx.DiGraph,
+    node_to_cluster: dict[Any, int],
+    type_attribute: str = "type",
+) -> dict[str, dict[tuple[int, int], list[dict[str, Any]]]]:
+    """
+    Build cluster edge maps grouped by edge type.
+
+    Like ``build_cluster_edge_map`` but returns a nested dict keyed first by the
+    value of the *type_attribute* on each edge, then by ``(source_cluster,
+    target_cluster)`` pair.  Edges without the type attribute are collected under
+    the key ``"_untyped"``.
+
+    Single pass over all edges – O(E) complexity.
+
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        Original NetworkX graph.
+    node_to_cluster : dict[Any, int]
+        Mapping from node_id to cluster_id.
+    type_attribute : str
+        Edge attribute that stores the type label (default ``"type"``).
+
+    Returns
+    -------
+    dict[str, dict[tuple[int, int], list[dict[str, Any]]]]
+        Nested mapping: edge_type -> (src_cluster, tgt_cluster) -> [edge_data].
+    """
+    typed_edges: dict[str, dict[tuple[int, int], list[dict[str, Any]]]] = {}
+
+    for u, v, data in graph.edges(data=True):
+        cluster_u = node_to_cluster.get(u)
+        cluster_v = node_to_cluster.get(v)
+        if cluster_u is None or cluster_v is None or cluster_u == cluster_v:
+            continue
+
+        edge_type = data.get(type_attribute, "_untyped")
+        if edge_type not in typed_edges:
+            typed_edges[edge_type] = defaultdict(list)
+        typed_edges[edge_type][(cluster_u, cluster_v)].append(data)
+
+    # Convert inner defaultdicts to plain dicts
+    return {t: dict(m) for t, m in typed_edges.items()}
+
+
 def build_cluster_connectivity_set(
     graph: nx.DiGraph, node_to_cluster: dict[Any, int]
 ) -> set[tuple[int, int]]:

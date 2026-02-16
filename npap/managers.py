@@ -226,7 +226,7 @@ class AggregationManager:
         graph: nx.DiGraph,
         partition_map: dict[int, list[Any]],
         profile: AggregationProfile = None,
-    ) -> nx.DiGraph:
+    ) -> nx.DiGraph | nx.MultiDiGraph:
         """
         Execute aggregation using the specified profile.
 
@@ -247,8 +247,9 @@ class AggregationManager:
 
         Returns
         -------
-        nx.DiGraph
-            Aggregated graph.
+        nx.DiGraph or nx.MultiDiGraph
+            Aggregated graph.  Returns a ``MultiDiGraph`` when
+            ``profile.edge_type_properties`` is populated.
         """
         if profile is None:
             profile = AggregationProfile()
@@ -316,14 +317,23 @@ class AggregationManager:
         )
 
         # Step 4: Aggregate edge properties
-        self._aggregate_edge_properties(
-            graph,
-            partition_map,
-            aggregated,
-            profile,
-            physical_modified_properties,
-            cluster_edge_map,
-        )
+        if profile.edge_type_properties:
+            aggregated = self._aggregate_typed_edge_properties(
+                graph,
+                partition_map,
+                aggregated,
+                profile,
+                physical_modified_properties,
+            )
+        else:
+            self._aggregate_edge_properties(
+                graph,
+                partition_map,
+                aggregated,
+                profile,
+                physical_modified_properties,
+                cluster_edge_map,
+            )
 
         log_info(
             f"Aggregation complete: {aggregated.number_of_nodes()} nodes, "
@@ -489,6 +499,16 @@ class AggregationManager:
                     f"Unknown edge strategy '{strategy}' for property '{prop}'. "
                     f"Available: {available}"
                 )
+
+        # Validate per-type edge property strategies
+        for edge_type, type_strategies in profile.edge_type_properties.items():
+            for prop, strategy in type_strategies.items():
+                if strategy not in self._edge_strategies:
+                    available = ", ".join(self._edge_strategies.keys())
+                    raise ValueError(
+                        f"Unknown edge strategy '{strategy}' for property '{prop}' "
+                        f"in edge type '{edge_type}'. Available: {available}"
+                    )
 
     @staticmethod
     def _check_property_conflicts(profile: AggregationProfile, physical_properties: set) -> None:
@@ -668,6 +688,95 @@ class AggregationManager:
             # Batch update edge attributes
             aggregated.edges[edge].update(edge_attrs)
 
+    def _aggregate_typed_edge_properties(
+        self,
+        graph: nx.DiGraph,
+        partition_map: dict[int, list[Any]],
+        aggregated: nx.DiGraph,
+        profile: AggregationProfile,
+        skip_properties: set = None,
+    ) -> nx.MultiDiGraph:
+        """Aggregate edge properties per edge type, returning a MultiDiGraph.
+
+        When ``profile.edge_type_properties`` is populated, edges are grouped
+        by their ``"type"`` attribute and aggregated independently using
+        per-type strategy dicts.  The result is a ``MultiDiGraph`` so that
+        multiple edges (one per type) can connect the same cluster pair.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            Original graph.
+        partition_map : dict[int, list[Any]]
+            Cluster mapping.
+        aggregated : nx.DiGraph
+            Topology graph with aggregated node properties.
+        profile : AggregationProfile
+            Aggregation profile with ``edge_type_properties``.
+        skip_properties : set, optional
+            Properties already handled by physical aggregation.
+
+        Returns
+        -------
+        nx.MultiDiGraph
+            Aggregated graph with typed edges.
+        """
+        skip_properties = skip_properties or set()
+
+        from npap.aggregation.basic_strategies import (
+            build_node_to_cluster_map,
+            build_typed_cluster_edge_map,
+        )
+
+        type_attr = profile.edge_type_attribute
+
+        node_to_cluster = build_node_to_cluster_map(partition_map)
+        typed_map = build_typed_cluster_edge_map(graph, node_to_cluster, type_attribute=type_attr)
+
+        # Convert the DiGraph topology to a MultiDiGraph, preserving nodes
+        multi = nx.MultiDiGraph()
+        multi.add_nodes_from(aggregated.nodes(data=True))
+
+        for edge_type, cluster_edges in typed_map.items():
+            # Determine which strategy dict to use for this type
+            user_specified = profile.edge_type_properties.get(edge_type, profile.edge_properties)
+
+            # Collect all properties across edges of this type
+            all_properties: set[str] = set()
+            for edge_list in cluster_edges.values():
+                for edge_data in edge_list:
+                    all_properties.update(edge_data.keys())
+
+            # Exclude the type attribute itself — it is set explicitly below
+            properties_to_aggregate = all_properties - skip_properties - {type_attr}
+
+            # Resolve strategies
+            property_strategies = self._resolve_property_strategies(
+                properties=properties_to_aggregate,
+                user_specified=user_specified,
+                available_strategies=self._edge_strategies,
+                default_strategy=profile.default_edge_strategy,
+                warn_on_defaults=profile.warn_on_defaults,
+                property_type=f"Edge[{edge_type}]",
+            )
+
+            for (c1, c2), original_edges in cluster_edges.items():
+                edge_attrs: dict[str, Any] = {type_attr: edge_type}
+                for prop, strategy in property_strategies.items():
+                    if strategy is not None:
+                        edge_attrs[prop] = strategy.aggregate_property(original_edges, prop)
+                    elif original_edges:
+                        edge_attrs[prop] = original_edges[0].get(prop)
+                multi.add_edge(c1, c2, **edge_attrs)
+
+        log_info(
+            f"Typed edge aggregation: {multi.number_of_edges()} edges "
+            f"across {len(typed_map)} types",
+            LogCategory.AGGREGATION,
+        )
+
+        return multi
+
     def _register_default_strategies(self) -> None:
         """Register built-in aggregation strategies."""
         from npap.aggregation.basic_strategies import (
@@ -761,7 +870,7 @@ class PartitionAggregatorManager:
         profile: AggregationProfile = None,
         mode: AggregationMode = None,
         **overrides,
-    ) -> nx.DiGraph:
+    ) -> nx.DiGraph | nx.MultiDiGraph:
         """
         Aggregate using partition result and profile.
 
@@ -778,8 +887,9 @@ class PartitionAggregatorManager:
 
         Returns
         -------
-        nx.DiGraph
-            Aggregated graph.
+        nx.DiGraph or nx.MultiDiGraph
+            Aggregated graph.  Returns a ``MultiDiGraph`` when
+            ``profile.edge_type_properties`` is populated.
 
         Notes
         -----
