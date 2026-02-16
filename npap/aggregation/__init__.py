@@ -33,6 +33,8 @@ from .basic_strategies import (
     SumEdgeStrategy,
     # Node property strategies
     SumNodeStrategy,
+    # Typed edge utilities
+    build_typed_cluster_edge_map,
 )
 from .modes import get_mode_profile
 from .physical_strategies import KronReductionStrategy
@@ -48,5 +50,6 @@ __all__ = [
     "SimpleTopologyStrategy",
     "SumEdgeStrategy",
     "SumNodeStrategy",
+    "build_typed_cluster_edge_map",
     "get_mode_profile",
 ]
