@@ -446,14 +446,32 @@ class EquivalentReactanceStrategy(EdgePropertyStrategy):
 
         Returns
         -------
-            Equivalent reactance value, or float('inf') if no edges exist
+            Equivalent reactance value, or float('inf') if non-numeric values present
+
+        Raises
+        ------
+        AggregationError
+            If no edges have the property at all (entirely missing attribute).
         """
         try:
             values = _extract_numeric_edge_values(original_edges, property_name)
 
             if len(values) == 0:
-                # No edges had this property - equivalent to open circuit
-                return float("inf")
+                # Distinguish: property exists but non-numeric vs. entirely missing
+                has_property = any(property_name in edge for edge in original_edges)
+                if has_property:
+                    log_warning(
+                        f"No numeric values found for edge property '{property_name}'. "
+                        f"Returning inf (open circuit equivalent).",
+                        LogCategory.AGGREGATION,
+                        warn_user=False,
+                    )
+                    return float("inf")
+                raise AggregationError(
+                    f"No edges have the '{property_name}' attribute. Cannot calculate "
+                    f"equivalent reactance.",
+                    strategy="equivalent_reactance",
+                )
 
             epsilon = 1e-10
 
@@ -471,6 +489,8 @@ class EquivalentReactanceStrategy(EdgePropertyStrategy):
             return float(1.0 / total_susceptance)
 
         except Exception as e:
+            if isinstance(e, AggregationError):
+                raise
             raise AggregationError(
                 f"Failed to calculate equivalent reactance for '{property_name}': {e}",
                 strategy="equivalent_reactance",

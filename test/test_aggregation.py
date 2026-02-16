@@ -349,13 +349,13 @@ class TestEquivalentReactanceStrategy:
         result = strategy.aggregate_property(edges, "x")
         assert result == 0.0
 
-    def test_missing_property_returns_inf(self):
-        """Test that missing property returns infinity (open circuit)."""
+    def test_missing_property_raises_error(self):
+        """Test that entirely missing property raises AggregationError."""
         strategy = EquivalentReactanceStrategy()
         edges = [{"length": 100}]  # No 'x' property
 
-        result = strategy.aggregate_property(edges, "x")
-        assert result == float("inf")
+        with pytest.raises(AggregationError, match="No edges have the 'x' attribute"):
+            strategy.aggregate_property(edges, "x")
 
     def test_three_parallel_lines(self):
         """Test equivalent reactance for three parallel lines."""
@@ -1015,3 +1015,56 @@ class TestAverageNodeStrategyFallback:
 
         result = strategy.aggregate_property(simple_digraph, nodes, "nonexistent")
         assert result is None
+
+
+# =============================================================================
+# EQUIVALENT REACTANCE WARNING AND ERROR TESTS
+# =============================================================================
+
+
+class TestEquivalentReactanceWarningAndError:
+    """Tests for EquivalentReactanceStrategy warning and error behavior."""
+
+    def test_warns_for_non_numeric_values(self, caplog):
+        """Test that non-numeric values warn and return inf."""
+        import logging
+
+        strategy = EquivalentReactanceStrategy()
+        edges = [{"x": "high"}, {"x": "low"}]  # Non-numeric values
+
+        with caplog.at_level(logging.WARNING):
+            result = strategy.aggregate_property(edges, "x")
+
+        assert result == float("inf")
+        assert "No numeric values found for edge property 'x'" in caplog.text
+
+    def test_errors_for_missing_property(self):
+        """Test that entirely missing property raises AggregationError."""
+        strategy = EquivalentReactanceStrategy()
+        edges = [{"length": 100}, {"length": 200}]
+
+        with pytest.raises(AggregationError, match="No edges have the 'x' attribute"):
+            strategy.aggregate_property(edges, "x")
+
+    def test_no_warning_for_valid_values(self, caplog):
+        """Test that valid numeric values produce no warning."""
+        import logging
+
+        strategy = EquivalentReactanceStrategy()
+        edges = [{"x": 0.2}, {"x": 0.3}]
+
+        with caplog.at_level(logging.WARNING):
+            result = strategy.aggregate_property(edges, "x")
+
+        expected = 1.0 / (1.0 / 0.2 + 1.0 / 0.3)
+        assert result == pytest.approx(expected)
+        assert "No numeric values" not in caplog.text
+
+    def test_mixed_numeric_and_non_numeric(self):
+        """Test that mixed numeric/non-numeric values use only numeric ones."""
+        strategy = EquivalentReactanceStrategy()
+        edges = [{"x": 0.2}, {"x": "high"}, {"x": 0.3}]
+
+        result = strategy.aggregate_property(edges, "x")
+        expected = 1.0 / (1.0 / 0.2 + 1.0 / 0.3)
+        assert result == pytest.approx(expected)
