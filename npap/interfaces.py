@@ -100,6 +100,16 @@ class AggregationProfile:
         Mapping of node property names to aggregation strategies.
     edge_properties : dict[str, str]
         Mapping of edge property names to aggregation strategies.
+    edge_type_properties : dict[str, dict[str, str]]
+        Per-edge-type strategy overrides.  Maps edge type values (from the
+        ``edge_type_attribute`` attribute on edges) to per-type property
+        strategy dicts.  When populated, edges are aggregated separately
+        per type and the result graph is a MultiDiGraph with one edge per
+        type per cluster pair.  Falls back to ``edge_properties`` for edges
+        whose type is not listed here.
+    edge_type_attribute : str
+        Name of the edge attribute that stores the type label.  Only used
+        when ``edge_type_properties`` is populated.  Defaults to ``"type"``.
     default_node_strategy : str
         Default strategy for unspecified node properties.
     default_edge_strategy : str
@@ -116,6 +126,8 @@ class AggregationProfile:
     physical_parameters: dict[str, Any] = field(default_factory=dict)
     node_properties: dict[str, str] = field(default_factory=dict)
     edge_properties: dict[str, str] = field(default_factory=dict)
+    edge_type_properties: dict[str, dict[str, str]] = field(default_factory=dict)
+    edge_type_attribute: str = "type"
     default_node_strategy: str = "average"
     default_edge_strategy: str = "sum"
     warn_on_defaults: bool = True
