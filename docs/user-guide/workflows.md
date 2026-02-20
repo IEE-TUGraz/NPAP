@@ -92,6 +92,8 @@ manager.plot_network(style="voltage_aware", preset=PlotPreset.PRESENTATION)
 
 Presets are composable with `PlotConfig`: pass `config=PlotConfig(...)` and overrides via `kwargs` to fine-tune individual charts while keeping a consistent baseline.
 
+Use the new scenario presets to match the story you are telling: `PlotPreset.TRANSMISSION_STUDY` stabilizes the view for high-voltage corridors, `PlotPreset.DISTRIBUTION_STUDY` tightens the zoom on dense, low-voltage districts, and `PlotPreset.E_MOBILITY_PLANNING` highlights buses/nodes that are prime candidates for charging infrastructure.
+
 ## Command-line helpers
 
 Three lightweight CLIs wrap the PartitionAggregatorManager, AggregationManager, and visualization helpers so you can automate common workflows without writing Python:
@@ -131,6 +133,17 @@ npap-diag \
   --matrix ptdf \
   --matrix laplacian \
   --output reports/diagnostics.html
+```
+
+The new `scripts/lmp_conservation_workflow.py` bundles the full price-aware flow (LMP clustering → conservation aggregation → visualization) so you can run it as:
+
+```bash
+python scripts/lmp_conservation_workflow.py \
+  --node-file buses.csv \
+  --edge-file lines.csv \
+  --clusters 8 \
+  --partition-output reports/lmp-partition.html \
+  --figure-output reports/lmp-conservation.html
 ```
 
 The CLI helpers respect the same loaders as the Python API and reuse the preset-driven visualization pipeline introduced earlier. Install them via `pip install -e ".[test]"` (needed for Hypothesis and the CLI entry points) before running the commands.
