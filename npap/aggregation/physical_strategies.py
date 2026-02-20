@@ -11,6 +11,7 @@ from npap.aggregation.basic_strategies import (
 )
 from npap.exceptions import AggregationError
 from npap.interfaces import EdgeType, PhysicalAggregationStrategy
+from npap.logging import LogCategory, log_warning
 
 
 class TransformerConservationStrategy(PhysicalAggregationStrategy):
@@ -60,8 +61,11 @@ class TransformerConservationStrategy(PhysicalAggregationStrategy):
         properties: list[str],
         parameters: dict[str, Any] | None = None,
     ) -> nx.DiGraph:
-        node_to_cluster = build_node_to_cluster_map(partition_map)
-        cluster_edge_map = build_cluster_edge_map(original_graph, node_to_cluster)
+        params = parameters or {}
+        node_to_cluster = params.get("node_to_cluster") or build_node_to_cluster_map(partition_map)
+        cluster_edge_map = params.get("cluster_edge_map") or build_cluster_edge_map(
+            original_graph, node_to_cluster
+        )
 
         for u, v in topology_graph.edges():
             original_edges = cluster_edge_map.get((u, v), [])
@@ -89,7 +93,12 @@ class TransformerConservationStrategy(PhysicalAggregationStrategy):
     def _calculate_equivalent(self, edges: list[dict[str, Any]], prop: str) -> float | None:
         try:
             return self._equivalent_reactance.aggregate_property(edges, prop)
-        except AggregationError:
+        except AggregationError as exc:
+            log_warning(
+                f"Failed to aggregate '{prop}' for transformer group: {exc}",
+                LogCategory.AGGREGATION,
+                warn_user=True,
+            )
             return None
 
 

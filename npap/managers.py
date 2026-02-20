@@ -294,12 +294,16 @@ class AggregationManager:
             physical_strategy = self._physical_strategies[profile.physical_strategy]
 
             # Validate topology compatibility
-            if topology_strategy.__class__.__name__ != physical_strategy.required_topology:
+            if profile.topology_strategy != physical_strategy.required_topology:
                 log_warning(
                     f"Physical strategy '{profile.physical_strategy}' recommends '{physical_strategy.required_topology}' topology, "
                     f"but '{profile.topology_strategy}' is being used. Results may be incorrect.",
                     LogCategory.AGGREGATION,
                 )
+
+            physical_parameters = dict(profile.physical_parameters or {})
+            physical_parameters.setdefault("node_to_cluster", node_to_cluster)
+            physical_parameters.setdefault("cluster_edge_map", cluster_edge_map)
 
             # Apply physical aggregation
             aggregated = physical_strategy.aggregate(
@@ -307,7 +311,7 @@ class AggregationManager:
                 partition_map,
                 aggregated,
                 profile.physical_properties,
-                profile.physical_parameters,
+                physical_parameters,
             )
 
             # Mark properties as modified by physical strategy

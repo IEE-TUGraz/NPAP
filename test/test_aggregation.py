@@ -617,6 +617,21 @@ class TestTransformerConservationMode:
         assert edge_data["x"] == pytest.approx(1 / (1 / 0.1 + 1 / 0.2))
         assert edge_data["r"] == pytest.approx(1 / (1 / 0.01 + 1 / 0.02))
 
+    def test_without_transformers_still_aggregates(self):
+        manager = AggregationManager()
+
+        graph = nx.DiGraph()
+        graph.add_node(0, lat=0.0, lon=0.0, voltage=110.0)
+        graph.add_node(1, lat=1.0, lon=1.0, voltage=110.0)
+        graph.add_edge(0, 1, type="line", x=0.05, r=0.005, p_max=100.0)
+
+        partition = {0: [0], 1: [1]}
+        profile = AggregationManager.get_mode_profile(AggregationMode.CONSERVATION)
+
+        aggregated = manager.aggregate(graph, partition, profile=profile)
+        assert aggregated.edges[0, 1]["p_max"] == pytest.approx(100.0)
+        assert "transformer_count" not in aggregated.edges[0, 1]
+
 
 # =============================================================================
 # EDGE CASE TESTS

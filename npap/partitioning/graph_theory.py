@@ -8,6 +8,7 @@ from sklearn.cluster import SpectralClustering
 
 from npap.exceptions import PartitioningError
 from npap.interfaces import PartitioningStrategy
+from npap.logging import LogCategory, log_warning
 from npap.utils import create_partition_map, validate_partition
 
 
@@ -16,9 +17,11 @@ class SpectralPartitioning(PartitioningStrategy):
     Partition using spectral clustering on the graph Laplacian.
 
     This strategy converts the input graph into a symmetric adjacency matrix and applies
-    ``sklearn.cluster.SpectralClustering`` with ``affinity="precomputed"``. Use this when
-    you need community-aware partitions on graphs that are not easily handled by geometric
-    distances (e.g., line topology with weak geographic structure).
+    ``sklearn.cluster.SpectralClustering`` with ``affinity="precomputed"``. Because the
+    adjacency matrix mirrors the existing connectivity, disconnected AC islands remain
+    separate clusters, so the strategy respects island boundaries automatically. Use this
+    when you need community-aware partitions on graphs that are not easily handled by
+    geometric distances (e.g., weak geographic structure with strong topological signals).
 
     Parameters
     ----------
@@ -89,6 +92,13 @@ class CommunityPartitioning(PartitioningStrategy):
             raise PartitioningError(
                 "Community detection returned no communities.",
                 strategy=self._strategy_name(),
+            )
+
+        if "n_clusters" in kwargs:
+            log_warning(
+                "community_modularity determines cluster count automatically; 'n_clusters' is ignored.",
+                LogCategory.PARTITIONING,
+                warn_user=False,
             )
 
         partition_map = {idx: list(cluster) for idx, cluster in enumerate(communities)}

@@ -7,6 +7,8 @@ Tests cover:
 - VAGeographicalPartitioning (with AC island and voltage awareness)
 """
 
+import logging
+
 import networkx as nx
 import numpy as np
 import pytest
@@ -1132,3 +1134,16 @@ class TestCommunityPartitioning:
         partition = strategy.partition(graph)
         assert sum(len(nodes) for nodes in partition.values()) == graph.number_of_nodes()
         assert len(partition) >= 2
+
+
+class TestCommunityPartitioningWarnings:
+    def test_n_clusters_warning(self, caplog):
+        strategy = CommunityPartitioning()
+        graph = nx.DiGraph()
+        graph.add_nodes_from([0, 1, 2])
+        graph.add_edges_from([(0, 1), (1, 2), (2, 0)])
+
+        caplog.set_level(logging.WARNING)
+        strategy.partition(graph, n_clusters=2)
+
+        assert "'n_clusters' is ignored" in caplog.text
