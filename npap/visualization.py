@@ -914,6 +914,7 @@ class NetworkPlotter:
         """
         return self._plot(PlotStyle.CLUSTERED, config, show)
 
+
 def plot_network(
     graph: nx.DiGraph,
     style: str = "simple",

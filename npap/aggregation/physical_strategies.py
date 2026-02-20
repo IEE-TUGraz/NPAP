@@ -304,9 +304,7 @@ class PTDFReductionStrategy(PhysicalAggregationStrategy):
         cluster_order = list(topology_graph.nodes())
         representatives = _select_representatives(partition_map, cluster_order)
 
-        laplacian, node_to_index = _build_admittance_matrix(
-            original_graph, self.reactance_property
-        )
+        laplacian, node_to_index = _build_admittance_matrix(original_graph, self.reactance_property)
         keep_indices = [node_to_index[node] for node in representatives]
         reduced_laplacian = _kron_reduce_laplacian(laplacian, keep_indices)
 
@@ -382,9 +380,7 @@ class KronReductionStrategy(PhysicalAggregationStrategy):
         cluster_order = list(topology_graph.nodes())
         representatives = _select_representatives(partition_map, cluster_order)
 
-        laplacian, node_to_index = _build_admittance_matrix(
-            original_graph, self.reactance_property
-        )
+        laplacian, node_to_index = _build_admittance_matrix(original_graph, self.reactance_property)
 
         try:
             keep_indices = [node_to_index[node] for node in representatives]
