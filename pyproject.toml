@@ -57,6 +57,11 @@ docs = [
     "sphinx-reredirects>=0.1",
 ]
 
+[project.scripts]
+npap-cluster = "npap.cli:cluster_entry"
+npap-aggregate = "npap.cli:aggregate_entry"
+npap-plot = "npap.cli:plot_entry"
+
 [tool.setuptools.packages.find]
 include = ["npap", "npap.*"]
 
