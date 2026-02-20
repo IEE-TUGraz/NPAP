@@ -100,6 +100,8 @@ Three lightweight CLIs wrap the PartitionAggregatorManager, AggregationManager, 
 2. `npap-aggregate` – read the partition JSON, aggregate via a predefined `AggregationMode`, and export the reduced graph (GraphML/GEXF/GPickle).
 3. `npap-plot` – load either the original or aggregated graph, optionally color it with a partition JSON, and save the figure as HTML/PNG/SVG using the Plot presets.
 
+3. Use `npap-diag` to visualize the reduced PTDF/laplacian right after aggregation and export a diagnostic figure.
+
 ```bash
 npap-cluster \
   --node-file buses.csv \
@@ -121,6 +123,14 @@ npap-plot \
   --style clustered \
   --preset cluster_highlight \
   --output reports/clustered.html
+```
+
+```bash
+npap-diag \
+  --aggregated-file aggregated.graphml \
+  --matrix ptdf \
+  --matrix laplacian \
+  --output reports/diagnostics.html
 ```
 
 The CLI helpers respect the same loaders as the Python API and reuse the preset-driven visualization pipeline introduced earlier. Install them via `pip install -e ".[test]"` (needed for Hypothesis and the CLI entry points) before running the commands.

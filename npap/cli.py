@@ -16,7 +16,7 @@ import networkx as nx
 from npap.aggregation.modes import AggregationMode, get_mode_profile
 from npap.logging import LogCategory, log_info
 from npap.managers import AggregationManager, PartitionAggregatorManager
-from npap.visualization import PlotPreset, export_figure, plot_network
+from npap.visualization import PlotPreset, export_figure, plot_network, plot_reduced_matrices
 
 
 def _load_graph_from_file(path: str, fmt: str | None = None) -> nx.Graph:
@@ -233,4 +233,37 @@ def plot_entry() -> None:
         preset=args.preset,
         show=False,
     )
+    export_figure(fig, args.output)
+
+
+def diagnose_entry() -> None:
+    """Visualize reduced PTDF/laplacian matrices from an aggregated graph."""
+    parser = argparse.ArgumentParser(description="Inspect reduced PTDF/laplacian matrices.")
+    parser.add_argument(
+        "--aggregated-file",
+        required=True,
+        help="Path to a saved aggregated graph (GraphML/GEXF/GPickle).",
+    )
+    parser.add_argument(
+        "--aggregated-format",
+        choices=["graphml", "gexf", "gpickle", "pickle"],
+        help="Format of the aggregated graph file.",
+    )
+    parser.add_argument(
+        "--matrix",
+        choices=["ptdf", "laplacian"],
+        action="append",
+        default=["ptdf", "laplacian"],
+        help="Matrix to visualize; can be repeated.",
+    )
+    parser.add_argument(
+        "--output",
+        required=True,
+        help="Path where the diagnostic figure will be saved (HTML/PNG).",
+    )
+
+    args = parser.parse_args()
+    graph = _load_graph_from_file(args.aggregated_file, args.aggregated_format)
+
+    fig = plot_reduced_matrices(graph, matrices=tuple(args.matrix), show=False)
     export_figure(fig, args.output)

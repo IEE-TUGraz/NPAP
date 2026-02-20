@@ -7,8 +7,10 @@ from pathlib import Path
 from typing import Any
 
 import networkx as nx
+import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
+from plotly.subplots import make_subplots
 
 from npap.interfaces import EdgeType, PartitionResult
 
@@ -1035,3 +1037,70 @@ def clone_graph(graph: nx.Graph | nx.MultiGraph | nx.MultiDiGraph) -> nx.Graph |
         Deep copy of the original graph.
     """
     return copy.deepcopy(graph)
+
+
+def plot_reduced_matrices(
+    graph: nx.Graph,
+    *,
+    matrices: tuple[str, ...] = ("ptdf", "laplacian"),
+    show: bool = True,
+) -> go.Figure:
+    """
+    Plot heatmaps for reduced PTDF/laplacian matrices produced during aggregation.
+
+    Parameters
+    ----------
+    graph : nx.Graph
+        Aggregated graph carrying ``reduced_ptdf`` and/or
+        ``kron_reduced_laplacian`` in ``graph.graph``.
+    matrices : tuple[str, ...]
+        Which matrices to visualize; valid values are ``"ptdf"`` and
+        ``"laplacian"``.
+    show : bool
+        Whether to display the figure automatically.
+
+    Returns
+    -------
+    go.Figure
+        Plotly Figure containing the requested heatmaps.
+    """
+    available = []
+    if "ptdf" in matrices:
+        ptdf = graph.graph.get("reduced_ptdf")
+        if ptdf and isinstance(ptdf.get("matrix"), np.ndarray):
+            available.append(("PTDF", ptdf["matrix"], ptdf["nodes"]))
+    if "laplacian" in matrices:
+        lap = graph.graph.get("kron_reduced_laplacian")
+        if isinstance(lap, np.ndarray):
+            labels = list(graph.nodes())
+            available.append(("Kron Laplacian", lap, labels))
+
+    if not available:
+        raise ValueError("No reduced matrices found on the graph.")
+
+    fig = make_subplots(rows=len(available), cols=1, subplot_titles=[name for name, *_ in available])
+
+    for row, (name, matrix, labels) in enumerate(available, start=1):
+        fig.add_trace(
+            go.Heatmap(
+                z=matrix,
+                x=[str(label) for label in labels],
+                y=[str(label) for label in labels],
+                colorbar=dict(title=name),
+                colorscale="Viridis",
+            ),
+            row=row,
+            col=1,
+        )
+
+    fig.update_layout(
+        height=300 * len(available),
+        title="Reduced matrices diagnostics",
+        xaxis=dict(tickangle=45),
+        yaxis=dict(autorange="reversed"),
+    )
+
+    if show:
+        fig.show()
+
+    return fig

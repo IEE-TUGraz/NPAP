@@ -225,6 +225,18 @@ manager.plot_network(style="voltage_aware", preset=PlotPreset.PRESENTATION)
 
 Presets layer on top of `config`/`kwargs`; any explicit `PlotConfig` parameter overrides the preset values.
 
+## Matrix Diagnostics
+
+After aggregation the graph carries diagnostic matrices (`reduced_ptdf` and `kron_reduced_laplacian`). Use {py:func}`~npap.visualization.plot_reduced_matrices` to inspect them via heatmaps.
+
+```python
+from npap.visualization import plot_reduced_matrices
+
+fig = plot_reduced_matrices(aggregated, matrices=("ptdf", "laplacian"))
+```
+
+The same helper powers `npap-diag` so you can generate HTML/PNG diagnostics without writing Python (see [Workflows](workflows.md)).
+
 ## Working with Figures
 
 ### Getting the Figure Object

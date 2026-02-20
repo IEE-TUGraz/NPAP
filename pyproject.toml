@@ -61,6 +61,7 @@ docs = [
 npap-cluster = "npap.cli:cluster_entry"
 npap-aggregate = "npap.cli:aggregate_entry"
 npap-plot = "npap.cli:plot_entry"
+npap-diag = "npap.cli:diagnose_entry"
 
 [tool.setuptools.packages.find]
 include = ["npap", "npap.*"]

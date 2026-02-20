@@ -5,8 +5,15 @@ Tests for the visualization helpers.
 import networkx as nx
 import plotly.graph_objects as go
 
+from npap.aggregation.modes import AggregationMode, get_mode_profile
 from npap.interfaces import PartitionResult
-from npap.visualization import clone_graph, export_figure, plot_network
+from npap.managers import AggregationManager
+from npap.visualization import (
+    clone_graph,
+    export_figure,
+    plot_network,
+    plot_reduced_matrices,
+)
 
 
 def test_plot_network_accepts_partition_result(simple_digraph):
@@ -50,3 +57,13 @@ def test_clone_graph_returns_deep_copy(simple_digraph):
 
     copy_graph.nodes[0]["label"] = "clone"
     assert "label" not in simple_digraph.nodes[0]
+
+
+def test_plot_reduced_matrices_ptdf(simple_digraph, simple_partition_map):
+    """plot_reduced_matrices should visualize PTDF from an aggregated graph."""
+    agg_manager = AggregationManager()
+    profile = get_mode_profile(AggregationMode.DC_PTDF, warn_on_defaults=False)
+    aggregated = agg_manager.aggregate(simple_digraph, simple_partition_map, profile)
+
+    fig = plot_reduced_matrices(aggregated, matrices=("ptdf",))
+    assert len(fig.data) == 1
