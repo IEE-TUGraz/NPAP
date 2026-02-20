@@ -43,7 +43,7 @@ Repository = "https://github.com/IEE-TUGraz/NPAP"
 Changelog = "https://github.com/IEE-TUGraz/NPAP/releases"
 
 [project.optional-dependencies]
-test = ["pytest>=7.0", "pytest-cov>=4.0"]
+test = ["pytest>=7.0", "pytest-cov>=4.0", "hypothesis>=6.0,<7.0"]
 dev = ["pre-commit>=3.0", "ruff>=0.8.0"]
 docs = [
     "sphinx>=7.0",
