@@ -149,6 +149,13 @@ Different strategies require specific node and edge attributes:
 | Electrical | `ac_island` | `x` (reactance) |
 | Voltage-Aware | `lat`, `lon`, `voltage`, `ac_island` | `x`, `type` |
 
+### Cloning Loaded Graphs
+
+If you want to experiment with variations of a loaded network without re-running the loaders,
+use `PartitionAggregatorManager.copy_graph()` to obtain a deep copy of the current graph. The copy
+preserves every node/edge attribute but is entirely separate from the manager’s internal storage,
+so you can test different aggregation paths or visualizations without modifying the source.
+
 ## Error Handling
 
 NPAP provides a comprehensive exception hierarchy:
