@@ -231,7 +231,6 @@ def plot_entry() -> None:
     )
     export_figure(fig, args.output)
 
-
 def diagnose_entry() -> None:
     """Visualize reduced PTDF/laplacian matrices from an aggregated graph."""
     parser = argparse.ArgumentParser(description="Inspect reduced PTDF/laplacian matrices.")
