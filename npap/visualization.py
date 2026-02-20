@@ -41,19 +41,28 @@ class PlotPreset(Enum):
     Attributes
     ----------
     DEFAULT : str
-        Balanced defaults for general exploration.
+        Balanced defaults for data exploration.
     PRESENTATION : str
         Bigger nodes/edges and a wide canvas for slides or demos.
     DENSE : str
         Higher voltage threshold and compact markers for crowded networks.
     CLUSTER_HIGHLIGHT : str
         Emphasizes cluster coloring with saturated nodes and Turbo colorscale.
+    TRANSMISSION_STUDY : str
+        Highlights high-voltage corridors with a wide canvas and terrain tiles.
+    DISTRIBUTION_STUDY : str
+        Focuses on low-voltage, high-density neighborhoods with tighter zoom.
+    E_MOBILITY_PLANNING : str
+        Accents nodes most relevant for e-mobility rollout with bold markers.
     """
 
     DEFAULT = "default"
     PRESENTATION = "presentation"
     DENSE = "dense"
     CLUSTER_HIGHLIGHT = "cluster_highlight"
+    TRANSMISSION_STUDY = "transmission_study"
+    DISTRIBUTION_STUDY = "distribution_study"
+    E_MOBILITY_PLANNING = "e_mobility_planning"
 
 
 _PRESET_OVERRIDES = {
@@ -79,6 +88,32 @@ _PRESET_OVERRIDES = {
         "map_style": "carto-positron",
         "title": "Clustered Network",
     },
+    PlotPreset.TRANSMISSION_STUDY: {
+        "line_voltage_threshold": 450.0,
+        "edge_width": 2.3,
+        "node_size": 6,
+        "map_style": "stamen-terrain",
+        "width": 1200,
+        "height": 750,
+        "title": "Transmission Study",
+    },
+    PlotPreset.DISTRIBUTION_STUDY: {
+        "line_voltage_threshold": 220.0,
+        "edge_width": 1.0,
+        "node_size": 9,
+        "map_zoom": 8.8,
+        "map_style": "open-street-map",
+        "cluster_colorscale": "YlOrBr",
+        "title": "Distribution Study",
+    },
+    PlotPreset.E_MOBILITY_PLANNING: {
+        "node_color": "#FF6F61",
+        "node_size": 10,
+        "edge_width": 1.1,
+        "map_zoom": 10.5,
+        "map_style": "stamen-toner",
+        "title": "E-Mobility Planning",
+    },
 }
 
 
@@ -97,7 +132,7 @@ def _normalize_plot_preset(preset: PlotPreset | str | None) -> PlotPreset | None
     if isinstance(preset, PlotPreset):
         return preset
 
-    lookup = preset.strip().lower().replace(" ", "_")
+    lookup = preset.strip().lower().replace(" ", "_").replace("-", "_")
     for option in PlotPreset:
         if option.value == lookup or option.name.lower() == lookup:
             return option

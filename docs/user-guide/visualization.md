@@ -216,14 +216,19 @@ Use the `preset` argument to apply curated styling for different audiences witho
 | `presentation` | Wide canvas with thicker lines and `"open-street-map"` tiles |
 | `dense` | Compact view, higher voltage threshold, and dark tiles |
 | `cluster_highlight` | Turbo colorscale with large nodes and white background |
+| `transmission_study` | Terrain styling with a wide canvas that emphasizes high-voltage corridors |
+| `distribution_study` | Zoomed-in, low-voltage view with saturated cluster colors for dense grids |
+| `e_mobility_planning` | Bold node markers and tight zoom that highlight e-mobility rollout areas |
 
 ```python
 from npap import PlotPreset
 
-manager.plot_network(style="voltage_aware", preset=PlotPreset.PRESENTATION)
+manager.plot_network(style="voltage_aware", preset=PlotPreset.TRANSMISSION_STUDY)
 ```
 
 Presets layer on top of `config`/`kwargs`; any explicit `PlotConfig` parameter overrides the preset values.
+
+Use the scenario-specific presets when you want a ready-made baseline (transmission study for HV analysis, distribution study for LV neighborhoods, and e-mobility planning for node-heavy deployments) and layer additional `PlotConfig` tweaks as needed.
 
 ## Matrix Diagnostics
 
