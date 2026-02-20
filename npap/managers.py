@@ -101,9 +101,7 @@ class PartitioningManager:
             algorithm="kmedoids", distance_metric="haversine"
         )
         self._strategies["lmp_similarity"] = LMPPartitioning()
-        self._strategies[
-            "adjacent_agglomerative"
-        ] = AdjacentNodeAgglomerativePartitioning()
+        self._strategies["adjacent_agglomerative"] = AdjacentNodeAgglomerativePartitioning()
         self._strategies["geographical_dbscan_euclidean"] = GeographicalPartitioning(
             algorithm="dbscan", distance_metric="euclidean"
         )

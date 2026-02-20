@@ -58,9 +58,7 @@ def _load_graph(args: argparse.Namespace, manager: PartitionAggregatorManager) -
     if args.graph_file:
         graph = _load_graph_from_file(args.graph_file, args.graph_format)
         bidirectional = not args.no_bidirectional
-        return manager.load_data(
-            "networkx_direct", graph=graph, bidirectional=bidirectional
-        )
+        return manager.load_data("networkx_direct", graph=graph, bidirectional=bidirectional)
 
     raise ValueError("Either node/edge files or a graph file must be provided.")
 
@@ -145,9 +143,7 @@ def cluster_entry() -> None:
     manager = PartitionAggregatorManager()
     graph = _load_graph(args, manager)
 
-    partition = manager.partition(
-        graph, args.partition_strategy, n_clusters=args.n_clusters
-    )
+    partition = manager.partition(graph, args.partition_strategy, n_clusters=args.n_clusters)
     _dump_partition(partition.mapping, args.partition_output)
 
 

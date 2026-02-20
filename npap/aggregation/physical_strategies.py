@@ -19,13 +19,17 @@ _MIN_REACTANCE = 1e-6
 _MIN_SUSCEPTANCE = 1e-12
 
 
-def _build_admittance_matrix(graph: nx.DiGraph, reactance_property: str) -> tuple[np.ndarray, dict[Any, int]]:
+def _build_admittance_matrix(
+    graph: nx.DiGraph, reactance_property: str
+) -> tuple[np.ndarray, dict[Any, int]]:
     """Build Laplacian (admittance) matrix for the given graph."""
     nodes = list(graph.nodes())
     n = len(nodes)
 
     if n == 0:
-        raise AggregationError("Graph must contain nodes for PTDF reduction.", strategy="ptdf_reduction")
+        raise AggregationError(
+            "Graph must contain nodes for PTDF reduction.", strategy="ptdf_reduction"
+        )
 
     node_to_index: dict[Any, int] = {node: idx for idx, node in enumerate(nodes)}
 
@@ -61,9 +65,7 @@ def _build_admittance_matrix(graph: nx.DiGraph, reactance_property: str) -> tupl
     return laplacian, node_to_index
 
 
-def _kron_reduce_laplacian(
-    laplacian: np.ndarray, keep_indices: Sequence[int]
-) -> np.ndarray:
+def _kron_reduce_laplacian(laplacian: np.ndarray, keep_indices: Sequence[int]) -> np.ndarray:
     """Apply Kron reduction to the given Laplacian matrix."""
     n = laplacian.shape[0]
     all_indices = set(range(n))
@@ -88,7 +90,9 @@ def _kron_reduce_laplacian(
     return lap_kk - lap_ke @ inv_lap_ee @ lap_ek
 
 
-def _select_representatives(partition_map: dict[int, list[Any]], cluster_order: list[int]) -> list[Any]:
+def _select_representatives(
+    partition_map: dict[int, list[Any]], cluster_order: list[int]
+) -> list[Any]:
     representatives: list[Any] = []
     for cluster in cluster_order:
         nodes = partition_map.get(cluster)
@@ -141,7 +145,12 @@ def _compute_reduced_ptdf(graph: nx.DiGraph, reactance_property: str) -> dict[st
     slack_idx = node_to_index[slack_node]
     keep_indices = [idx for idx in range(len(nodes)) if idx != slack_idx]
     if not keep_indices:
-        return {"matrix": np.zeros((len(edges), len(nodes))), "nodes": nodes, "slack": slack_node, "edges": edges}
+        return {
+            "matrix": np.zeros((len(edges), len(nodes))),
+            "nodes": nodes,
+            "slack": slack_node,
+            "edges": edges,
+        }
 
     incidence_sba = incidence[:, keep_indices]
     weight_diag = np.diag(edge_susceptances)
@@ -295,9 +304,7 @@ class PTDFReductionStrategy(PhysicalAggregationStrategy):
         cluster_order = list(topology_graph.nodes())
         representatives = _select_representatives(partition_map, cluster_order)
 
-        laplacian, node_to_index = _build_admittance_matrix(
-            original_graph, self.reactance_property
-        )
+        laplacian, node_to_index = _build_admittance_matrix(original_graph, self.reactance_property)
         keep_indices = [node_to_index[node] for node in representatives]
         reduced_laplacian = _kron_reduce_laplacian(laplacian, keep_indices)
 
@@ -373,9 +380,7 @@ class KronReductionStrategy(PhysicalAggregationStrategy):
         cluster_order = list(topology_graph.nodes())
         representatives = _select_representatives(partition_map, cluster_order)
 
-        laplacian, node_to_index = _build_admittance_matrix(
-            original_graph, self.reactance_property
-        )
+        laplacian, node_to_index = _build_admittance_matrix(original_graph, self.reactance_property)
 
         try:
             keep_indices = [node_to_index[node] for node in representatives]

@@ -468,9 +468,7 @@ class TestAggregationManager:
 class TestPTDFAggregationStrategy:
     """Tests for the PTDF reduction physical strategy."""
 
-    def test_ptdf_reduction_generates_reactance_edges(
-        self, simple_digraph, simple_partition_map
-    ):
+    def test_ptdf_reduction_generates_reactance_edges(self, simple_digraph, simple_partition_map):
         topology = ElectricalTopologyStrategy(initial_connectivity="existing")
         topology_graph = topology.create_topology(simple_digraph, simple_partition_map)
         strategy = PTDFReductionStrategy()
@@ -501,9 +499,7 @@ class TestKronReductionStrategy:
         topology_graph = topology.create_topology(graph, partition)
 
         strategy = KronReductionStrategy()
-        aggregated = strategy.aggregate(
-            graph, partition, topology_graph, properties=["x"]
-        )
+        aggregated = strategy.aggregate(graph, partition, topology_graph, properties=["x"])
 
         assert set(aggregated.nodes()) == {0, 1}
         assert aggregated.edges[0, 1]["x"] == pytest.approx(2.0)

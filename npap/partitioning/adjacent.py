@@ -139,11 +139,7 @@ class AdjacentNodeAgglomerativePartitioning(PartitioningStrategy):
             if ac_attr:
                 island_u = node_islands.get(u)
                 island_v = node_islands.get(v)
-                if (
-                    island_u is not None
-                    and island_v is not None
-                    and island_u != island_v
-                ):
+                if island_u is not None and island_v is not None and island_u != island_v:
                     continue
             edges.append((u, v))
 

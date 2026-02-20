@@ -73,8 +73,12 @@ if __name__ == "__main__":
     parser.add_argument("--node-file", required=True, help="Node CSV file path.")
     parser.add_argument("--edge-file", required=True, help="Edge CSV file path.")
     parser.add_argument("--clusters", type=int, default=6, help="Number of LMP clusters.")
-    parser.add_argument("--partition-output", help="Optional HTML export for the partitioned graph.")
-    parser.add_argument("--figure-output", help="Optional HTML export after conservation aggregation.")
+    parser.add_argument(
+        "--partition-output", help="Optional HTML export for the partitioned graph."
+    )
+    parser.add_argument(
+        "--figure-output", help="Optional HTML export after conservation aggregation."
+    )
 
     args = parser.parse_args()
 

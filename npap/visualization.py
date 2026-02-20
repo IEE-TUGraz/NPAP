@@ -914,6 +914,7 @@ class NetworkPlotter:
         """
         return self._plot(PlotStyle.CLUSTERED, config, show)
 
+
 def plot_network(
     graph: nx.DiGraph,
     style: str = "simple",
@@ -1057,7 +1058,9 @@ def export_figure(
     return target
 
 
-def clone_graph(graph: nx.Graph | nx.MultiGraph | nx.MultiDiGraph) -> nx.Graph | nx.MultiGraph | nx.MultiDiGraph:
+def clone_graph(
+    graph: nx.Graph | nx.MultiGraph | nx.MultiDiGraph,
+) -> nx.Graph | nx.MultiGraph | nx.MultiDiGraph:
     """
     Return a deep copy of the supplied graph for safe downstream edits.
 
@@ -1113,7 +1116,9 @@ def plot_reduced_matrices(
     if not available:
         raise ValueError("No reduced matrices found on the graph.")
 
-    fig = make_subplots(rows=len(available), cols=1, subplot_titles=[name for name, *_ in available])
+    fig = make_subplots(
+        rows=len(available), cols=1, subplot_titles=[name for name, *_ in available]
+    )
 
     for row, (name, matrix, labels) in enumerate(available, start=1):
         fig.add_trace(
