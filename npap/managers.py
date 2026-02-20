@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import copy
 from typing import Any
 
 import networkx as nx
@@ -999,6 +1002,20 @@ class PartitionAggregatorManager:
         self._current_partition = None
 
         return self._current_graph
+
+    def copy_graph(self) -> nx.DiGraph | nx.MultiDiGraph:
+        """
+        Return a deep copy of the currently loaded graph.
+
+        Raises
+        ------
+        ValueError
+            If no graph has been loaded.
+        """
+        if not self._current_graph:
+            raise ValueError("No graph loaded. Call load_data() first.")
+
+        return copy.deepcopy(self._current_graph)
 
     def full_workflow(
         self,
