@@ -26,20 +26,24 @@ def test_adjacent_avoids_cross_island_merges():
     partition = strategy.partition(graph, n_clusters=2)
 
     assert len(partition) == 2
-    islands = {node: graph.nodes[node]["ac_island"] for cluster in partition.values() for node in cluster}
+    islands = {
+        node: graph.nodes[node]["ac_island"] for cluster in partition.values() for node in cluster
+    }
     assert set(islands.values()) == {"A", "B"}
 
 
 def test_lmp_infinite_distance_respects_islands():
     graph = _build_chain_graph()
-    strategy = LMPPartitioning(
-        LMPPartitioningConfig(adjacency_bonus=0.0, infinite_distance=1e3)
-    )
+    strategy = LMPPartitioning(LMPPartitioningConfig(adjacency_bonus=0.0, infinite_distance=1e3))
 
     partition = strategy.partition(graph, n_clusters=2)
 
     assert len(partition) == 2
-    assert all(graph.nodes[node]["ac_island"] in {"A", "B"} for cluster in partition.values() for node in cluster)
+    assert all(
+        graph.nodes[node]["ac_island"] in {"A", "B"}
+        for cluster in partition.values()
+        for node in cluster
+    )
 
 
 def test_community_partitioning_detects_two_groups():

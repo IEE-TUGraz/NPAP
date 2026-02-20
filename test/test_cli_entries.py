@@ -56,6 +56,7 @@ def test_cluster_entry_uses_partition_manager(monkeypatch):
     _monkeypatch_parse_args(monkeypatch, args)
 
     recorded = []
+
     def fake_dump(partition, output=None):
         recorded.append((partition.copy(), output))
 
@@ -94,6 +95,7 @@ def test_aggregate_entry_writes_aggregated_graph(monkeypatch, tmp_path):
 
     monkeypatch.setattr("npap.cli._load_graph", lambda args, manager: nx.DiGraph())
     monkeypatch.setattr("npap.cli._read_partition", lambda path: {0: ["A"]})
+
     def fake_aggregation_manager():
         return DummyAggregationManager()
 
