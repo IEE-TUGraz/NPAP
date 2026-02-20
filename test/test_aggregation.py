@@ -593,6 +593,46 @@ class TestAggregationModes:
         assert profile.node_properties.get("custom_prop") == "sum"
 
 
+class TestTransformerConservationMode:
+    """Verify the transformer conservation aggregation mode."""
+
+    def test_physical_strategy_preserves_transformers(self):
+        manager = AggregationManager()
+
+        graph = nx.DiGraph()
+        for node in range(4):
+            graph.add_node(node, lat=float(node), lon=float(node), voltage=110.0)
+
+        graph.add_edge(0, 1, type="trafo", x=0.1, r=0.01, p_max=100.0)
+        graph.add_edge(2, 3, type="trafo", x=0.2, r=0.02, p_max=50.0)
+
+        partition = {0: [0, 2], 1: [1, 3]}
+        profile = AggregationManager.get_mode_profile(AggregationMode.CONSERVATION)
+
+        aggregated = manager.aggregate(graph, partition, profile=profile)
+        assert aggregated.has_edge(0, 1)
+
+        edge_data = aggregated.edges[0, 1]
+        assert edge_data["transformer_count"] == 2
+        assert edge_data["x"] == pytest.approx(1 / (1 / 0.1 + 1 / 0.2))
+        assert edge_data["r"] == pytest.approx(1 / (1 / 0.01 + 1 / 0.02))
+
+    def test_without_transformers_still_aggregates(self):
+        manager = AggregationManager()
+
+        graph = nx.DiGraph()
+        graph.add_node(0, lat=0.0, lon=0.0, voltage=110.0)
+        graph.add_node(1, lat=1.0, lon=1.0, voltage=110.0)
+        graph.add_edge(0, 1, type="line", x=0.05, r=0.005, p_max=100.0)
+
+        partition = {0: [0], 1: [1]}
+        profile = AggregationManager.get_mode_profile(AggregationMode.CONSERVATION)
+
+        aggregated = manager.aggregate(graph, partition, profile=profile)
+        assert aggregated.edges[0, 1]["p_max"] == pytest.approx(100.0)
+        assert "transformer_count" not in aggregated.edges[0, 1]
+
+
 # =============================================================================
 # EDGE CASE TESTS
 # =============================================================================

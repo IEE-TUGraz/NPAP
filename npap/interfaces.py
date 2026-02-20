@@ -67,12 +67,15 @@ class AggregationMode(Enum):
         Kron reduction for DC networks.
     CUSTOM : str
         User-defined aggregation profile.
+    CONSERVATION : str
+        Preserve transformer impedance via dedicated physical strategy.
     """
 
     SIMPLE = "simple"
     GEOGRAPHICAL = "geographical"
     DC_KRON = "dc_kron"
     CUSTOM = "custom"
+    CONSERVATION = "transformer_conservation"
 
 
 @dataclass

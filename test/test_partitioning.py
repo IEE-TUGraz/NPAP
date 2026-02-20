@@ -7,6 +7,8 @@ Tests cover:
 - VAGeographicalPartitioning (with AC island and voltage awareness)
 """
 
+import logging
+
 import networkx as nx
 import numpy as np
 import pytest
@@ -19,6 +21,10 @@ from npap.partitioning.electrical import (
 from npap.partitioning.geographical import (
     GeographicalConfig,
     GeographicalPartitioning,
+)
+from npap.partitioning.graph_theory import (
+    CommunityPartitioning,
+    SpectralPartitioning,
 )
 from npap.partitioning.va_electrical import (
     VAElectricalDistancePartitioning,
@@ -1090,3 +1096,54 @@ class TestVAStrategiesSingleVoltageLevelError:
         strategy = VAElectricalDistancePartitioning(algorithm="kmedoids")
         partition = strategy.partition(G, n_clusters=2, random_state=42)
         assert all_nodes_assigned(partition, list(G.nodes()))
+
+
+class TestSpectralPartitioning:
+    """Verify the spectral clustering strategy."""
+
+    def test_requires_n_clusters_parameter(self):
+        strategy = SpectralPartitioning(random_state=0)
+        graph = nx.DiGraph()
+        graph.add_nodes_from([0, 1])
+
+        with pytest.raises(PartitioningError, match="n_clusters >= 2"):
+            strategy.partition(graph)
+
+    def test_splits_connected_graph(self):
+        strategy = SpectralPartitioning(random_state=0)
+        graph = nx.DiGraph()
+        graph.add_nodes_from(range(4))
+        graph.add_edges_from([(0, 1), (1, 2), (2, 3)])
+
+        partition = strategy.partition(graph, n_clusters=2)
+        assert len(partition) == 2
+        assert sum(len(nodes) for nodes in partition.values()) == graph.number_of_nodes()
+
+
+class TestCommunityPartitioning:
+    """Verify the modularity-based community strategy."""
+
+    def test_detects_multiple_communities(self):
+        strategy = CommunityPartitioning()
+        graph = nx.DiGraph()
+        graph.add_nodes_from(range(6))
+        graph.add_edges_from([(0, 1), (1, 0), (1, 2), (2, 1), (0, 2), (2, 0)])
+        graph.add_edges_from([(3, 4), (4, 3), (4, 5), (5, 4), (3, 5), (5, 3)])
+        graph.add_edge(2, 3)
+
+        partition = strategy.partition(graph)
+        assert sum(len(nodes) for nodes in partition.values()) == graph.number_of_nodes()
+        assert len(partition) >= 2
+
+
+class TestCommunityPartitioningWarnings:
+    def test_n_clusters_warning(self, caplog):
+        strategy = CommunityPartitioning()
+        graph = nx.DiGraph()
+        graph.add_nodes_from([0, 1, 2])
+        graph.add_edges_from([(0, 1), (1, 2), (2, 0)])
+
+        caplog.set_level(logging.WARNING)
+        strategy.partition(graph, n_clusters=2)
+
+        assert "'n_clusters' is ignored" in caplog.text

@@ -79,6 +79,7 @@ class PartitioningManager:
         """Register built-in partitioning strategies."""
         from npap.partitioning.electrical import ElectricalDistancePartitioning
         from npap.partitioning.geographical import GeographicalPartitioning
+        from npap.partitioning.graph_theory import CommunityPartitioning, SpectralPartitioning
         from npap.partitioning.va_geographical import (
             VAGeographicalConfig,
             VAGeographicalPartitioning,
@@ -155,6 +156,10 @@ class PartitioningManager:
         self._strategies["va_electrical_hierarchical"] = VAElectricalDistancePartitioning(
             algorithm="hierarchical"
         )
+
+        # Graph-theory based strategies
+        self._strategies["spectral_clustering"] = SpectralPartitioning(random_state=42)
+        self._strategies["community_modularity"] = CommunityPartitioning()
 
         log_debug("Registered default partitioning strategies", LogCategory.MANAGER)
 
@@ -289,12 +294,16 @@ class AggregationManager:
             physical_strategy = self._physical_strategies[profile.physical_strategy]
 
             # Validate topology compatibility
-            if topology_strategy.__class__.__name__ != physical_strategy.required_topology:
+            if profile.topology_strategy != physical_strategy.required_topology:
                 log_warning(
                     f"Physical strategy '{profile.physical_strategy}' recommends '{physical_strategy.required_topology}' topology, "
                     f"but '{profile.topology_strategy}' is being used. Results may be incorrect.",
                     LogCategory.AGGREGATION,
                 )
+
+            physical_parameters = dict(profile.physical_parameters or {})
+            physical_parameters.setdefault("node_to_cluster", node_to_cluster)
+            physical_parameters.setdefault("cluster_edge_map", cluster_edge_map)
 
             # Apply physical aggregation
             aggregated = physical_strategy.aggregate(
@@ -302,7 +311,7 @@ class AggregationManager:
                 partition_map,
                 aggregated,
                 profile.physical_properties,
-                profile.physical_parameters,
+                physical_parameters,
             )
 
             # Mark properties as modified by physical strategy
@@ -790,7 +799,10 @@ class AggregationManager:
             SumEdgeStrategy,
             SumNodeStrategy,
         )
-        from npap.aggregation.physical_strategies import KronReductionStrategy
+        from npap.aggregation.physical_strategies import (
+            KronReductionStrategy,
+            TransformerConservationStrategy,
+        )
 
         # Topology strategies
         self._topology_strategies["simple"] = SimpleTopologyStrategy()
@@ -798,6 +810,7 @@ class AggregationManager:
 
         # Physical strategies
         self._physical_strategies["kron_reduction"] = KronReductionStrategy()
+        self._physical_strategies["transformer_conservation"] = TransformerConservationStrategy()
 
         # Node property strategies
         self._node_strategies["sum"] = SumNodeStrategy()

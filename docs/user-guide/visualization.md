@@ -193,6 +193,25 @@ Available colorscales include:
 - `"Jet"`
 - `"Turbo"`
 
+## Preset Configurations
+
+Use the `preset` argument to apply curated styling for different audiences without re-writing `PlotConfig`.
+
+| Preset | Description |
+|--------|-------------|
+| `default` | Balanced defaults for data exploration |
+| `presentation` | Wide canvas with thicker lines and `"open-street-map"` tiles |
+| `dense` | Compact view, higher voltage threshold, and dark tiles |
+| `cluster_highlight` | Turbo colorscale with large nodes and white background |
+
+```python
+from npap import PlotPreset
+
+manager.plot_network(style="voltage_aware", preset=PlotPreset.PRESENTATION)
+```
+
+Presets layer on top of `config`/`kwargs`; any explicit `PlotConfig` parameter overrides the preset values.
+
 ## Working with Figures
 
 ### Getting the Figure Object

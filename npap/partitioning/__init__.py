@@ -18,12 +18,15 @@ VAElectricalDistancePartitioning
 
 from .electrical import ElectricalDistancePartitioning
 from .geographical import GeographicalPartitioning
+from .graph_theory import CommunityPartitioning, SpectralPartitioning
 from .va_electrical import VAElectricalDistancePartitioning
 from .va_geographical import VAGeographicalPartitioning
 
 __all__ = [
+    "CommunityPartitioning",
     "ElectricalDistancePartitioning",
     "GeographicalPartitioning",
+    "SpectralPartitioning",
     "VAElectricalDistancePartitioning",
     "VAGeographicalPartitioning",
 ]

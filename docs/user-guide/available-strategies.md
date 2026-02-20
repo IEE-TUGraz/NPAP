@@ -164,6 +164,17 @@ Combines electrical distance (PTDF approach) with voltage level and AC island co
 
 **Required attributes**: Nodes: `voltage`, `ac_island` | Edges: `x` (reactance)
 
+### Graph-theory Partitioning
+
+Graph-theory strategies rely on matrix-based clustering or community detection rather than physical distances.
+
+| Strategy | Algorithm | Description |
+|----------|-----------|-------------|
+| `spectral_clustering` | Spectral clustering (precomputed adjacency) | Ideal for networks with loose geographic signals; adapts to the graph Laplacian. |
+| `community_modularity` | Greedy modularity communities | Detects naturally modular regions without any tunable `n_clusters`. |
+
+Spectral clustering expects `n_clusters` as an argument and splits the adjacency matrix via Eigen-decomposition, while the community strategy returns the modularity-maximizing partition automatically.
+
 ### Choosing a Partitioning Strategy
 
 ```{mermaid}
@@ -205,6 +216,7 @@ Predefined {py:class}`~npap.AggregationMode` for common use cases:
 | `SIMPLE` | simple | sum all | sum all                            |
 | `GEOGRAPHICAL` | simple | avg coords, sum loads | sum capacity, equivalent reactance |
 | `DC_KRON` | electrical | Kron reduction | Kron reduction                     |
+| `CONSERVATION` | electrical | Equivalent reactance + transformer preservation | Preserves transformer count & impedance |
 | `CUSTOM` | user-defined | user-defined | user-defined                       |
 
 ```python
@@ -260,6 +272,10 @@ aggregated = manager.aggregate(profile=profile)
 
 See [Aggregation](aggregation.md) for detailed documentation.
 
+### Transformer Conservation Mode
+
+`AggregationMode.CONSERVATION` wires the new `"transformer_conservation"` physical strategy into an electrical topology, so transformer reactance (`x`) and resistance (`r`) are calculated using parallel impedance rules before statistical aggregation steps run. This mode is the foundation for the voltage-aware workflows on this page.
+
 ## Key Classes
 
 ### Main Entry Point
@@ -289,7 +305,7 @@ See [Aggregation](aggregation.md) for detailed documentation.
 | Enum | Values |
 |------|--------|
 | {py:class}`~npap.EdgeType` | `LINE`, `TRAFO`, `DC_LINK` |
-| {py:class}`~npap.AggregationMode` | `SIMPLE`, `GEOGRAPHICAL`, `DC_KRON`, `CUSTOM` |
+| {py:class}`~npap.AggregationMode` | `SIMPLE`, `GEOGRAPHICAL`, `DC_KRON`, `CUSTOM`, `CONSERVATION` |
 
 ### Exceptions
 

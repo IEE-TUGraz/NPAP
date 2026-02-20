@@ -1,4 +1,6 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
+
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Any
 
@@ -26,6 +28,92 @@ class PlotStyle(Enum):
     SIMPLE = "simple"
     VOLTAGE_AWARE = "voltage_aware"
     CLUSTERED = "clustered"
+
+
+class PlotPreset(Enum):
+    """
+    Preset configurations for quick styling adjustments.
+
+    Attributes
+    ----------
+    DEFAULT : str
+        Balanced defaults for general exploration.
+    PRESENTATION : str
+        Bigger nodes/edges and a wide canvas for slides or demos.
+    DENSE : str
+        Higher voltage threshold and compact markers for crowded networks.
+    CLUSTER_HIGHLIGHT : str
+        Emphasizes cluster coloring with saturated nodes and Turbo colorscale.
+    """
+
+    DEFAULT = "default"
+    PRESENTATION = "presentation"
+    DENSE = "dense"
+    CLUSTER_HIGHLIGHT = "cluster_highlight"
+
+
+_PRESET_OVERRIDES = {
+    PlotPreset.DEFAULT: {},
+    PlotPreset.PRESENTATION: {
+        "edge_width": 2.5,
+        "node_size": 7,
+        "map_style": "open-street-map",
+        "width": 1100,
+        "height": 700,
+    },
+    PlotPreset.DENSE: {
+        "line_voltage_threshold": 400.0,
+        "edge_width": 1.2,
+        "node_size": 4,
+        "map_zoom": 4.5,
+        "map_style": "carto-darkmatter",
+    },
+    PlotPreset.CLUSTER_HIGHLIGHT: {
+        "cluster_colorscale": "Turbo",
+        "node_size": 8,
+        "edge_width": 1.8,
+        "map_style": "carto-positron",
+        "title": "Clustered Network",
+    },
+}
+
+
+def _normalize_plot_preset(preset: PlotPreset | str | None) -> PlotPreset | None:
+    """
+    Normalize a preset specifier to a PlotPreset enum value.
+
+    Raises
+    ------
+    ValueError
+        If the provided string does not match any preset.
+    """
+    if preset is None:
+        return None
+
+    if isinstance(preset, PlotPreset):
+        return preset
+
+    lookup = preset.strip().lower().replace(" ", "_")
+    for option in PlotPreset:
+        if option.value == lookup or option.name.lower() == lookup:
+            return option
+
+    raise ValueError(f"Unknown preset: {preset}. Valid options: {[p.value for p in PlotPreset]}")
+
+
+def _apply_preset_overrides(config: PlotConfig, preset: PlotPreset | str | None) -> PlotConfig:
+    """
+    Apply preset overrides to the provided PlotConfig.
+    """
+    preset_enum = _normalize_plot_preset(preset)
+    if not preset_enum:
+        return config
+
+    overrides = _PRESET_OVERRIDES.get(preset_enum, {})
+    if not overrides:
+        return config
+
+    return replace(config, **overrides)
 
 
 @dataclass
@@ -777,6 +865,7 @@ def plot_network(
     style: str = "simple",
     partition_map: dict[int, list[Any]] | None = None,
     show: bool = True,
+    preset: PlotPreset | str | None = None,
     config: PlotConfig | None = None,
     **kwargs,
 ) -> go.Figure:
@@ -796,6 +885,8 @@ def plot_network(
         Optional cluster mapping for 'clustered' style.
     show : bool
         Whether to display the figure immediately.
+    preset : PlotPreset or str, optional
+        Named preset that tweaks sizing, map style, and thresholds.
     config : PlotConfig or None
         Optional PlotConfig instance to override defaults. If provided,
         kwargs will further override values from this config.
@@ -819,15 +910,13 @@ def plot_network(
     >>> fig = plot_network(graph, style="voltage_aware", title="My Network")
     >>> fig = plot_network(graph, style="clustered", partition_map=result.mapping)
     """
-    if config is not None:
-        # Start with provided config, then override with kwargs
-        from dataclasses import asdict
+    base_config = replace(config) if config else PlotConfig()
+    config_with_preset = _apply_preset_overrides(base_config, preset)
 
-        config_dict = asdict(config)
-        config_dict.update(kwargs)
-        effective_config = PlotConfig(**config_dict)
+    if kwargs:
+        effective_config = replace(config_with_preset, **kwargs)
     else:
-        effective_config = PlotConfig(**kwargs)
+        effective_config = config_with_preset
 
     plotter = NetworkPlotter(graph, partition_map=partition_map)
 

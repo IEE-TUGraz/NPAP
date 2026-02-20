@@ -7,6 +7,7 @@
 
 installation
 quick-start
+workflows
 available-strategies
 ```
 

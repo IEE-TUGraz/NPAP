@@ -36,6 +36,8 @@ def get_mode_profile(mode: AggregationMode, **overrides) -> AggregationProfile:
         profile = _geographical_mode()
     elif mode == AggregationMode.CUSTOM:
         profile = AggregationProfile(mode=AggregationMode.CUSTOM)
+    elif mode == AggregationMode.CONSERVATION:
+        profile = _conservation_mode()
     elif mode in [AggregationMode.DC_KRON]:
         raise NotImplementedError(
             f"Mode {mode} is not yet implemented. "
@@ -109,8 +111,32 @@ def _geographical_mode() -> AggregationProfile:
             "lon": "average",  # similar to middle point
             "base_voltage": "average",
         },
-        edge_properties={"p_max": "sum", "x": "average"},
+        edge_properties={"p_max": "sum", "x": "equivalent_reactance"},
         default_node_strategy="average",
         default_edge_strategy="average",
+        warn_on_defaults=True,
+    )
+
+
+def _conservation_mode() -> AggregationProfile:
+    """
+    Transformer conservation mode.
+
+    Uses electrical topology plus the transformer conservation physical strategy
+    to preserve equivalent reactance/resistance for transformer connections.
+    """
+    return AggregationProfile(
+        mode=AggregationMode.CONSERVATION,
+        topology_strategy="electrical",
+        physical_strategy="transformer_conservation",
+        physical_properties=["x", "r"],
+        node_properties={
+            "lat": "average",
+            "lon": "average",
+            "voltage": "average",
+        },
+        edge_properties={"p_max": "sum"},
+        default_node_strategy="average",
+        default_edge_strategy="sum",
         warn_on_defaults=True,
     )
