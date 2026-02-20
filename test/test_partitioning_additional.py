@@ -34,7 +34,9 @@ def test_adjacent_avoids_cross_island_merges():
 
 def test_lmp_infinite_distance_respects_islands():
     graph = _build_chain_graph()
-    strategy = LMPPartitioning(LMPPartitioningConfig(adjacency_bonus=0.0, infinite_distance=1e3))
+    strategy = LMPPartitioning(
+        LMPPartitioningConfig(adjacency_bonus=0.0, infinite_distance=1e3)
+    )
 
     partition = strategy.partition(graph, n_clusters=2)
 
