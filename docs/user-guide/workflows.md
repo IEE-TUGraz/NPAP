@@ -91,3 +91,36 @@ manager.plot_network(style="voltage_aware", preset=PlotPreset.PRESENTATION)
 ```
 
 Presets are composable with `PlotConfig`: pass `config=PlotConfig(...)` and overrides via `kwargs` to fine-tune individual charts while keeping a consistent baseline.
+
+## Command-line helpers
+
+Three lightweight CLIs wrap the PartitionAggregatorManager, AggregationManager, and visualization helpers so you can automate common workflows without writing Python:
+
+1. `npap-cluster` – load CSV node/edge files (or a saved NetworkX graph), partition with any registered strategy, and emit a JSON mapping.
+2. `npap-aggregate` – read the partition JSON, aggregate via a predefined `AggregationMode`, and export the reduced graph (GraphML/GEXF/GPickle).
+3. `npap-plot` – load either the original or aggregated graph, optionally color it with a partition JSON, and save the figure as HTML/PNG/SVG using the Plot presets.
+
+```bash
+npap-cluster \
+  --node-file buses.csv \
+  --edge-file lines.csv \
+  --partition-strategy geographical_kmeans \
+  --n-clusters 8 \
+  --partition-output partitions.json
+
+npap-aggregate \
+  --node-file buses.csv \
+  --edge-file lines.csv \
+  --partition-file partitions.json \
+  --mode dc_ptdf \
+  --output aggregated.graphml
+
+npap-plot \
+  --aggregated-file aggregated.graphml \
+  --partition-file partitions.json \
+  --style clustered \
+  --preset cluster_highlight \
+  --output reports/clustered.html
+```
+
+The CLI helpers respect the same loaders as the Python API and reuse the preset-driven visualization pipeline introduced earlier. Install them via `pip install -e ".[test]"` (needed for Hypothesis and the CLI entry points) before running the commands.
