@@ -65,6 +65,8 @@ class AggregationMode(Enum):
         Average coordinates, sum other properties.
     DC_KRON : str
         Kron reduction for DC networks.
+    DC_PTDF : str
+        PTDF-driven Kron reduction for DC networks.
     CUSTOM : str
         User-defined aggregation profile.
     CONSERVATION : str
@@ -74,6 +76,7 @@ class AggregationMode(Enum):
     SIMPLE = "simple"
     GEOGRAPHICAL = "geographical"
     DC_KRON = "dc_kron"
+    DC_PTDF = "dc_ptdf"
     CUSTOM = "custom"
     CONSERVATION = "transformer_conservation"
 

@@ -48,7 +48,8 @@ NPAP provides predefined aggregation modes for common use cases.
 |------|-------------|----------|
 | `SIMPLE` | Sum all numeric properties | Basic reduction |
 | `GEOGRAPHICAL` | Average coordinates, sum loads | Spatial analysis |
-| `DC_KRON` | Kron reduction for DC networks | DC network analysis |
+| `DC_PTDF` | PTDF-driven Kron reduction | DC electrical analysis |
+| `DC_KRON` | Kron reduction | DC electrical research |
 | `CUSTOM` | User-defined profile | Advanced use |
 
 ### SIMPLE Mode
@@ -81,6 +82,25 @@ Configuration:
 - Edge `p_max`: `sum`
 - Edge `x`: `average`
 - Default: `average`
+
+### DC_PTDF Mode
+
+For DC-specific reductions use this mode to preserve PTDF-derived reactances.
+
+```python
+aggregated = manager.aggregate(mode=AggregationMode.DC_PTDF)
+```
+
+Configuration:
+- Topology: `electrical`
+- Physical: `ptdf_reduction`
+- Physical properties: `x` (reactance is handled via PTDF/Kron reduction)
+- Node properties: `lat`, `lon` → `average`
+- Edge `p_max`: `sum`
+
+The aggregated graph carries a `reduced_ptdf` matrix on `aggregated.graph`,
+which you can read via `aggregated.graph["reduced_ptdf"]` to inspect the
+reduced PTDF used during the reduction.
 
 ### CUSTOM Mode
 
@@ -278,11 +298,20 @@ edge_properties={
 
 Physical aggregation strategies preserve electrical laws during network reduction.
 
-### Kron Reduction (Planned)
+### Kron Reduction Mode
 
-```{note}
-Kron reduction is planned for a future release.
+Kron reduction is now available via `AggregationMode.DC_KRON`. It uses the
+`kron_reduction` physical strategy on an electrical topology so the aggregated
+reactances reflect a Kron-reduced susceptance matrix of the cluster
+representatives.
+
+```python
+aggregated = manager.aggregate(mode=AggregationMode.DC_KRON)
 ```
+
+The aggregated graph stores the reduced Laplacian under
+`aggregated.graph["kron_reduced_laplacian"]`, which you can inspect for
+downstream DC studies or debugging.
 
 ## Handling Defaults
 

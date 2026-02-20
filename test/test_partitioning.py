@@ -14,6 +14,10 @@ import numpy as np
 import pytest
 
 from npap.exceptions import PartitioningError, ValidationError
+from npap.partitioning.adjacent import (
+    AdjacentAgglomerativeConfig,
+    AdjacentNodeAgglomerativePartitioning,
+)
 from npap.partitioning.electrical import (
     ElectricalDistanceConfig,
     ElectricalDistancePartitioning,
@@ -26,6 +30,7 @@ from npap.partitioning.graph_theory import (
     CommunityPartitioning,
     SpectralPartitioning,
 )
+from npap.partitioning.lmp import LMPPartitioning
 from npap.partitioning.va_electrical import (
     VAElectricalDistancePartitioning,
 )
@@ -1118,6 +1123,127 @@ class TestSpectralPartitioning:
         partition = strategy.partition(graph, n_clusters=2)
         assert len(partition) == 2
         assert sum(len(nodes) for nodes in partition.values()) == graph.number_of_nodes()
+
+
+class TestLMPPartitioning:
+    """Tests for the locational marginal price (LMP) partitioning strategy."""
+
+    def test_groups_similar_lmp_values(self):
+        """Nodes with similar LMPs should land in the same cluster."""
+        graph = nx.DiGraph()
+        graph.add_node(0, lmp=10.0)
+        graph.add_node(1, lmp=10.5)
+        graph.add_node(2, lmp=30.0)
+        graph.add_edge(0, 1)
+        graph.add_edge(1, 2)
+
+        strategy = LMPPartitioning()
+        partition = strategy.partition(graph, n_clusters=2)
+
+        assert nodes_in_same_cluster(partition, 0, 1)
+        assert nodes_in_different_clusters(partition, 0, 2)
+        assert nodes_in_different_clusters(partition, 1, 2)
+
+    def test_adjacency_bonus_prefers_connected_nodes(self):
+        """Adjacency bonus should pull neighbors closer when LMPs are similar."""
+        graph = nx.DiGraph()
+        graph.add_node(0, lmp=5.0)
+        graph.add_node(1, lmp=5.2)
+        graph.add_node(2, lmp=5.2)
+        graph.add_edge(0, 1)
+
+        strategy = LMPPartitioning()
+        partition = strategy.partition(graph, n_clusters=2, adjacency_bonus=0.3)
+
+        assert nodes_in_same_cluster(partition, 0, 1)
+        assert nodes_in_different_clusters(partition, 0, 2)
+
+    def test_ac_islands_are_separated(self):
+        """Nodes from different AC islands are assigned to different clusters."""
+        graph = nx.DiGraph()
+        graph.add_node(0, lmp=8.0, ac_island=0)
+        graph.add_node(1, lmp=8.0, ac_island=1)
+        graph.add_node(2, lmp=20.0, ac_island=0)
+
+        strategy = LMPPartitioning()
+        partition = strategy.partition(graph, n_clusters=2)
+
+        assert nodes_in_different_clusters(partition, 0, 1)
+        assert nodes_in_same_cluster(partition, 0, 2)
+
+    def test_missing_lmp_attribute_raises_validation_error(self):
+        """Strategy should complain when the price attribute is absent."""
+        graph = nx.DiGraph()
+        graph.add_node(0)
+        graph.add_node(1, lmp=12.0)
+
+        strategy = LMPPartitioning()
+
+        with pytest.raises(ValidationError, match="lack a numeric 'lmp'"):
+            strategy.partition(graph, n_clusters=1)
+
+
+class TestAdjacentAgglomerativePartitioning:
+    """Tests for the adjacency-constrained agglomerative strategy."""
+
+    def test_adjacent_nodes_merge_preferred(self):
+        """Nodes joined by an edge should be merged before distant buses."""
+        graph = nx.DiGraph()
+        graph.add_node(0, load=1.0)
+        graph.add_node(1, load=1.0)
+        graph.add_node(2, load=5.0)
+        graph.add_edge(0, 1)
+
+        config = AdjacentAgglomerativeConfig(node_attribute="load")
+        strategy = AdjacentNodeAgglomerativePartitioning(config=config)
+        partition = strategy.partition(graph, n_clusters=2)
+
+        assert nodes_in_same_cluster(partition, 0, 1)
+        assert nodes_in_different_clusters(partition, 0, 2)
+
+    def test_non_adjacent_nodes_remain_separate(self):
+        """Nodes that share values but lack edges remain in separate clusters."""
+        graph = nx.DiGraph()
+        graph.add_node(0, load=0.0)
+        graph.add_node(1, load=0.0)
+        graph.add_node(2, load=0.0)
+
+        graph.add_edge(0, 1)
+
+        config = AdjacentAgglomerativeConfig(node_attribute="load")
+        strategy = AdjacentNodeAgglomerativePartitioning(config=config)
+        partition = strategy.partition(graph, n_clusters=2)
+
+        assert nodes_in_same_cluster(partition, 0, 1)
+        assert nodes_in_different_clusters(partition, 0, 2)
+
+    def test_ac_islands_block_merges(self):
+        """Nodes in different AC islands cannot merge even if adjacent."""
+        graph = nx.DiGraph()
+        graph.add_node(0, load=1.0, ac_island="A")
+        graph.add_node(1, load=1.0, ac_island="B")
+        graph.add_edge(0, 1)
+
+        config = AdjacentAgglomerativeConfig(
+            node_attribute="load",
+            ac_island_attr="ac_island",
+        )
+        strategy = AdjacentNodeAgglomerativePartitioning(config=config)
+
+        with pytest.raises(PartitioningError, match="adjacency"):
+            strategy.partition(graph, n_clusters=1)
+
+    def test_missing_attribute_raises_validation_error(self):
+        """All nodes must expose the configured attribute."""
+        graph = nx.DiGraph()
+        graph.add_node(0)
+        graph.add_node(1, load=2.0)
+
+        config = AdjacentAgglomerativeConfig(node_attribute="load")
+        strategy = AdjacentNodeAgglomerativePartitioning(config=config)
+
+        with pytest.raises(ValidationError, match="lack a numeric 'load'"):
+            strategy.partition(graph, n_clusters=1)
 
 
 class TestCommunityPartitioning:

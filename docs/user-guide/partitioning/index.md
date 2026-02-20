@@ -120,6 +120,8 @@ flowchart TD
 | Geographical with AC islands | `geographical_kmedoids_haversine` |
 | Electrical behavior grouping | `electrical_kmedoids` |
 | Multi-voltage network        | `va_geographical_kmedoids_haversine` |
+| Congestion-aware pricing     | `lmp_similarity`     |
+| Topology-preserving merges   | `adjacent_agglomerative` |
 | Unknown cluster count        | `geographical_dbscan_*` or `geographical_hdbscan_*` |
 
 ### Performance Comparison
@@ -159,6 +161,41 @@ config = ElectricalDistanceConfig(
     infinite_distance=1e4
 )
 ```
+
+### Adjacent-node Agglomerative Configuration
+
+Use {py:class}`~npap.partitioning.adjacent.AdjacentAgglomerativeConfig` when you need
+clusters to grow only along explicit edges. The optional `node_attribute`
+parameter determines the values AgglomerativeClustering compares as it chooses
+which adjacent clusters to merge next, while `ac_island_attr` keeps islands
+separate even when DC links exist.
+
+```python
+from npap.partitioning import AdjacentAgglomerativeConfig
+
+config = AdjacentAgglomerativeConfig(
+    node_attribute="load",
+    ac_island_attr="ac_island",
+)
+```
+
+Pass the config via `config=` when calling `PartitionAggregatorManager.partition`.
+
+### LMP Partitioning Configuration
+
+LMP partitioning relies on locational marginal prices (LMPs) to highlight congestion-aware clusters. Use {py:class}`~npap.partitioning.lmp.LMPPartitioningConfig` when your price column is named differently or when you want to tweak the adjacency/infinite-distance handling.
+
+```python
+from npap.partitioning import LMPPartitioningConfig
+
+config = LMPPartitioningConfig(
+    price_attribute="locational_price",
+    adjacency_bonus=0.2,      # neighbours with similar prices merge quicker
+    infinite_distance=1e5,    # separate distinct AC islands
+)
+```
+
+Apply the config via the `config` keyword when calling `PartitionAggregatorManager.partition("lmp_similarity", ...)`.
 
 ## Working with Partition Results
 

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field, replace
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 import networkx as nx
 import plotly.graph_objects as go
 import plotly.io as pio
 
-from npap.interfaces import EdgeType
+from npap.interfaces import EdgeType, PartitionResult
 
 
 class PlotStyle(Enum):
@@ -114,6 +116,22 @@ def _apply_preset_overrides(config: PlotConfig, preset: PlotPreset | str | None)
         return config
 
     return replace(config, **overrides)
+
+
+def _resolve_partition_map(
+    partition_map: dict[int, list[Any]] | PartitionResult | None,
+    partition_result: PartitionResult | None,
+) -> dict[int, list[Any]] | None:
+    """
+    Resolve either a partition map or PartitionResult into the final mapping.
+    """
+    if partition_result:
+        return partition_result.mapping
+
+    if isinstance(partition_map, PartitionResult):
+        return partition_map.mapping
+
+    return partition_map
 
 
 @dataclass
@@ -859,11 +877,11 @@ class NetworkPlotter:
         """
         return self._plot(PlotStyle.CLUSTERED, config, show)
 
-
 def plot_network(
     graph: nx.DiGraph,
     style: str = "simple",
-    partition_map: dict[int, list[Any]] | None = None,
+    partition_map: dict[int, list[Any]] | PartitionResult | None = None,
+    partition_result: PartitionResult | None = None,
     show: bool = True,
     preset: PlotPreset | str | None = None,
     config: PlotConfig | None = None,
@@ -881,8 +899,11 @@ def plot_network(
         NetworkX DiGraph with geographical coordinates (lat, lon).
     style : str
         Visualization style ('simple', 'voltage_aware', or 'clustered').
-    partition_map : dict[int, list[Any]] or None
-        Optional cluster mapping for 'clustered' style.
+    partition_map : dict[int, list[Any]] | PartitionResult or None
+        Optional cluster mapping for 'clustered' style (or pass a PartitionResult).
+    partition_result : PartitionResult | None
+        Alternative place to hand over a PartitionResult directly without
+        extracting ``mapping`` manually.
     show : bool
         Whether to display the figure immediately.
     preset : PlotPreset or str, optional
@@ -918,7 +939,8 @@ def plot_network(
     else:
         effective_config = config_with_preset
 
-    plotter = NetworkPlotter(graph, partition_map=partition_map)
+    resolved_partition = _resolve_partition_map(partition_map, partition_result)
+    plotter = NetworkPlotter(graph, partition_map=resolved_partition)
 
     # Support both string and enum style specifications
     if style == "simple" or style == PlotStyle.SIMPLE:
@@ -931,3 +953,85 @@ def plot_network(
         raise ValueError(
             f"Unknown plot style: {style}. Valid options: 'simple', 'voltage_aware', 'clustered'"
         )
+
+
+def export_figure(
+    fig: go.Figure,
+    path: str | Path,
+    format: str | None = None,
+    *,
+    scale: float = 1,
+    include_plotlyjs: str = "cdn",
+    engine: str | None = None,
+) -> Path:
+    """
+    Export a Plotly figure to disk (HTML or static image).
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Figure to export.
+    path : str or Path
+        Target file path.
+    format : str or None
+        Optional format override (``"html"``, ``"png"``, ``"svg"``, etc.).
+        When ``None``, the extension of ``path`` determines the format
+        (defaults to ``html`` when missing).
+    scale : float
+        Scale factor applied when saving static image formats.
+    include_plotlyjs : str
+        Plotly.js bundling mode for HTML export (`"cdn"`, `"include"`, or `"relative"`).
+    engine : str or None
+        Plotly image engine for formats like PNG/SVG (`"kaleido"` by default).
+
+    Returns
+    -------
+    Path
+        Resolved path to the exported file.
+
+    Raises
+    ------
+    RuntimeError
+        If the requested format cannot be generated (e.g., ``kaleido`` missing).
+    """
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    resolved_format = (format or target.suffix.lstrip(".")).lower()
+    resolved_format = resolved_format or "html"
+
+    if resolved_format == "html":
+        fig.write_html(str(target), include_plotlyjs=include_plotlyjs)
+        return target
+
+    try:
+        fig.write_image(
+            str(target),
+            format=resolved_format,
+            scale=scale,
+            engine=engine or "kaleido",
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            "Failed to export figure. Make sure the required image engine "
+            "(e.g., kaleido) is installed."
+        ) from exc
+
+    return target
+
+
+def clone_graph(graph: nx.Graph | nx.MultiGraph | nx.MultiDiGraph) -> nx.Graph | nx.MultiGraph | nx.MultiDiGraph:
+    """
+    Return a deep copy of the supplied graph for safe downstream edits.
+
+    Parameters
+    ----------
+    graph : nx.Graph or nx.MultiGraph or nx.MultiDiGraph
+        Graph to clone.
+
+    Returns
+    -------
+    nx.Graph or nx.MultiGraph or nx.MultiDiGraph
+        Deep copy of the original graph.
+    """
+    return copy.deepcopy(graph)

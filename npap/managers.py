@@ -80,9 +80,11 @@ class PartitioningManager:
 
     def _register_default_strategies(self) -> None:
         """Register built-in partitioning strategies."""
+        from npap.partitioning.adjacent import AdjacentNodeAgglomerativePartitioning
         from npap.partitioning.electrical import ElectricalDistancePartitioning
         from npap.partitioning.geographical import GeographicalPartitioning
         from npap.partitioning.graph_theory import CommunityPartitioning, SpectralPartitioning
+        from npap.partitioning.lmp import LMPPartitioning
         from npap.partitioning.va_geographical import (
             VAGeographicalConfig,
             VAGeographicalPartitioning,
@@ -98,6 +100,10 @@ class PartitioningManager:
         self._strategies["geographical_kmedoids_haversine"] = GeographicalPartitioning(
             algorithm="kmedoids", distance_metric="haversine"
         )
+        self._strategies["lmp_similarity"] = LMPPartitioning()
+        self._strategies[
+            "adjacent_agglomerative"
+        ] = AdjacentNodeAgglomerativePartitioning()
         self._strategies["geographical_dbscan_euclidean"] = GeographicalPartitioning(
             algorithm="dbscan", distance_metric="euclidean"
         )
@@ -804,6 +810,7 @@ class AggregationManager:
         )
         from npap.aggregation.physical_strategies import (
             KronReductionStrategy,
+            PTDFReductionStrategy,
             TransformerConservationStrategy,
         )
 
@@ -813,6 +820,7 @@ class AggregationManager:
 
         # Physical strategies
         self._physical_strategies["kron_reduction"] = KronReductionStrategy()
+        self._physical_strategies["ptdf_reduction"] = PTDFReductionStrategy()
         self._physical_strategies["transformer_conservation"] = TransformerConservationStrategy()
 
         # Node property strategies

@@ -36,6 +36,19 @@ partition = manager.partition("geographical_kmeans", n_clusters=10)
 manager.plot_network(style="clustered")
 ```
 
+The ``plot_network`` helper now accepts the ``partition_result`` keyword,
+so you can pass the full {py:class}`~npap.PartitionResult` returned by
+``PartitionAggregatorManager.partition`` directly without extracting ``mapping``.
+
+```python
+fig = manager.plot_network(
+    style="clustered",
+    partition_result=partition,
+    preset="cluster_highlight",
+    show=False,
+)
+```
+
 ## Plot Styles
 
 NPAP provides three built-in plot styles:
@@ -227,12 +240,29 @@ fig.update_layout(
 )
 
 # Save to file
-fig.write_html("network.html")
-fig.write_image("network.png")
+from npap.visualization import export_figure
+
+export_figure(fig, "network.html")
+export_figure(fig, "network.png")  # Requires `kaleido` for PNG/SVG/PDF
 
 # Display
 fig.show()
 ```
+
+### Exporting Figures for Reports
+
+Use {py:func}`~npap.visualization.export_figure` for reproducible exports without
+relying on Plotly's toolbar buttons. The helper infers the format from the target
+path (``.html`` by default) and writes PNG/SVG/PDF when ``kaleido`` is installed.
+
+```python
+fig = manager.plot_network(style="clustered", show=False)
+export_figure(fig, "reports/network.html")
+export_figure(fig, "reports/network.png", scale=2.0)
+```
+
+Pass ``format="svg"`` or ``format="pdf"`` when the file extension cannot be derived
+from the path.
 
 ### Adding Custom Traces
 
@@ -303,6 +333,22 @@ G.add_edge("A", "B")
 # Plot it
 fig = manager.plot_network(graph=G, style="simple")
 ```
+
+### Cloning Graphs for Safe Editing
+
+When you need to try different styling or annotations without mutating the
+original graph, {py:func}`~npap.visualization.clone_graph` returns a deep copy:
+
+```python
+from npap.visualization import clone_graph
+
+backup = clone_graph(manager.copy_graph())
+backup.add_node("demo", lat=0.0, lon=0.0)
+fig = manager.plot_network(graph=backup, style="simple", show=False)
+```
+
+This is handy when generating multiple views (e.g., highlighting different
+clusters or adding temporary annotations) while keeping the base graph intact.
 
 ## Performance Optimization
 
