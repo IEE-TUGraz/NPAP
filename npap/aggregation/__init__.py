@@ -37,7 +37,7 @@ from .basic_strategies import (
     build_typed_cluster_edge_map,
 )
 from .modes import get_mode_profile
-from .physical_strategies import KronReductionStrategy
+from .physical_strategies import KronReductionStrategy, PTDFReductionStrategy
 
 __all__ = [
     "AverageEdgeStrategy",
@@ -47,6 +47,7 @@ __all__ = [
     "FirstEdgeStrategy",
     "FirstNodeStrategy",
     "KronReductionStrategy",
+    "PTDFReductionStrategy",
     "SimpleTopologyStrategy",
     "SumEdgeStrategy",
     "SumNodeStrategy",

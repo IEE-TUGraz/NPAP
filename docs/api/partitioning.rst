@@ -21,6 +21,22 @@ Electrical Distance Partitioning
    :show-inheritance:
    :no-index:
 
+LMP Partitioning
+----------------
+
+.. automodule:: npap.partitioning.lmp
+   :members:
+   :show-inheritance:
+   :no-index:
+
+Adjacent-Node Agglomerative Clustering
+--------------------------------------
+
+.. automodule:: npap.partitioning.adjacent
+   :members:
+   :show-inheritance:
+   :no-index:
+
 Voltage-Aware Partitioning
 --------------------------
 

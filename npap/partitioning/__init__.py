@@ -16,14 +16,21 @@ VAElectricalDistancePartitioning
     Voltage-aware electrical distance partitioning with AC island awareness.
 """
 
+from .adjacent import AdjacentNodeAgglomerativePartitioning
 from .electrical import ElectricalDistancePartitioning
 from .geographical import GeographicalPartitioning
+from .graph_theory import CommunityPartitioning, SpectralPartitioning
+from .lmp import LMPPartitioning
 from .va_electrical import VAElectricalDistancePartitioning
 from .va_geographical import VAGeographicalPartitioning
 
 __all__ = [
+    "AdjacentNodeAgglomerativePartitioning",
+    "CommunityPartitioning",
     "ElectricalDistancePartitioning",
     "GeographicalPartitioning",
+    "LMPPartitioning",
+    "SpectralPartitioning",
     "VAElectricalDistancePartitioning",
     "VAGeographicalPartitioning",
 ]

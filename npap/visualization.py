@@ -1,12 +1,18 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
+
+import copy
+from dataclasses import dataclass, field, replace
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 import networkx as nx
+import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
+from plotly.subplots import make_subplots
 
-from npap.interfaces import EdgeType
+from npap.interfaces import EdgeType, PartitionResult
 
 
 class PlotStyle(Enum):
@@ -26,6 +32,143 @@ class PlotStyle(Enum):
     SIMPLE = "simple"
     VOLTAGE_AWARE = "voltage_aware"
     CLUSTERED = "clustered"
+
+
+class PlotPreset(Enum):
+    """
+    Preset configurations for quick styling adjustments.
+
+    Attributes
+    ----------
+    DEFAULT : str
+        Balanced defaults for data exploration.
+    PRESENTATION : str
+        Bigger nodes/edges and a wide canvas for slides or demos.
+    DENSE : str
+        Higher voltage threshold and compact markers for crowded networks.
+    CLUSTER_HIGHLIGHT : str
+        Emphasizes cluster coloring with saturated nodes and Turbo colorscale.
+    TRANSMISSION_STUDY : str
+        Highlights high-voltage corridors with a wide canvas and terrain tiles.
+    DISTRIBUTION_STUDY : str
+        Focuses on low-voltage, high-density neighborhoods with tighter zoom.
+    E_MOBILITY_PLANNING : str
+        Accents nodes most relevant for e-mobility rollout with bold markers.
+    """
+
+    DEFAULT = "default"
+    PRESENTATION = "presentation"
+    DENSE = "dense"
+    CLUSTER_HIGHLIGHT = "cluster_highlight"
+    TRANSMISSION_STUDY = "transmission_study"
+    DISTRIBUTION_STUDY = "distribution_study"
+    E_MOBILITY_PLANNING = "e_mobility_planning"
+
+
+_PRESET_OVERRIDES = {
+    PlotPreset.DEFAULT: {},
+    PlotPreset.PRESENTATION: {
+        "edge_width": 2.5,
+        "node_size": 7,
+        "map_style": "open-street-map",
+        "width": 1100,
+        "height": 700,
+    },
+    PlotPreset.DENSE: {
+        "line_voltage_threshold": 400.0,
+        "edge_width": 1.2,
+        "node_size": 4,
+        "map_zoom": 4.5,
+        "map_style": "carto-darkmatter",
+    },
+    PlotPreset.CLUSTER_HIGHLIGHT: {
+        "cluster_colorscale": "Turbo",
+        "node_size": 8,
+        "edge_width": 1.8,
+        "map_style": "carto-positron",
+        "title": "Clustered Network",
+    },
+    PlotPreset.TRANSMISSION_STUDY: {
+        "line_voltage_threshold": 450.0,
+        "edge_width": 2.3,
+        "node_size": 6,
+        "map_style": "stamen-terrain",
+        "width": 1200,
+        "height": 750,
+        "title": "Transmission Study",
+    },
+    PlotPreset.DISTRIBUTION_STUDY: {
+        "line_voltage_threshold": 220.0,
+        "edge_width": 1.0,
+        "node_size": 9,
+        "map_zoom": 8.8,
+        "map_style": "open-street-map",
+        "cluster_colorscale": "YlOrBr",
+        "title": "Distribution Study",
+    },
+    PlotPreset.E_MOBILITY_PLANNING: {
+        "node_color": "#FF6F61",
+        "node_size": 10,
+        "edge_width": 1.1,
+        "map_zoom": 10.5,
+        "map_style": "stamen-toner",
+        "title": "E-Mobility Planning",
+    },
+}
+
+
+def _normalize_plot_preset(preset: PlotPreset | str | None) -> PlotPreset | None:
+    """
+    Normalize a preset specifier to a PlotPreset enum value.
+
+    Raises
+    ------
+    ValueError
+        If the provided string does not match any preset.
+    """
+    if preset is None:
+        return None
+
+    if isinstance(preset, PlotPreset):
+        return preset
+
+    lookup = preset.strip().lower().replace(" ", "_").replace("-", "_")
+    for option in PlotPreset:
+        if option.value == lookup or option.name.lower() == lookup:
+            return option
+
+    raise ValueError(f"Unknown preset: {preset}. Valid options: {[p.value for p in PlotPreset]}")
+
+
+def _apply_preset_overrides(config: PlotConfig, preset: PlotPreset | str | None) -> PlotConfig:
+    """
+    Apply preset overrides to the provided PlotConfig.
+    """
+    preset_enum = _normalize_plot_preset(preset)
+    if not preset_enum:
+        return config
+
+    overrides = _PRESET_OVERRIDES.get(preset_enum, {})
+    if not overrides:
+        return config
+
+    return replace(config, **overrides)
+
+
+def _resolve_partition_map(
+    partition_map: dict[int, list[Any]] | PartitionResult | None,
+    partition_result: PartitionResult | None,
+) -> dict[int, list[Any]] | None:
+    """
+    Resolve either a partition map or PartitionResult into the final mapping.
+    """
+    if partition_result:
+        return partition_result.mapping
+
+    if isinstance(partition_map, PartitionResult):
+        return partition_map.mapping
+
+    return partition_map
 
 
 @dataclass
@@ -775,8 +918,10 @@ class NetworkPlotter:
 def plot_network(
     graph: nx.DiGraph,
     style: str = "simple",
-    partition_map: dict[int, list[Any]] | None = None,
+    partition_map: dict[int, list[Any]] | PartitionResult | None = None,
+    partition_result: PartitionResult | None = None,
     show: bool = True,
+    preset: PlotPreset | str | None = None,
     config: PlotConfig | None = None,
     **kwargs,
 ) -> go.Figure:
@@ -792,10 +937,15 @@ def plot_network(
         NetworkX DiGraph with geographical coordinates (lat, lon).
     style : str
         Visualization style ('simple', 'voltage_aware', or 'clustered').
-    partition_map : dict[int, list[Any]] or None
-        Optional cluster mapping for 'clustered' style.
+    partition_map : dict[int, list[Any]] | PartitionResult or None
+        Optional cluster mapping for 'clustered' style (or pass a PartitionResult).
+    partition_result : PartitionResult | None
+        Alternative place to hand over a PartitionResult directly without
+        extracting ``mapping`` manually.
     show : bool
         Whether to display the figure immediately.
+    preset : PlotPreset or str, optional
+        Named preset that tweaks sizing, map style, and thresholds.
     config : PlotConfig or None
         Optional PlotConfig instance to override defaults. If provided,
         kwargs will further override values from this config.
@@ -819,17 +969,16 @@ def plot_network(
     >>> fig = plot_network(graph, style="voltage_aware", title="My Network")
     >>> fig = plot_network(graph, style="clustered", partition_map=result.mapping)
     """
-    if config is not None:
-        # Start with provided config, then override with kwargs
-        from dataclasses import asdict
+    base_config = replace(config) if config else PlotConfig()
+    config_with_preset = _apply_preset_overrides(base_config, preset)
 
-        config_dict = asdict(config)
-        config_dict.update(kwargs)
-        effective_config = PlotConfig(**config_dict)
+    if kwargs:
+        effective_config = replace(config_with_preset, **kwargs)
     else:
-        effective_config = PlotConfig(**kwargs)
+        effective_config = config_with_preset
 
-    plotter = NetworkPlotter(graph, partition_map=partition_map)
+    resolved_partition = _resolve_partition_map(partition_map, partition_result)
+    plotter = NetworkPlotter(graph, partition_map=resolved_partition)
 
     # Support both string and enum style specifications
     if style == "simple" or style == PlotStyle.SIMPLE:
@@ -842,3 +991,156 @@ def plot_network(
         raise ValueError(
             f"Unknown plot style: {style}. Valid options: 'simple', 'voltage_aware', 'clustered'"
         )
+
+
+def export_figure(
+    fig: go.Figure,
+    path: str | Path,
+    format: str | None = None,
+    *,
+    scale: float = 1,
+    include_plotlyjs: str = "cdn",
+    engine: str | None = None,
+) -> Path:
+    """
+    Export a Plotly figure to disk (HTML or static image).
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Figure to export.
+    path : str or Path
+        Target file path.
+    format : str or None
+        Optional format override (``"html"``, ``"png"``, ``"svg"``, etc.).
+        When ``None``, the extension of ``path`` determines the format
+        (defaults to ``html`` when missing).
+    scale : float
+        Scale factor applied when saving static image formats.
+    include_plotlyjs : str
+        Plotly.js bundling mode for HTML export (`"cdn"`, `"include"`, or `"relative"`).
+    engine : str or None
+        Plotly image engine for formats like PNG/SVG (`"kaleido"` by default).
+
+    Returns
+    -------
+    Path
+        Resolved path to the exported file.
+
+    Raises
+    ------
+    RuntimeError
+        If the requested format cannot be generated (e.g., ``kaleido`` missing).
+    """
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    resolved_format = (format or target.suffix.lstrip(".")).lower()
+    resolved_format = resolved_format or "html"
+
+    if resolved_format == "html":
+        fig.write_html(str(target), include_plotlyjs=include_plotlyjs)
+        return target
+
+    try:
+        fig.write_image(
+            str(target),
+            format=resolved_format,
+            scale=scale,
+            engine=engine or "kaleido",
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            "Failed to export figure. Make sure the required image engine "
+            "(e.g., kaleido) is installed."
+        ) from exc
+
+    return target
+
+
+def clone_graph(
+    graph: nx.Graph | nx.MultiGraph | nx.MultiDiGraph,
+) -> nx.Graph | nx.MultiGraph | nx.MultiDiGraph:
+    """
+    Return a deep copy of the supplied graph for safe downstream edits.
+
+    Parameters
+    ----------
+    graph : nx.Graph or nx.MultiGraph or nx.MultiDiGraph
+        Graph to clone.
+
+    Returns
+    -------
+    nx.Graph or nx.MultiGraph or nx.MultiDiGraph
+        Deep copy of the original graph.
+    """
+    return copy.deepcopy(graph)
+
+
+def plot_reduced_matrices(
+    graph: nx.Graph,
+    *,
+    matrices: tuple[str, ...] = ("ptdf", "laplacian"),
+    show: bool = True,
+) -> go.Figure:
+    """
+    Plot heatmaps for reduced PTDF/laplacian matrices produced during aggregation.
+
+    Parameters
+    ----------
+    graph : nx.Graph
+        Aggregated graph carrying ``reduced_ptdf`` and/or
+        ``kron_reduced_laplacian`` in ``graph.graph``.
+    matrices : tuple[str, ...]
+        Which matrices to visualize; valid values are ``"ptdf"`` and
+        ``"laplacian"``.
+    show : bool
+        Whether to display the figure automatically.
+
+    Returns
+    -------
+    go.Figure
+        Plotly Figure containing the requested heatmaps.
+    """
+    available = []
+    if "ptdf" in matrices:
+        ptdf = graph.graph.get("reduced_ptdf")
+        if ptdf and isinstance(ptdf.get("matrix"), np.ndarray):
+            available.append(("PTDF", ptdf["matrix"], ptdf["nodes"]))
+    if "laplacian" in matrices:
+        lap = graph.graph.get("kron_reduced_laplacian")
+        if isinstance(lap, np.ndarray):
+            labels = list(graph.nodes())
+            available.append(("Kron Laplacian", lap, labels))
+
+    if not available:
+        raise ValueError("No reduced matrices found on the graph.")
+
+    fig = make_subplots(
+        rows=len(available), cols=1, subplot_titles=[name for name, *_ in available]
+    )
+
+    for row, (name, matrix, labels) in enumerate(available, start=1):
+        fig.add_trace(
+            go.Heatmap(
+                z=matrix,
+                x=[str(label) for label in labels],
+                y=[str(label) for label in labels],
+                colorbar=dict(title=name),
+                colorscale="Viridis",
+            ),
+            row=row,
+            col=1,
+        )
+
+    fig.update_layout(
+        height=300 * len(available),
+        title="Reduced matrices diagnostics",
+        xaxis=dict(tickangle=45),
+        yaxis=dict(autorange="reversed"),
+    )
+
+    if show:
+        fig.show()
+
+    return fig
