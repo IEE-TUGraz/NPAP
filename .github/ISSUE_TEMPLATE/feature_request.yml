@@ -7,7 +7,7 @@ body:
       value: |
         Thank you for suggesting a feature! Please consider whether it fits NPAP's scope (network partitioning & aggregation).
 
-        Before submitting, please check [existing issues](https://github.com/IEE-TUGraz/NPAP/issues) and the [roadmap](https://github.com/IEE-TUGraz/NPAP#roadmap) to see if it's already planned.
+        Before submitting, please check [existing issues](https://github.com/IEE-TUGraz/NPAP/issues) to see if it's already planned.
 
   - type: textarea
     id: description
