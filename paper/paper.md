@@ -9,10 +9,10 @@ tags:
   - energy system modeling
   - NetworkX
 authors:
-  - name: Benjamin Stöckl
+  - name: Marco Anarmo
     orcid: 0000-0000-0000-0000
     affiliation: 1
-  - name: Marco Anarmo
+  - name: Benjamin Stöckl
     orcid: 0000-0000-0000-0000
     affiliation: 1
   - name: Yannick Werner
@@ -24,7 +24,7 @@ authors:
 affiliations:
   - name: Institute of Electricity Economics and Energy Innovation, Graz University of Technology, Graz, Austria
     index: 1
-date: 23 February 2026
+date: 24 February 2026
 bibliography: paper.bib
 ---
 
@@ -62,8 +62,8 @@ clustering algorithm, and *aggregation*, which reduces the network topology base
 assignment. This separation is central to the library's design and gives users fine-grained control
 over each stage independently.
 
-NPAP provides over 14 pre-registered clustering algorithms — including k-means, k-medoids, DBSCAN,
-HDBSCAN, and hierarchical clustering — applicable to both geographical and electrical distance-based
+NPAP provides over 14 pre-registered clustering algorithms including k-means, k-medoids, DBSCAN,
+HDBSCAN, and hierarchical clustering applicable to both geographical and electrical distance-based
 partitioning. It supports voltage-aware and AC-island-aware clustering for multi-voltage power
 networks with DC interconnections. Its strategy pattern architecture allows users to register custom
 partitioning and aggregation strategies without modifying the core code.
@@ -91,7 +91,7 @@ implemented these methods individually and ad-hoc for each project.
 Spatial complexity reduction, however, lacks an equivalent standalone tool. While there is
 significant research on network reduction and bus aggregation methods, the algorithms remain
 scattered across individual publications or embedded within specific modeling frameworks. Existing
-implementations — such as PyPSA's built-in spatial clustering module — are tightly coupled to
+implementations, such as PyPSA's built-in spatial clustering module, are tightly coupled to
 their framework's internal data structures and cannot be reused independently by other tools or
 researchers working with different systems.
 
@@ -103,11 +103,11 @@ spatial structures that need to be reduced in complexity.
 
 # State of the Field
 
-The most widely used spatial clustering implementation in the open-source energy modeling ecosystem
+The most widely used spatial clustering implementation in the open-source energy modeling community
 is PyPSA's built-in clustering module. It provides busmap-based spatial aggregation
-using methods such as k-means on bus coordinates. However, this
-implementation is tightly coupled to PyPSA's internal data structures — specifically its `Network`
-object and `buses` DataFrame — making it impractical to reuse outside of PyPSA workflows. Researchers
+using methods such as k-means or hierarchical clustering on bus coordinates. However, this
+implementation is tightly coupled to PyPSA's internal data structures, specifically its `Network`
+object and `buses` DataFrame, making it impractical to reuse outside PyPSA workflows. Researchers
 working with other frameworks or custom network representations cannot leverage this code without
 significant adaptation.
 
@@ -122,13 +122,13 @@ significant adaptation.
 The analogy with temporal aggregation is instructive. TSAM addressed a similar
 fragmentation problem in the temporal dimension: before its release, researchers implemented
 time series aggregation methods independently for each project, leading to duplicated effort
-and inconsistent implementations. TSAM consolidated these methods — k-means, k-medoids,
-hierarchical clustering, and others — into a single reusable library that became a standard tool
+and inconsistent implementations. TSAM consolidated these methods (k-means, k-medoids,
+hierarchical clustering, and others) into a single reusable library that became a standard tool
 in the ecosystem.
 
 NPAP brings this same approach to the spatial dimension. Its unique contributions compared to
 existing alternatives are: (1) it is a standalone, pip-installable library decoupled from any
-specific framework; (2) it employs a strategy pattern architecture that allows new algorithms to be
+specific framework; (2) it employs a strategy pattern architecture that allows new functionalities to be
 added without modifying core code; (3) it provides voltage-aware and AC-island-aware partitioning
 for multi-voltage networks; and (4) it makes an explicit conceptual separation between partitioning
 and aggregation that no existing tool provides, giving researchers full control over each stage of
@@ -166,7 +166,7 @@ simplifying the graph topology while preserving aggregate properties. Voltage-le
 separates the network into independent sub-graphs per voltage level, enabling voltage-aware
 partitioning strategies. These pre-processing steps are orchestrated automatically by the pipeline
 when voltage-aware data is loaded. Future extensions include a filtering module that would allow
-users to select subsets of the network — for example, filtering by country or region — as an
+users to select subsets of the network, for example, filtering by country or region, as an
 additional pre-processing step before partitioning.
 
 ## Partitioning Strategies
@@ -210,13 +210,13 @@ computation, and Plotly for interactive map-based visualization of results.
 
 # Research Impact Statement
 
-NPAP was developed within the ERC-funded NetZero-Opt project at Graz University of Technology.
-It is currently being integrated into PyPSA, the most widely used open-source energy
-system modeling framework, through an open pull request that introduces NPAP as an alternative
+NPAP was developed within the ERC-funded NetZero-Opt project at the Institute of Electricity Economics and Energy
+Innovation (IEE) at Graz University of Technology. It is currently being integrated into PyPSA, the most widely
+used open-source energy system modeling framework, through an open pull request that introduces NPAP as an alternative
 spatial clustering backend.[^1] This integration demonstrates that NPAP's framework-agnostic design,
 based on standard NetworkX graphs, allows it to be adopted by existing tools with minimal effort.
 The pull request provides three public API entry points for PyPSA users: partitioning only,
-aggregation only, and a full clustering pipeline, along with 53 tests covering both unit and
+aggregation only, and a full clustering pipeline, along with 53+ tests covering both unit and
 integration levels.
 
 [^1]: https://github.com/PyPSA/PyPSA/pull/1568
@@ -225,6 +225,8 @@ NPAP has been tested on networks of varying scale, from single-country grids to 
 pan-European transmission network, demonstrating its scalability. The library is
 pip-installable, fully documented on ReadTheDocs, and includes an automated test suite with
 continuous integration across Python 3.10, 3.11, and 3.12.
+
+# Future Steps
 
 Active development directions include dual-based partitioning algorithms using Locational Marginal
 Prices (LMP), the ANAC (Adjacent Node Agglomerative Clustering) algorithm, Kron reduction and
