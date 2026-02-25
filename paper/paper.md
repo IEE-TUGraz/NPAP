@@ -11,19 +11,21 @@ tags:
 authors:
   - name: Marco Anarmo
     orcid: 0009-0000-3806-7946
-    affiliation: 1
+    affiliation: "1, 2"
   - name: Benjamin Stöckl
     orcid: 0009-0005-6579-8169
-    affiliation: 1
+    affiliation: "1, 2"
   - name: Yannick Werner
     orcid: 0000-0002-6674-805X
-    affiliation: 1
+    affiliation: "1, 2"
   - name: Sonja Wogrin
     orcid: 0000-0002-3889-7197
-    affiliation: 1
+    affiliation: "1, 2"
 affiliations:
-  - name: Institute of Electricity Economics and Energy Innovation, Graz University of Technology, Graz, Austria
+  - name: Institute of Electricity Economics and Energy Innovation (IEE), Graz University of Technology, Inffeldgasse 18, Graz, Austria
     index: 1
+  - name: Research Center ENERGETIC, Graz University of Technology, Rechbauerstraße 12, Graz, Austria
+    index: 2
 date: 24 February 2026
 bibliography: paper.bib
 ---
