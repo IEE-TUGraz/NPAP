@@ -10,16 +10,16 @@ tags:
   - NetworkX
 authors:
   - name: Marco Anarmo
-    orcid: 0000-0000-0000-0000
+    orcid: 0009-0000-3806-7946
     affiliation: 1
   - name: Benjamin Stöckl
-    orcid: 0000-0000-0000-0000
+    orcid: 0009-0005-6579-8169
     affiliation: 1
   - name: Yannick Werner
-    orcid: 0000-0000-0000-0000
+    orcid: 0000-0002-6674-805X
     affiliation: 1
   - name: Sonja Wogrin
-    orcid: 0000-0000-0000-0000
+    orcid: 0000-0002-3889-7197
     affiliation: 1
 affiliations:
   - name: Institute of Electricity Economics and Energy Innovation, Graz University of Technology, Graz, Austria
