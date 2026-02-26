@@ -115,7 +115,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
             log_debug(f"Loading nodes from {node_file}", LogCategory.INPUT)
 
             # Load nodes
-            nodes_df = pd.read_csv(node_file, delimiter=delimiter, decimal=decimal)
+            nodes_df = pd.read_csv(node_file, delimiter=delimiter, decimal=decimal, comment="#")
             if nodes_df.empty:
                 raise DataLoadingError("Node file is empty", strategy="csv_files")
 
@@ -131,7 +131,7 @@ class CSVFilesStrategy(DataLoadingStrategy):
             log_debug(f"Loading edges from {edge_file}", LogCategory.INPUT)
 
             # Load edges
-            edges_df = pd.read_csv(edge_file, delimiter=delimiter, decimal=decimal, quotechar="'")
+            edges_df = pd.read_csv(edge_file, delimiter=delimiter, decimal=decimal, comment="#")
             if edges_df.empty:
                 raise DataLoadingError("Edge file is empty", strategy="csv_files")
 
