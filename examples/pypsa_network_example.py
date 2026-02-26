@@ -1,111 +1,122 @@
 """
-NPAP Example: European Electricity Network Partitioning and Aggregation.
+Example: European Network Partitioning and Aggregation using PyPSA Data
+=======================================================================
 
-This example showcases how to use NPAP to:
-1. Load a real-world European high-voltage electricity network (based on PyPSA-Eur OSM data).
-2. Partition the network using geographical and graph-theory-based strategies.
-3. Aggregate the network to a reduced representation.
-4. Visualize the results.
+This example demonstrates how to use NPAP to process a realistic, large-scale
+power system network. It uses the "Prebuilt Electricity Network for PyPSA-Eur"
+dataset from Zenodo (record 18619025).
 
-Data Source:
-Xiong, B., Fioriti, D., Neumann, F., Riepin, I., Brown, T. 
-Prebuilt Electricity Network for PyPSA-Eur based on OpenStreetMap Data. 
-Zenodo (2025). https://zenodo.org/records/18619025
+The script will:
+1. Download the latest buses, lines, transformers, and DC links data.
+2. Load the network using NPAP's VoltageAwareStrategy.
+3. Partition the network using geographical K-Means.
+4. Aggregate the network using the Transformer Conservation mode.
+5. Save a "clustered" visualization showing the partitions.
 """
 
-import os
-import requests
-import pandas as pd
+import urllib.request
 from pathlib import Path
 
-from npap.managers import PartitionAggregatorManager
-from npap.interfaces import AggregationMode
-from npap.visualization import NetworkPlotter
+from npap import AggregationMode, PartitionAggregatorManager
+from npap.logging import LogCategory, log_info
 
-# --- 1. CONFIGURATION ---
+# Zenodo record details
+ZENODO_RECORD = "18619025"
+FILES = {
+    "node_file": "buses.csv",
+    "line_file": "lines.csv",
+    "transformer_file": "transformers.csv",
+    "converter_file": "converters.csv",
+    "link_file": "links.csv",
+}
+BASE_URL = f"https://zenodo.org/records/{ZENODO_RECORD}/files"
 
-# Data files from Zenodo
-ZENODO_URL = "https://zenodo.org/records/18619025/files/"
-FILES = ["buses.csv", "lines.csv", "transformers.csv"]
-DATA_DIR = Path("examples/data")
 
-# Partitioning settings
-N_CLUSTERS = 50  # Target number of clusters
+def download_data(data_dir: Path):
+    """Download required CSV files from Zenodo if they don't exist."""
+    data_dir.mkdir(exist_ok=True, parents=True)
 
-# --- 2. DATA PREPARATION ---
-
-def download_data():
-    """Download required data files from Zenodo if they don't exist."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    
-    for file_name in FILES:
-        target_path = DATA_DIR / file_name
-        if not target_path.exists():
-            print(f"Downloading {file_name} from Zenodo...")
-            response = requests.get(f"{ZENODO_URL}{file_name}?download=1")
-            response.raise_for_status()
-            with open(target_path, "wb") as f:
-                f.write(response.content)
-            print(f"Saved to {target_path}")
+    for key, filename in FILES.items():
+        target = data_dir / filename
+        if not target.exists():
+            url = f"{BASE_URL}/{filename}?download=1"
+            log_info(f"Downloading {filename} from Zenodo...", LogCategory.INPUT)
+            urllib.request.urlretrieve(url, target)
         else:
-            print(f"Using local file: {target_path}")
+            log_info(f"Using local copy of {filename}", LogCategory.INPUT)
 
-# --- 3. MAIN WORKFLOW ---
 
-def main():
-    # Ensure data is available
-    download_data()
-    
-    # Initialize NPAP Manager
+def run_example():
+    """
+    Execute the PyPSA network partitioning and aggregation example pipeline.
+
+    Downloads necessary CSVs, loads the network, maps geographical coordinates,
+    aggregates parallel edges, performs spatial partitioning, visualizes the
+    sub-networks, and executes a full topological/physical aggregation.
+    """
+    # Set up paths
+    example_dir = Path(__file__).parent
+    data_dir = example_dir / "data"
+    output_dir = example_dir / "output"
+    output_dir.mkdir(exist_ok=True)
+
+    # 1. Fetch data
+    download_data(data_dir)
+
+    # 2. Initialize Manager and Load Data
+    log_info("Initializing NPAP Manager...", LogCategory.MANAGER)
     manager = PartitionAggregatorManager()
-    
-    # 3.1 Load the network
-    # We use CSVFilesStrategy as the Zenodo data is in CSV format
-    print("\nLoading network from CSV files...")
-    graph = manager.load_data(
-        "csv_files",
-        node_file=str(DATA_DIR / "buses.csv"),
-        edge_file=str(DATA_DIR / "lines.csv"),
-        node_id_col="Bus",      # column in Zenodo buses.csv
-        edge_from_col="bus0",   # source column in lines.csv
-        edge_to_col="bus1"      # target column in lines.csv
+
+    # We use VoltageAwareStrategy to respect the hierarchy of AC/DC elements
+    manager.load_data(
+        strategy="va_loader",
+        node_file=str(data_dir / FILES["node_file"]),
+        line_file=str(data_dir / FILES["line_file"]),
+        transformer_file=str(data_dir / FILES["transformer_file"]),
+        converter_file=str(data_dir / FILES["converter_file"]),
+        link_file=str(data_dir / FILES["link_file"]),
+        node_id_col="bus_id",  # PyPSA uses bus_id
+        quotechar="'",  # Required for WKT geometry in these files
     )
-    
-    print(f"Original network: {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges")
-    
-    # 3.2 Partitioning
-    # We'll use a geographical approach for this large-scale European grid
-    print(f"\nPartitioning network into {N_CLUSTERS} clusters (Geographical)...")
-    partition_result = manager.partition_graph(
-        "geographical",
-        n_clusters=N_CLUSTERS
+
+    log_info(
+        f"Loaded graph with {manager.get_current_graph().number_of_nodes()} nodes.",
+        LogCategory.INPUT,
     )
-    
-    print(f"Partitioning complete. Resulting in {partition_result.n_clusters} clusters.")
-    
-    # 3.3 Aggregation
-    # Reduce the network according to the partition
-    print("\nAggregating network...")
-    aggregated_graph = manager.aggregate_graph(
-        mode=AggregationMode.GEOGRAPHICAL
-    )
-    
-    print(f"Aggregated network: {aggregated_graph.number_of_nodes()} nodes, {aggregated_graph.number_of_edges()} edges")
-    print(f"Compression ratio: {graph.number_of_nodes() / aggregated_graph.number_of_nodes():.2f}x")
-    
-    # 3.4 Visualization
-    # Create an interactive plot of the clustering results
-    print("\nGenerating visualization...")
-    plotter = NetworkPlotter(graph, partition_map=partition_result.mapping)
-    fig = plotter.plot_clustered()
-    
-    # Show results
-    # fig.show()  # Uncomment to open in browser
-    
-    # Save the plot for reference
-    output_plot = "examples/clustered_european_grid.html"
-    fig.write_html(output_plot)
-    print(f"Visualization saved to {output_plot}")
+
+    # 2.5 Aggregate parallel edges
+    log_info("Aggregating parallel edges...", LogCategory.MANAGER)
+    manager.aggregate_parallel_edges()
+
+    # 2.6 Map 'x' and 'y' to 'lon' and 'lat' for GeographicalPartitioning
+    log_info("Mapping x/y coordinates to lon/lat...", LogCategory.MANAGER)
+    for node, data in manager.get_current_graph().nodes(data=True):
+        if "x" in data and "y" in data:
+            data["lon"] = data["x"]
+            data["lat"] = data["y"]
+
+    # 3. Partitioning
+    # We create 15 clusters using geographical K-Means
+    n_clusters = 15
+    log_info(f"Partitioning network into {n_clusters} clusters...", LogCategory.MANAGER)
+    manager.partition("geographical_kmeans", n_clusters=n_clusters)
+
+    # 4. Visualization of Partitions
+    log_info("Generating partition visualization...", LogCategory.VISUALIZATION)
+    fig_path = output_dir / "pypsa_european_partitions.html"
+
+    fig = manager.plot_network(style="clustered", show=False)
+    fig.write_html(str(fig_path))
+    log_info(f"Partition visualization saved to: {fig_path}", LogCategory.VISUALIZATION)
+
+    # 5. Aggregation
+    # use CONSERVATION mode to preserve electrical properties
+    log_info("Aggregating network (Conservation mode)...", LogCategory.AGGREGATION)
+    aggregated = manager.aggregate(mode=AggregationMode.CONSERVATION)
+
+    log_info(f"Aggregated graph has {aggregated.number_of_nodes()} nodes.", LogCategory.AGGREGATION)
+    log_info("Example complete.", LogCategory.MANAGER)
+
 
 if __name__ == "__main__":
-    main()
+    run_example()

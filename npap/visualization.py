@@ -1075,6 +1075,8 @@ def clone_graph(
         Deep copy of the original graph.
     """
     return copy.deepcopy(graph)
+
+
 def plot_reduced_matrices(
     graph: nx.Graph,
     *,

@@ -1,34 +1,30 @@
 # NPAP Examples
 
-This directory contains examples demonstrating the use and potential applications of the **Network Partitioning and Aggregation Package (NPAP)**.
+This directory contains examples demonstrating how to use NPAP (Network Partitioning & Aggregation Package) for large-scale power system network reduction.
 
-## Available Examples
+## Examples
 
-### 1. European Electricity Network Partitioning
-- **Script**: `pypsa_network_example.py`
-- **Description**: This example process a topologically connected representation of the European high-voltage grid (220 kV to 750 kV) constructed from OpenStreetMap data. 
-- **Features Demonstrated**:
-    - Data loading from CSV files (compatible with PyPSA-Eur datasets).
-    - Geographical partitioning.
-    - Geographical aggregation.
-    - Interactive visualization of clustered networks.
-- **Data Source**: [Zenodo Record 18619025](https://zenodo.org/records/18619025).
+### 1. PyPSA European Network Example (`pypsa_network_example.py`)
 
-## Running the Examples
+This example showcases the full NPAP pipeline using a realistic dataset:
+- **Data Source**: [Prebuilt Electricity Network for PyPSA-Eur](https://zenodo.org/records/18619025) (Zenodo).
+- **Loading**: Uses the `VoltageAwareStrategy` to handle AC lines, transformers, and DC links.
+- **Partitioning**: Groups thousands of buses into a user-specified number of clusters based on geographical coordinates.
+- **Aggregation**: Reduces the network while conserving physical properties (impedance/reactance) using the `Conservation` mode.
+- **Visualization**: Generates an interactive HTML map showing the partitions.
 
-Ensure you have the required dependencies installed (including `requests` for data downloading):
+#### Running the example
 
+Ensure you have installed NPAP in editable mode:
 ```bash
-pip install requests pandas plotly networkx
+pip install -e "."
 ```
 
-To run the PyPSA example:
-
+Run the script:
 ```bash
 python examples/pypsa_network_example.py
 ```
 
-The script will automatically download the necessary CSV files from Zenodo (approx. 36 MB) into the `examples/data/` directory.
-
-## Outputs
-Running the example will generate an HTML file (e.g., `examples/clustered_european_grid.html`) which can be opened in any web browser to explore the clustered network.
+The script will:
+1. Automatically download the required CSV data (~35 MB) from Zenodo if not present in `examples/data/`.
+2. Process the network and save an interactive visualization to `examples/output/pypsa_european_partitions.html`.
