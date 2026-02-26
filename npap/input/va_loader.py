@@ -513,9 +513,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         DataLoadingError
             If transformers file is missing required columns or has invalid values.
         """
-        transformers_df = pd.read_csv(
-            file_path, delimiter=delimiter, decimal=decimal, comment="#"
-        )
+        transformers_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, comment="#")
 
         if transformers_df.empty:
             log_warning(
