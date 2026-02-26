@@ -53,3 +53,6 @@ Thumbs.db
 # Claude files
 CLAUDE.md
 .claude/
+
+# Hypothesis cache
+.hypothesis/
