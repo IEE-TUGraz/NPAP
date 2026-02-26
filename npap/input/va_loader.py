@@ -441,7 +441,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         DataLoadingError
             If node file is empty.
         """
-        nodes_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal)
+        nodes_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, comment="#")
 
         if nodes_df.empty:
             raise DataLoadingError("Node file is empty", strategy="va_loader")
@@ -471,7 +471,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         DataLoadingError
             If lines file is missing required columns.
         """
-        lines_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        lines_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, comment="#")
 
         if lines_df.empty:
             log_warning(
@@ -514,7 +514,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             If transformers file is missing required columns or has invalid values.
         """
         transformers_df = pd.read_csv(
-            file_path, delimiter=delimiter, decimal=decimal, quotechar="'"
+            file_path, delimiter=delimiter, decimal=decimal, comment="#"
         )
 
         if transformers_df.empty:
@@ -590,7 +590,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         DataLoadingError
             If converters file is missing required columns.
         """
-        converters_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        converters_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, comment="#")
 
         if converters_df.empty:
             log_warning(
@@ -634,7 +634,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         DataLoadingError
             If links file is missing required columns.
         """
-        links_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        links_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, comment="#")
 
         if links_df.empty:
             log_warning("Links file is empty. No DC links will be created.", LogCategory.INPUT)
