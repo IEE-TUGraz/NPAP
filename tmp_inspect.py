@@ -1,4 +1,6 @@
 import inspect
-import powerplantmatching.data as data
+
+from powerplantmatching import data
+
 print(data.IRENASTAT)
 print(inspect.getsource(data.IRENASTAT))
