@@ -54,35 +54,33 @@ bibliography: paper.bib
 # Summary
 
 NPAP (Network Partitioning and Aggregation Package) is an open-source Python library for
-partitioning and aggregating spatial network graphs. Built on NetworkX, it is
-designed to work with any graph-based structure while providing specialized support for electrical
-power systems.
+partitioning and aggregating spatial network graphs. Built on NetworkX, it provides a framework-agnostic
+interface for graph-based models, with specialized support for electrical power systems.
 
 The process commonly referred to as network "clustering" actually involves two distinct steps that
 NPAP makes explicit in its pipeline: *partitioning*, which assigns nodes to regions (clusters) using a
 clustering algorithm, and *aggregation*, which reduces the network topology based on that
-assignment. This separation is central to the library's design and gives users fine-grained control
-over each stage independently.
+assignment. This separation is central to the library's design and enables fine-grained control over each
+stage independently.
 
-NPAP provides over 14 pre-registered clustering algorithms including k-means, k-medoids, DBSCAN,
-HDBSCAN, and hierarchical clustering applicable to both geographical and electrical distance-based
+NPAP provides over 14 clustering algorithms including k-means, k-medoids, DBSCAN,
+HDBSCAN, and hierarchical clustering, applicable to both geographical and electrical distance-based
 partitioning. It supports voltage-aware and AC-island-aware clustering for multi-voltage power
 networks with DC interconnections. Its strategy pattern architecture allows users to register custom
 partitioning and aggregation strategies without modifying the core code.
 
-Analogous to how TSAM consolidated temporal aggregation methods into a single reusable Python
-library for energy system modeling, NPAP standardizes spatial network aggregation
-into one framework-agnostic package. Although developed with a focus on power systems due to the
-funding context, the architecture is general-purpose and applicable to any network representable as
-a NetworkX graph.
+Similar to how TSAM consolidated temporal aggregation methods into a reusable Python library for
+energy system modeling, NPAP standardizes spatial network partitioning and aggregation within a
+single, framework-agnostic package. Although initially developed with a focus on power systems,
+its architecture is general-purpose and applicable to any network representable
+as a NetworkX graph.
 
 # Statement of Need
 
 Energy system models have grown significantly in spatial complexity. Modern transmission network
-representations can contain thousands of nodes and branches, and running mathematical optimization
-problems on such large-scale networks is computationally expensive in both time and resources. To
-make these models tractable, researchers reduce their complexity mainly along two dimensions: temporal and
-spatial.
+representations can contain thousands of nodes and branches, making the associated optimization
+problems computationally expensive in both time and memory. To make these models tractable,
+researchers reduce their complexity mainly along two dimensions: temporal and spatial.
 
 Temporal complexity reduction is a well-established field. Extensive literature exists on time series
 aggregation methods for energy system models, and tools like TSAM have consolidated multiple
@@ -90,7 +88,7 @@ temporal aggregation algorithms into a single, reusable Python library
 that has become a standard component in the energy modeling ecosystem. Before TSAM, researchers
 implemented these methods individually and ad-hoc for each project.
 
-Spatial complexity reduction, however, lacks an equivalent standalone tool. While there is
+In contrast, spatial complexity reduction lacks an equivalent standalone tool. While there is
 significant research on network reduction and bus aggregation methods, the algorithms remain
 scattered across individual publications or embedded within specific modeling frameworks. Existing
 implementations, such as PyPSA's built-in spatial clustering module, are tightly coupled to
@@ -102,6 +100,10 @@ NetworkX graph. It has been tested on networks ranging from single-country grids
 transmission structures like PyPSA-Eur. The target audience includes power systems
 researchers, energy modelers, network analysts, and more broadly, anyone working with graph-based
 spatial structures that need to be reduced in complexity.
+
+<!-- TODO: Consider adding additional networks, graphs and test scenarios, as examples,
+      that could be used in the library.
+-->
 
 # State of the Field
 
@@ -152,7 +154,7 @@ applicable to any graph-based structure:
    only determines group "membership", it does not modify the graph itself.
 
 2. **Aggregation**: the network topology is reduced based on the partitioning result. Nodes within
-   each cluster are merged, edges are adjusted, and properties are combined according to
+   each cluster are merged, edges are reassigned, and properties are combined according to
    user-specified rules.
 
 This separation was identified early in the design process as a fundamental distinction. It gives
@@ -173,7 +175,7 @@ additional pre-processing step before partitioning.
 
 ## Partitioning Strategies
 
-NPAP provides four families of partitioning strategies, each supporting over 14 pre-registered
+NPAP provides four families of partitioning strategies, each supporting over 14
 clustering algorithms including k-means, k-medoids, DBSCAN, HDBSCAN, and hierarchical clustering
 with multiple linkage methods — via scikit-learn and specialized libraries.
 Geographical distance partitioning uses node coordinates (latitude and longitude) and is suitable for
@@ -231,7 +233,7 @@ continuous integration across Python 3.10, 3.11, and 3.12.
 # Future Steps
 
 Active development directions include dual-based partitioning algorithms using Locational Marginal
-Prices (LMP), the ANAC (Adjacent Node Agglomerative Clustering) algorithm, Kron reduction and
+Prices (LMP), the Adjacent Node Agglomerative Clustering (ANAC) algorithm, Kron reduction and
 PTDF-based equivalent reactance aggregation strategies, gas network support for multi-energy
 systems, and filtering modules for pre-processing steps such as country or region selection.
 
