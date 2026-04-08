@@ -116,6 +116,7 @@ ignore = [
 "tests/*" = ["D", "PLR0915", "PLR0912", "PLC0415", "RUF043"]
 "local_tests.py" = ["D", "E501", "I001"]
 "docs/conf.py" = ["D", "E501"]
+"examples/*" = ["D", "E501", "I001", "PLR0915"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
