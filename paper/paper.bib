@@ -8,8 +8,6 @@
   pages     = {207--215},
   volume    = {22},
   doi       = {10.1016/j.esr.2018.08.012},
-  file      = {:Hörsch, J. et al. (2018). PyPSA-Eur -- An Open Optimisation Model of the European Transmission System.pdf:PDF},
-  groups    = {FWF, joss},
   publisher = {Elsevier BV},
 }
 
@@ -23,7 +21,6 @@
   pages     = {474--487},
   volume    = {117},
   doi       = {10.1016/j.renene.2017.10.017},
-  groups    = {joss},
   publisher = {Elsevier BV},
 }
 
@@ -37,7 +34,6 @@
   pages     = {100063},
   volume    = {4},
   doi       = {10.1016/j.adapen.2021.100063},
-  file      = {:Kotzur, L. et al. (2021). A modeler's guide to handle complexity in energy systems optimization.pdf:PDF},
   groups    = {FWF, joss},
   publisher = {Elsevier BV},
 }
@@ -53,7 +49,6 @@
   pages     = {641},
   volume    = {13},
   doi       = {10.3390/en13030641},
-  groups    = {joss},
   publisher = {MDPI AG},
 }
 
@@ -68,7 +63,6 @@
   pages     = {4},
   volume    = {6},
   doi       = {10.5334/jors.188},
-  groups    = {joss},
   publisher = {Ubiquity Press, Ltd.},
 }
 
@@ -104,7 +98,6 @@
   address   = {Pasadena, CA USA},
   editor    = {Ga\"el Varoquaux and Travis Vaught and Jarrod Millman},
   pages     = {11 - 15},
-  groups    = {joss},
 }
 
 @Article{scikit-learn,
@@ -114,7 +107,6 @@
   year    = {2011},
   pages   = {2825--2830},
   volume  = {12},
-  groups  = {joss},
 }
 
 @Article{Virtanen2020,
@@ -128,7 +120,6 @@
   pages     = {261--272},
   volume    = {17},
   doi       = {10.1038/s41592-019-0686-2},
-  groups    = {joss},
   publisher = {Springer Science and Business Media LLC},
 }
 
@@ -143,14 +134,12 @@
   pages     = {357--362},
   volume    = {585},
   doi       = {10.1038/s41586-020-2649-2},
-  groups    = {joss},
   publisher = {Springer Science and Business Media LLC},
 }
 
 @Misc{plotly,
   address   = {Montreal, QC},
   author    = {Plotly Technologies Inc.},
-  groups    = {joss},
   publisher = {Plotly Technologies Inc.},
   title     = {Collaborative data science},
   url       = {https://plot.ly},
@@ -163,7 +152,6 @@
   year      = {2026},
   copyright = {ODC Open Database License v1.0},
   doi       = {10.5281/ZENODO.18619025},
-  groups    = {joss},
   keywords  = {electricity system model, power system model, transmission network, Europe},
   language  = {en},
   publisher = {Zenodo},
@@ -178,8 +166,6 @@
   pages     = {1--7},
   publisher = {IEEE},
   doi       = {10.1109/powertech59965.2025.11180585},
-  file      = {:Stöckl, B. et al. (2025). Congestion-sensitive grid aggregation for DC optimal power flow.pdf:PDF},
-  groups    = {joss},
 }
 
 @InProceedings{Fortenbacher2018,
@@ -191,7 +177,6 @@
   pages     = {1--7},
   publisher = {IEEE},
   doi       = {10.23919/pscc.2018.8442974},
-  groups    = {joss},
 }
 
 @article{lloyd1982least,
@@ -277,8 +262,6 @@
   edition={3rd}
 }
 
-########### REVISE ###########
-
 @Article{Hoffmann2022,
   author    = {Hoffmann, Maximilian and Kotzur, Leander and Stolten, Detlef},
   journal   = {Applied Energy},
@@ -287,7 +270,6 @@
   volume    = {315},
   pages     = {119029},
   doi       = {10.1016/j.apenergy.2022.119029},
-  groups    = {joss},
   publisher = {Elsevier},
 }
 
@@ -299,7 +281,6 @@
   volume    = {157},
   pages     = {111984},
   doi       = {10.1016/j.rser.2021.111984},
-  groups    = {joss},
   publisher = {Elsevier},
 }
 
@@ -313,7 +294,6 @@
   pages     = {2489--2492},
   month     = may,
   doi       = {10.1109/TSG.2023.3242467},
-  groups    = {joss},
   publisher = {IEEE},
 }
 
@@ -325,6 +305,32 @@
   volume    = {12},
   pages     = {277},
   doi       = {10.1038/s41597-025-04550-7},
-  groups    = {joss},
   publisher = {Springer Nature},
+}
+
+@article{frysztacki_comparison_2022,
+	title = {A comparison of clustering methods for the spatial reduction of renewable electricity optimisation models of Europe},
+	volume = {5},
+	issn = {2520-8942},
+  doi = {10.1186/s42162-022-00187-7},
+	abstract = {Modeling the optimal design of the future European energy system involves large data volumes and many mathematical constraints, typically resulting in a significant computational burden. As a result, modelers often apply reductions to their model that can have a significant effect on the accuracy of their results. This study investigates methods for spatially clustering electricity system models at transmission level to overcome the computational constraints. Spatial reduction has a strong effect both on flows in the electricity transmission network and on the way wind and solar generators are aggregated. Clustering methods applied in the literature are typically oriented either towards preserving network flows or towards preserving the properties of renewables, but both are important for future energy systems. In this work we adapt clustering algorithms to accurately represent both networks and renewables. To this end we focus on hierarchical clustering, since it preserves the topology of the transmission system. We test improvements to the similarity metrics used in the clustering by evaluating the resulting regions with measures on renewable feed-in and electrical distance between nodes. Then, the models are optimised under a brownfield capacity expansion for the European electricity system for varying spatial resolutions and renewable penetration. Results are compared to each other and to existing clustering approaches in the literature and evaluated on the preciseness of siting renewable capacity and the estimation of power flows. We find that any of the considered methods perform better than the commonly used approach of clustering by country boundaries and that any of the hierarchical methods yield better estimates than the established method of clustering with k-means on the coordinates of the network with respect to the studied parameters.},
+	pages = {4},
+	number = {1},
+	journaltitle = {Energy Inform},
+	author = {Frysztacki, Martha Maria and Recht, Gereon and Brown, Tom},
+	date = {2022-05-04},
+	langid = {english},
+}
+
+@article{colonetti_ward_2025,
+	title = {Ward reduction in unit-commitment problems},
+	volume = {240},
+	issn = {03787796},
+  doi = {10.1016/j.epsr.2024.111271},
+	abstract = {One of the most challenging aspects of unit commitment ({UC}) is dealing with the grid, which is commonly represented by thousands of nodes and branches, leading to large optimization models. Because the computational difficulty generally increases with the model size, managing the network representation size can lead to significant savings in running times. Thus, we explore the widely used Ward reduction to reduce the network’s size through a process that iteratively removes nodes from the network. We present how, under mild conditions, the resulting reduced network model is equivalent to the original one. We evaluate our approach on 20 {UC} instances, with up to 13,659 nodes and 18,625 branches. We are able to produce reduced models with as few as 6.8\% of the original nodes. Moreover, we show that the network reduction provides average speed-ups from 10\% to 36\%.},
+	pages = {111271},
+	journaltitle = {Electric Power Systems Research},
+	author = {Colonetti, Bruno},
+	date = {2025-03},
+	langid = {english},
 }
