@@ -26,7 +26,7 @@ affiliations:
     index: 1
   - name: Research Center ENERGETIC, Graz University of Technology, Rechbauerstraße 12, Graz, Austria
     index: 2
-date: 24 February 2026
+date: 10 April 2026
 bibliography: paper.bib
 ---
 
@@ -38,13 +38,12 @@ standalone package designed to be readily integrated with other software and fra
 treating the spatial reduction process as a single action, NPAP explicitly splits it into two
 distinct steps: partitioning, which assigns vertices (nodes) to groups (clusters), and aggregation,
 which reduces the network based on a given assignment. NPAP’s strategy pattern architecture allows
-users to use and register custom partitioning and aggregation strategies seamlessly without
-modifying the core code. Currently, NPAP provides 14 different partitioning strategies and two
+users to employ and register custom partitioning and aggregation strategies seamlessly without
+modifying the core code. Currently, NPAP provides 13 different partitioning strategies and two
 pre-defined aggregation profiles. Although initially developed with a focus on power systems, its
 architecture is general-purpose and applicable to any network graph.
 
 # Statement of need
-
 Real-world electricity grids have grown significantly in size and complexity, potentially spanning
 many thousands of nodes and edges. Consequently, energy system optimization models representing
 those networks have become computationally intractable and challenging to solve. To regain
@@ -114,7 +113,7 @@ The next section explains the software design in more detail.
 # Software design
 
 ![NPAP general class diagram.\label{fig:design}](figures/class-facade-registry-JOSS.svg)
-A broad overview NPAP’s design is shown in Figure \ref{fig:design}. The whole workflow is
+A broad overview of NPAP’s design is shown in Figure \ref{fig:design}. The whole workflow is
 orchestrated and accessed by the `PartitionAggregatorManager`. NPAP follows a strategy pattern with
 four categories — data loading, partitioning, topology aggregation, and property aggregation — all
 orchestrated by three manager classes, shown at the bottom of the Figure. New strategies inherit
@@ -141,8 +140,8 @@ voltage-aware partitioning strategies.
 
 ## Partitioning strategies
 NPAP currently provides four families of partitioning strategies combining geographical and
-electricalnode distance with the option of partitioning voltage levels independently
-(voltage-awareness). Each family supports 14 different partitioning strategies, such as k-means
+electrical node distance with the option of partitioning voltage levels independently
+(voltage-awareness). Each family supports 13 different partitioning strategies, such as k-means
 [@lloyd1982least], k-medoids [@schubert2021fast], DBSCAN [@ester1996density], HDBSCAN
 [@campello2013density], and hierarchical clustering [@ward1963hierarchical]. Geographical distance
 captures latitudes and longitudes and is suitable for any geo-referenced network. Electrical
@@ -158,13 +157,13 @@ partitioning outcome, along with other metadata, is then stored in the Partition
 
 ## Three-tier aggregation strategy pipeline
 
-The aggregation process is decomposed into three sequential steps. The topology tier builds a new
+The aggregation process is decomposed into three sequential steps. The first (topology) tier builds a new
 network graph based on the mapping result of the partitioning process by creating a representative
 node for each cluster and adjusting the edges between them accordingly. Afterward, to cover use
-cases we do not foresee and usability outside the power system domain, we have included an optional
-domain-specific tier. There, users can modify physical properties of the network graph, e.g.,
+cases we do not foresee and usability outside the power system domain, we have included an optional second
+(domain-specific) tier. There, users can modify physical properties of the network graph, e.g.,
 adding new edges that did not exist in the original graph or explicitly modifying certain
-properties, such as line reactances. In the property aggregation tier, user-specified functions,
+properties, such as line reactances. In the third (property aggregation) tier, user-specified functions,
 e.g, sum, average, or equivalent reactances, are then applied to the remaining node and edge
 properties. These property aggregation strategies can be configured by the user in detail through
 the aggregation profiles shown in Figure \ref{fig:design}. At the moment, NPAP provides two
