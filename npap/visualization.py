@@ -57,6 +57,8 @@ class PlotConfig:
         Hex color for transformers.
     dc_link_color : str
         Hex color for DC links.
+    edge_color : str
+        Hex color for edges with an unrecognised type.
     node_color : str
         Hex color for nodes/buses.
     edge_width : float
@@ -90,6 +92,7 @@ class PlotConfig:
     line_low_voltage_color: str = "#CA9161"
     trafo_color: str = "#ECE133"
     dc_link_color: str = "#CC78BC"
+    edge_color: str = "#949494"
     node_color: str = "#0173B2"
     edge_width: float = 1.5
     node_size: int = 5
@@ -143,7 +146,7 @@ class EdgeStyleRegistry:
     """
 
     # Display order determines legend and visual layering
-    DISPLAY_ORDER = ["line_high", "line_low", "trafo", "dc_link"]
+    DISPLAY_ORDER = ["line_high", "line_low", "trafo", "dc_link", "edge"]
 
     @staticmethod
     def get_color(group_key: str, config: PlotConfig) -> str:
@@ -167,6 +170,7 @@ class EdgeStyleRegistry:
             "line_low": config.line_low_voltage_color,
             "trafo": config.trafo_color,
             "dc_link": config.dc_link_color,
+            "edge": config.edge_color,
         }
         return color_map.get(group_key, config.line_low_voltage_color)
 
@@ -193,6 +197,7 @@ class EdgeStyleRegistry:
             "line_low": f"Low Voltage Lines ≤{threshold}kV",
             "trafo": "Transformers",
             "dc_link": "DC Links",
+            "edge": "Edges",
         }
         return names.get(group_key, "Edges")
 
@@ -340,9 +345,12 @@ class NetworkPlotter:
         elif edge_type == EdgeType.TRAFO.value:
             voltage_category = "trafo"
             group_key = "trafo"
-        else:  # DC Link
+        elif edge_type == EdgeType.DC_LINK.value:
             voltage_category = "dc_link"
             group_key = "dc_link"
+        else:
+            voltage_category = "edge"
+            group_key = "edge"
 
         return group_key, voltage_category
 
