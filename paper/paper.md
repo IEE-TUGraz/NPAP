@@ -88,7 +88,8 @@ for real-world electricity networks.
 
 # Pipeline architecture
 
-![NPAP pipeline architecture.\label{fig:pipeline}](figures/pipeline-architecture-JOSS.svg)
+![NPAP pipeline architecture. \label{fig:pipeline}](figures/pipeline-architecture-JOSS.svg)
+
 The full NPAP pipeline is shown in Figure \ref{fig:pipeline}. Initially, NPAP performs two stages,
 preparing the network graph. In the first stage, data is loaded and a NetworkX graph — used for the
 reduction process — is created and validated. In the second stage, NPAP provides optional
@@ -112,7 +113,8 @@ The next section explains the software design in more detail.
 
 # Software design
 
-![NPAP general class diagram.\label{fig:design}](figures/class-facade-registry-JOSS.svg)
+![NPAP general class diagram. \label{fig:design}](figures/class-facade-registry-JOSS.svg)
+
 A broad overview of NPAP’s design is shown in Figure \ref{fig:design}. The whole workflow is
 orchestrated and accessed by the `PartitionAggregatorManager`. NPAP follows a strategy pattern with
 four categories — data loading, partitioning, topology aggregation, and property aggregation — all
