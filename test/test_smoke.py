@@ -1,3 +1,5 @@
+import networkx as nx
+
 import npap
 
 
@@ -31,3 +33,21 @@ def test_manager_instantiation():
     # Verify internal state is initialized
     assert hasattr(manager, "partitioning_manager")
     assert hasattr(manager, "aggregation_manager")
+
+
+def test_copy_graph_returns_deepcopy():
+    """Ensure the manager can duplicate the current graph."""
+    from npap.managers import PartitionAggregatorManager
+
+    manager = PartitionAggregatorManager()
+    graph = nx.DiGraph()
+    graph.add_edge("a", "b", x=0.1)
+    manager._current_graph = graph
+
+    graph_copy = manager.copy_graph()
+
+    assert graph_copy is not graph
+    assert nx.is_isomorphic(graph_copy, graph)
+
+    graph_copy.remove_edge("a", "b")
+    assert graph.has_edge("a", "b")

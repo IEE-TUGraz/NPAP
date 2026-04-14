@@ -164,6 +164,56 @@ Combines electrical distance (PTDF approach) with voltage level and AC island co
 
 **Required attributes**: Nodes: `voltage`, `ac_island` | Edges: `x` (reactance)
 
+### Graph-theory Partitioning
+
+Graph-theory strategies rely on matrix-based clustering or community detection rather than physical distances.
+
+| Strategy | Algorithm | Description |
+|----------|-----------|-------------|
+| `spectral_clustering` | Spectral clustering (precomputed adjacency) | Ideal for networks with loose geographic signals; adapts to the graph Laplacian. |
+| `community_modularity` | Greedy modularity communities | Detects naturally modular regions without any tunable `n_clusters`. |
+
+Spectral clustering expects `n_clusters` as an argument and splits the adjacency matrix via Eigen-decomposition, while the community strategy returns the modularity-maximizing partition automatically.
+
+### Adjacent-node Agglomerative Clustering
+
+`adjacent_agglomerative` merges groups only via edges that already exist in the graph. It is useful for topology-aware workflows that should not combine disconnected buses even when their attributes look similar.
+
+**Required node attributes**: depends on `AdjacentAgglomerativeConfig.node_attribute`; any numeric attribute can guide the merging order.
+
+**Configuration**: use {py:class}`~npap.partitioning.adjacent.AdjacentAgglomerativeConfig` to choose the attribute that scores merges and to keep AC islands separate via `ac_island_attr`. When the attribute is omitted, merges fall back to any adjacent pair in deterministic order.
+
+```python
+from npap.partitioning import AdjacentAgglomerativeConfig
+from npap import PartitionAggregatorManager
+
+config = AdjacentAgglomerativeConfig(node_attribute="load", ac_island_attr="ac_island")
+manager = PartitionAggregatorManager()
+partition = manager.partition("adjacent_agglomerative", n_clusters=4, config=config)
+```
+
+### LMP Partitioning
+
+The `lmp_similarity` strategy groups buses with similar locational marginal prices (LMPs, typically provided by an OPF or market simulation) and optionally favours directly connected nodes through the `adjacency_bonus` configuration parameter. Nodes with different `ac_island` values are always separated by a large `infinite_distance` to keep islands apart.
+
+**Required node attributes**: `lmp` (or a custom attribute specified via `price_attribute`)
+
+**Configuration**: Use {py:class}`~npap.partitioning.lmp.LMPPartitioningConfig` to override the attribute names, adjacency bonus, or infinite-distance penalty.
+
+```python
+from npap.partitioning import LMPPartitioningConfig
+from npap import PartitionAggregatorManager
+
+config = LMPPartitioningConfig(
+    price_attribute="locational_price",
+    adjacency_bonus=0.2,
+    infinite_distance=1e5,
+)
+
+manager = PartitionAggregatorManager()
+partition = manager.partition("lmp_similarity", n_clusters=3, config=config)
+```
+
 ### Choosing a Partitioning Strategy
 
 ```{mermaid}
@@ -204,7 +254,9 @@ Predefined {py:class}`~npap.AggregationMode` for common use cases:
 |------|----------|-----------------|------------------------------------|
 | `SIMPLE` | simple | sum all | sum all                            |
 | `GEOGRAPHICAL` | simple | avg coords, sum loads | sum capacity, equivalent reactance |
-| `DC_KRON` | electrical | Kron reduction | Kron reduction                     |
+| `DC_PTDF` | electrical | PTDF reduction | PTDF-derived reactance values      |
+| `DC_KRON` | electrical | Kron reduction | Kron reduction                    |
+| `CONSERVATION` | electrical | Equivalent reactance + transformer preservation | Preserves transformer count & impedance |
 | `CUSTOM` | user-defined | user-defined | user-defined                       |
 
 ```python
@@ -213,6 +265,23 @@ from npap import AggregationMode
 # Use a predefined mode
 aggregated = manager.aggregate(mode=AggregationMode.GEOGRAPHICAL)
 ```
+
+### PTDF Reduction Mode
+
+`AggregationMode.DC_PTDF` wires the `"ptdf_reduction"` physical strategy into an
+electrical topology, so the reduced graph stores PTDF-consistent reactances for
+each aggregated edge and exposes a `reduced_ptdf` matrix in `aggregated.graph`.
+This mode keeps `x` coupled to the physical reduction step instead of applying
+statistical averaging.
+
+### Kron Reduction Mode
+
+`AggregationMode.DC_KRON` applies the `"kron_reduction"` strategy to an
+electrical topology. The strategy eliminates nodes that belong to each cluster
+and keeps only the representative nodes, so aggregated reactances follow a
+Kron-reduced susceptance matrix. The resulting Laplacian is stored in
+`aggregated.graph["kron_reduced_laplacian"]` for debugging or downstream DC
+studies.
 
 ### Custom Aggregation Profile
 
@@ -260,6 +329,10 @@ aggregated = manager.aggregate(profile=profile)
 
 See [Aggregation](aggregation.md) for detailed documentation.
 
+### Transformer Conservation Mode
+
+`AggregationMode.CONSERVATION` wires the new `"transformer_conservation"` physical strategy into an electrical topology, so transformer reactance (`x`) and resistance (`r`) are calculated using parallel impedance rules before statistical aggregation steps run. This mode is the foundation for the voltage-aware workflows on this page.
+
 ## Key Classes
 
 ### Main Entry Point
@@ -289,7 +362,7 @@ See [Aggregation](aggregation.md) for detailed documentation.
 | Enum | Values |
 |------|--------|
 | {py:class}`~npap.EdgeType` | `LINE`, `TRAFO`, `DC_LINK` |
-| {py:class}`~npap.AggregationMode` | `SIMPLE`, `GEOGRAPHICAL`, `DC_KRON`, `CUSTOM` |
+| {py:class}`~npap.AggregationMode` | `SIMPLE`, `GEOGRAPHICAL`, `DC_PTDF`, `DC_KRON`, `CUSTOM`, `CONSERVATION` |
 
 ### Exceptions
 

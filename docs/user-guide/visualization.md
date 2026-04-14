@@ -36,6 +36,19 @@ partition = manager.partition("geographical_kmeans", n_clusters=10)
 manager.plot_network(style="clustered")
 ```
 
+The ``plot_network`` helper now accepts the ``partition_result`` keyword,
+so you can pass the full {py:class}`~npap.PartitionResult` returned by
+``PartitionAggregatorManager.partition`` directly without extracting ``mapping``.
+
+```python
+fig = manager.plot_network(
+    style="clustered",
+    partition_result=partition,
+    preset="cluster_highlight",
+    show=False,
+)
+```
+
 ## Plot Styles
 
 NPAP provides three built-in plot styles:
@@ -193,6 +206,42 @@ Available colorscales include:
 - `"Jet"`
 - `"Turbo"`
 
+## Preset Configurations
+
+Use the `preset` argument to apply curated styling for different audiences without re-writing `PlotConfig`.
+
+| Preset | Description |
+|--------|-------------|
+| `default` | Balanced defaults for data exploration |
+| `presentation` | Wide canvas with thicker lines and `"open-street-map"` tiles |
+| `dense` | Compact view, higher voltage threshold, and dark tiles |
+| `cluster_highlight` | Turbo colorscale with large nodes and white background |
+| `transmission_study` | Terrain styling with a wide canvas that emphasizes high-voltage corridors |
+| `distribution_study` | Zoomed-in, low-voltage view with saturated cluster colors for dense grids |
+| `e_mobility_planning` | Bold node markers and tight zoom that highlight e-mobility rollout areas |
+
+```python
+from npap import PlotPreset
+
+manager.plot_network(style="voltage_aware", preset=PlotPreset.TRANSMISSION_STUDY)
+```
+
+Presets layer on top of `config`/`kwargs`; any explicit `PlotConfig` parameter overrides the preset values.
+
+Use the scenario-specific presets when you want a ready-made baseline (transmission study for HV analysis, distribution study for LV neighborhoods, and e-mobility planning for node-heavy deployments) and layer additional `PlotConfig` tweaks as needed.
+
+## Matrix Diagnostics
+
+After aggregation the graph carries diagnostic matrices (`reduced_ptdf` and `kron_reduced_laplacian`). Use {py:func}`~npap.visualization.plot_reduced_matrices` to inspect them via heatmaps.
+
+```python
+from npap.visualization import plot_reduced_matrices
+
+fig = plot_reduced_matrices(aggregated, matrices=("ptdf", "laplacian"))
+```
+
+The same helper powers `npap-diag` so you can generate HTML/PNG diagnostics without writing Python (see [Workflows](workflows.md)).
+
 ## Working with Figures
 
 ### Getting the Figure Object
@@ -208,12 +257,29 @@ fig.update_layout(
 )
 
 # Save to file
-fig.write_html("network.html")
-fig.write_image("network.png")
+from npap.visualization import export_figure
+
+export_figure(fig, "network.html")
+export_figure(fig, "network.png")  # Requires `kaleido` for PNG/SVG/PDF
 
 # Display
 fig.show()
 ```
+
+### Exporting Figures for Reports
+
+Use {py:func}`~npap.visualization.export_figure` for reproducible exports without
+relying on Plotly's toolbar buttons. The helper infers the format from the target
+path (``.html`` by default) and writes PNG/SVG/PDF when ``kaleido`` is installed.
+
+```python
+fig = manager.plot_network(style="clustered", show=False)
+export_figure(fig, "reports/network.html")
+export_figure(fig, "reports/network.png", scale=2.0)
+```
+
+Pass ``format="svg"`` or ``format="pdf"`` when the file extension cannot be derived
+from the path.
 
 ### Adding Custom Traces
 
@@ -284,6 +350,22 @@ G.add_edge("A", "B")
 # Plot it
 fig = manager.plot_network(graph=G, style="simple")
 ```
+
+### Cloning Graphs for Safe Editing
+
+When you need to try different styling or annotations without mutating the
+original graph, {py:func}`~npap.visualization.clone_graph` returns a deep copy:
+
+```python
+from npap.visualization import clone_graph
+
+backup = clone_graph(manager.copy_graph())
+backup.add_node("demo", lat=0.0, lon=0.0)
+fig = manager.plot_network(graph=backup, style="simple", show=False)
+```
+
+This is handy when generating multiple views (e.g., highlighting different
+clusters or adding temporary annotations) while keeping the base graph intact.
 
 ## Performance Optimization
 

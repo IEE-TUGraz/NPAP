@@ -36,11 +36,12 @@ def get_mode_profile(mode: AggregationMode, **overrides) -> AggregationProfile:
         profile = _geographical_mode()
     elif mode == AggregationMode.CUSTOM:
         profile = AggregationProfile(mode=AggregationMode.CUSTOM)
-    elif mode in [AggregationMode.DC_KRON]:
-        raise NotImplementedError(
-            f"Mode {mode} is not yet implemented. "
-            f"Use AggregationMode.SIMPLE or AggregationMode.GEOGRAPHICAL for now."
-        )
+    elif mode == AggregationMode.CONSERVATION:
+        profile = _conservation_mode()
+    elif mode == AggregationMode.DC_PTDF:
+        profile = _ptdf_mode()
+    elif mode == AggregationMode.DC_KRON:
+        profile = _kron_mode()
     else:
         raise ValueError(f"Unknown aggregation mode: {mode}")
 
@@ -109,8 +110,79 @@ def _geographical_mode() -> AggregationProfile:
             "lon": "average",  # similar to middle point
             "base_voltage": "average",
         },
-        edge_properties={"p_max": "sum", "x": "average"},
+        edge_properties={"p_max": "sum", "x": "equivalent_reactance"},
         default_node_strategy="average",
         default_edge_strategy="average",
+        warn_on_defaults=True,
+    )
+
+
+def _conservation_mode() -> AggregationProfile:
+    """
+    Transformer conservation mode.
+
+    Uses electrical topology plus the transformer conservation physical strategy
+    to preserve equivalent reactance/resistance for transformer connections.
+    """
+    return AggregationProfile(
+        mode=AggregationMode.CONSERVATION,
+        topology_strategy="electrical",
+        physical_strategy="transformer_conservation",
+        physical_properties=["x", "r"],
+        node_properties={
+            "lat": "average",
+            "lon": "average",
+            "voltage": "average",
+        },
+        edge_properties={"p_max": "sum"},
+        default_node_strategy="average",
+        default_edge_strategy="sum",
+        warn_on_defaults=True,
+    )
+
+
+def _ptdf_mode() -> AggregationProfile:
+    """
+    PTDF-based aggregation mode for DC networks.
+
+    Builds an electrical topology, applies the PTDF reduction physical strategy,
+    and keeps reactance as a physical property so equivalent PTDF-driven
+    reactances are propagated before statistical aggregation.
+    """
+    return AggregationProfile(
+        mode=AggregationMode.DC_PTDF,
+        topology_strategy="electrical",
+        physical_strategy="ptdf_reduction",
+        physical_properties=["x"],
+        node_properties={
+            "lat": "average",
+            "lon": "average",
+        },
+        edge_properties={"p_max": "sum"},
+        default_node_strategy="average",
+        default_edge_strategy="sum",
+        warn_on_defaults=True,
+    )
+
+
+def _kron_mode() -> AggregationProfile:
+    """
+    Kron reduction mode for DC networks.
+
+    Electrical topology + Kron reduction for reactances that match a reduced
+    DC network of cluster representatives.
+    """
+    return AggregationProfile(
+        mode=AggregationMode.DC_KRON,
+        topology_strategy="electrical",
+        physical_strategy="kron_reduction",
+        physical_properties=["x"],
+        node_properties={
+            "lat": "average",
+            "lon": "average",
+        },
+        edge_properties={"p_max": "sum"},
+        default_node_strategy="average",
+        default_edge_strategy="sum",
         warn_on_defaults=True,
     )

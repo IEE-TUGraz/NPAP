@@ -10,6 +10,7 @@ This section contains the complete API reference for NPAP.
    interfaces
    partitioning
    aggregation
+   visualization
    exceptions
 
 Core Module
