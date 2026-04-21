@@ -6,11 +6,120 @@ of partitioning and aggregation strategies.
 """
 
 import networkx as nx
+import numpy as np
 import pytest
 
 # =============================================================================
 # BASIC TEST GRAPHS
 # =============================================================================
+
+
+@pytest.fixture
+def lmp_graph() -> nx.DiGraph:
+    """
+    6-node graph with distinct LMP clusters for testing LMP partitioning.
+
+    Structure:
+        Cluster A         Cluster B
+        (LMP ~20)         (LMP ~100)
+
+        0 ──→ 1           3 ──→ 4
+        │    ↗            │    ↗
+        ↓  /              ↓  /
+        2 ─────────────→  3 ──→ 5
+               (bridge)
+
+    Cluster A (nodes 0,1,2): LMPs around 20.0
+    Cluster B (nodes 3,4,5): LMPs around 100.0
+
+    The graph is connected, but Cluster A and B are separated by a single
+    bridge edge (2->3) to allow testing of connectivity constraints.
+    """
+    G = nx.DiGraph()
+
+    # Cluster A nodes
+    G.add_node(0, lmp=20.0, lat=0.0, lon=0.0)
+    G.add_node(1, lmp=21.0, lat=0.1, lon=0.1)
+    G.add_node(2, lmp=19.5, lat=0.2, lon=0.0)
+
+    # Cluster B nodes
+    G.add_node(3, lmp=100.0, lat=10.0, lon=10.0)
+    G.add_node(4, lmp=105.0, lat=10.1, lon=10.1)
+    G.add_node(5, lmp=98.0, lat=10.2, lon=10.0)
+
+    # Edges within Cluster A
+    G.add_edge(0, 1)
+    G.add_edge(1, 2)
+    G.add_edge(0, 2)
+
+    # Edges within Cluster B
+    G.add_edge(3, 4)
+    G.add_edge(4, 5)
+    G.add_edge(3, 5)
+
+    # Bridge edge between clusters
+    G.add_edge(2, 3)
+
+    return G
+
+
+@pytest.fixture
+def lmp_profile_graph() -> nx.DiGraph:
+    """
+    3-node graph with time-series LMP profiles for multi-dimensional testing.
+
+    Structure:
+        0 ──→ 1 ──→ 2
+    """
+    G = nx.DiGraph()
+
+    # Nodes with LMP vectors (profiles over 3 timesteps)
+    G.add_node(0, lmp=np.array([20.0, 22.0, 19.0]))
+    G.add_node(1, lmp=np.array([21.0, 23.0, 20.0]))
+    G.add_node(2, lmp=np.array([100.0, 110.0, 95.0]))
+
+    G.add_edge(0, 1)
+    G.add_edge(1, 2)
+
+    return G
+
+
+@pytest.fixture
+def lmp_ac_island_graph() -> nx.DiGraph:
+    """
+    Graph with two AC islands for testing AC-island-aware LMP partitioning.
+
+    Structure:
+        Island 0          Island 1
+        (LMP ~55)         (LMP ~55)
+
+        0 ──→ 1 ──╍╍╍╍──→ 2 ──→ 3
+                 (DC)
+
+    Island 0: nodes 0, 1
+    Island 1: nodes 2, 3
+
+    Even though LMPs are identical, nodes should NOT be clustered together
+    if AC-island awareness is active.
+    """
+    G = nx.DiGraph()
+
+    # AC Island 0
+    G.add_node(0, lmp=60.0, ac_island=0)
+    G.add_node(1, lmp=50.0, ac_island=0)
+
+    # AC Island 1
+    G.add_node(2, lmp=60.0, ac_island=1)
+    G.add_node(3, lmp=50.0, ac_island=1)
+
+    # Internal edges
+    G.add_edge(0, 1)
+    G.add_edge(2, 3)
+
+    # Bridge between islands (DC link)
+    G.add_edge(1, 2, type="dc_link")
+
+    return G
 
 
 @pytest.fixture

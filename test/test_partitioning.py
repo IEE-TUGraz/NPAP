@@ -32,6 +32,10 @@ from test.conftest import (
     nodes_in_different_clusters,
     nodes_in_same_cluster,
 )
+from npap.partitioning.locational_marginal_price import (
+    LMPConfig,
+    LMPPartitioning,
+)
 
 # =============================================================================
 # GEOGRAPHICAL PARTITIONING TESTS
@@ -1090,3 +1094,158 @@ class TestVAStrategiesSingleVoltageLevelError:
         strategy = VAElectricalDistancePartitioning(algorithm="kmedoids")
         partition = strategy.partition(G, n_clusters=2, random_state=42)
         assert all_nodes_assigned(partition, list(G.nodes()))
+
+
+# =============================================================================
+# LOCATIONAL MARGINAL PRICE PARTITIONING TESTS
+# =============================================================================
+
+
+class TestLMPPartitioning:
+    """Tests the partitioning strategy based on locational marginal prices (LMPs)."""
+
+    # -------------------------------------------------------------------------
+    # Initialization Tests
+    # -------------------------------------------------------------------------
+
+    def test_init_valid_algorithms(self):
+        """Test that all supported algorithms can be initialized."""
+        for algo in LMPPartitioning.SUPPORTED_ALGORITHMS:
+            strategy = LMPPartitioning(algorithm=algo)
+            assert strategy.algorithm == algo
+
+    def test_init_invalid_algorithm_raises(self):
+        """Test that invalid algorithm raises ValueError."""
+        with pytest.raises(ValueError, match="Unsupported algorithm"):
+            LMPPartitioning(algorithm="invalid_algo")
+
+    # -------------------------------------------------------------------------
+    # Validation Tests
+    # -------------------------------------------------------------------------
+
+    def test_lmp_partitioning_lmp_attribute_required(self):
+        """Test that LMP attribute is required for LMP partitioning."""
+        G = nx.DiGraph()
+        G.add_node(0)  # Missing 'lmp' attribute
+        G.add_node(1, lmp=100.0)
+        G.add_edge(0, 1)
+
+        strategy = LMPPartitioning()
+
+        with pytest.raises(ValidationError):
+            strategy.partition(G, n_clusters=2)
+
+    # -------------------------------------------------------------------------
+    # Hierarchical Clustering Tests
+    # -------------------------------------------------------------------------
+
+    def test_lmp_partitioning_basic(self, lmp_graph):
+        """Test basic functionality of LMP-based partitioning."""
+        strategy = LMPPartitioning(algorithm="hierarchical")
+        partition = strategy.partition(lmp_graph, n_clusters=2)
+
+        assert all_nodes_assigned(partition, list(lmp_graph.nodes()))
+        assert len(partition) == 2
+
+    def test_lmp_partitioning_respects_connectivity(self):
+        """Test that LMP partitioning respects graph connectivity."""
+        strategy = LMPPartitioning(algorithm="hierarchical")
+
+        G = nx.DiGraph()
+
+        G.add_node(0, lmp=50.0)
+        G.add_node(1, lmp=100.0)
+        G.add_node(2, lmp=20.0)
+
+        # Edges
+        G.add_edge(0, 1)
+        G.add_edge(1, 2)
+
+        partition = strategy.partition(G, n_clusters=2, random_state=42)
+
+        # Nodes 0 and 1 are connected and should be in the same cluster
+        assert nodes_in_same_cluster(partition, 0, 1)
+
+        # Nodes 0/2 should not be in the same cluster
+        assert nodes_in_different_clusters(partition, 0, 2)
+
+    def test_lmp_partitioning_lmp_profile(self, lmp_profile_graph):
+        """Test that LMP partitioning can use an LMP profile for partitioning."""
+        strategy = LMPPartitioning(algorithm="hierarchical")
+
+        partition = strategy.partition(lmp_profile_graph, n_clusters=2, random_state=42)
+
+        # Nodes with similar LMP profiles should cluster together
+        assert nodes_in_same_cluster(partition, 0, 1)
+
+    # -------------------------------------------------------------------------
+    # AC-Island Aware Partitioning Tests
+    # -------------------------------------------------------------------------
+
+    def test_lmp_partitioning_ac_island_aware(self, lmp_ac_island_graph):
+        """Test that LMP partitioning respects AC island boundaries."""
+        strategy = LMPPartitioning(algorithm="hierarchical")
+        partition = strategy.partition(lmp_ac_island_graph, n_clusters=2)
+
+        # Nodes 0,1 are in AC island 0, nodes 2,3 are in AC island 1
+        # They should never be in the same cluster even with identical LMPs
+        assert nodes_in_same_cluster(partition, 0, 1)
+        assert nodes_in_same_cluster(partition, 2, 3)
+        assert nodes_in_different_clusters(partition, 0, 2)
+
+    def test_lmp_ac_island_distance_matrix(self, lmp_ac_island_graph):
+        """Test that the distance matrix correctly applies infinite distance between islands."""
+        strategy = LMPPartitioning()
+        nodes = list(lmp_ac_island_graph.nodes())
+        lmps = strategy._extract_lmps(lmp_ac_island_graph, nodes)
+        ac_islands = strategy._extract_ac_islands(lmp_ac_island_graph, nodes)
+        config = LMPConfig(infinite_distance=1e5)
+
+        dist_matrix = strategy._build_ac_island_aware_distance_matrix(lmps, ac_islands, config)
+
+        # Between node 0 (Island 0) and node 2 (Island 1)
+        assert dist_matrix[0, 2] == config.infinite_distance
+        # Between node 0 and 1 (Same island)
+        assert dist_matrix[0, 1] < config.infinite_distance
+
+    # -------------------------------------------------------------------------
+    # Connectivity Constraint Tests
+    # -------------------------------------------------------------------------
+
+    def test_lmp_connectivity_constraint(self, lmp_graph):
+        """
+        Test that use_connectivity=True forces clusters to be contiguous.
+        
+        In the lmp_graph, Cluster A (0,1,2) and Cluster B (3,4,5) are connected 
+        only by edge 2-3. If we remove that edge, they become disconnected 
+        components.
+        """
+        G = lmp_graph.copy()
+        G.remove_edge(2, 3)  # Graph is now two disconnected components
+        
+        strategy = LMPPartitioning(algorithm="hierarchical")
+        
+        # With connectivity, nodes from different components cannot be merged
+        partition = strategy.partition(G, n_clusters=2, use_connectivity=True)
+        
+        assert nodes_in_same_cluster(partition, 0, 2)
+        assert nodes_in_same_cluster(partition, 3, 5)
+        assert nodes_in_different_clusters(partition, 0, 3)
+
+    # -------------------------------------------------------------------------
+    # Auto-Detection & Config Tests
+    # -------------------------------------------------------------------------
+
+    def test_ac_island_auto_detection(self, lmp_ac_island_graph):
+        """Test that AC islands are automatically detected."""
+        strategy = LMPPartitioning()
+        nodes = list(lmp_ac_island_graph.nodes())
+        assert strategy._has_ac_island_data(lmp_ac_island_graph, nodes)
+
+    def test_config_override_connectivity(self, lmp_graph):
+        """Test that use_connectivity can be toggled via partition() kwargs."""
+        strategy = LMPPartitioning(config=LMPConfig(use_connectivity=False))
+        
+        # Test that it doesn't crash and respects the parameter
+        partition = strategy.partition(lmp_graph, n_clusters=2, use_connectivity=True)
+        assert len(partition) == 2
