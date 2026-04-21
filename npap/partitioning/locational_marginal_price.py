@@ -37,7 +37,7 @@ class LMPConfig:
 
     hierarchical_linkage: str = "complete"
     infinite_distance: float = 1e4
-    use_connectivity: bool = False
+    use_connectivity: bool = True
 
 
 class LMPPartitioning(PartitioningStrategy):
