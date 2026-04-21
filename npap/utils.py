@@ -413,7 +413,10 @@ def run_kmedoids(distance_matrix: np.ndarray, n_clusters: int) -> np.ndarray:
 
 
 def run_hierarchical(
-    distance_matrix: np.ndarray, n_clusters: int, linkage: str = "complete"
+    distance_matrix: np.ndarray,
+    n_clusters: int,
+    linkage: str = "complete",
+    connectivity: Any | None = None,
 ) -> np.ndarray:
     """
     Perform hierarchical (agglomerative) clustering with precomputed distance matrix.
@@ -429,6 +432,9 @@ def run_hierarchical(
     linkage : str, default='complete'
         Linkage criterion ('complete', 'average', 'single').
         Note: 'ward' is NOT supported with precomputed distances.
+    connectivity : array-like or callable, optional
+        Connectivity matrix. Defines for each sample the neighboring samples
+        which can be merged together into a single cluster.
 
     Returns
     -------
@@ -459,7 +465,10 @@ def run_hierarchical(
 
     try:
         clustering = AgglomerativeClustering(
-            n_clusters=n_clusters, metric="precomputed", linkage=linkage
+            n_clusters=n_clusters,
+            metric="precomputed",
+            linkage=linkage,
+            connectivity=connectivity,
         )
         return clustering.fit_predict(distance_matrix)
 
