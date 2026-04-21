@@ -1215,19 +1215,19 @@ class TestLMPPartitioning:
     def test_lmp_connectivity_constraint(self, lmp_graph):
         """
         Test that use_connectivity=True forces clusters to be contiguous.
-        
-        In the lmp_graph, Cluster A (0,1,2) and Cluster B (3,4,5) are connected 
-        only by edge 2-3. If we remove that edge, they become disconnected 
+
+        In the lmp_graph, Cluster A (0,1,2) and Cluster B (3,4,5) are connected
+        only by edge 2-3. If we remove that edge, they become disconnected
         components.
         """
         G = lmp_graph.copy()
         G.remove_edge(2, 3)  # Graph is now two disconnected components
-        
+
         strategy = LMPPartitioning(algorithm="hierarchical")
-        
+
         # With connectivity, nodes from different components cannot be merged
         partition = strategy.partition(G, n_clusters=2, use_connectivity=True)
-        
+
         assert nodes_in_same_cluster(partition, 0, 2)
         assert nodes_in_same_cluster(partition, 3, 5)
         assert nodes_in_different_clusters(partition, 0, 3)
@@ -1245,7 +1245,7 @@ class TestLMPPartitioning:
     def test_config_override_connectivity(self, lmp_graph):
         """Test that use_connectivity can be toggled via partition() kwargs."""
         strategy = LMPPartitioning(config=LMPConfig(use_connectivity=False))
-        
+
         # Test that it doesn't crash and respects the parameter
         partition = strategy.partition(lmp_graph, n_clusters=2, use_connectivity=True)
         assert len(partition) == 2

@@ -357,16 +357,16 @@ class LMPPartitioning(PartitioningStrategy):
         ac_islands = kwargs.get("ac_islands")
 
         if ac_islands is not None:
-            distance_matrix = self._build_ac_island_aware_distance_matrix(
-                lmps, ac_islands, config
-            )
+            distance_matrix = self._build_ac_island_aware_distance_matrix(lmps, ac_islands, config)
         else:
             distance_matrix = euclidean_distances(lmps)
 
         # Handle connectivity constraint
         connectivity = None
         if config.use_connectivity:
-            log_debug("Using graph connectivity constraint for clustering", LogCategory.PARTITIONING)
+            log_debug(
+                "Using graph connectivity constraint for clustering", LogCategory.PARTITIONING
+            )
             connectivity = nx.adjacency_matrix(graph)
 
         return run_hierarchical(
@@ -375,4 +375,3 @@ class LMPPartitioning(PartitioningStrategy):
             config.hierarchical_linkage,
             connectivity=connectivity,
         )
-
