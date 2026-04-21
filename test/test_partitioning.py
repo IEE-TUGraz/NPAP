@@ -20,6 +20,10 @@ from npap.partitioning.geographical import (
     GeographicalConfig,
     GeographicalPartitioning,
 )
+from npap.partitioning.locational_marginal_price import (
+    LMPConfig,
+    LMPPartitioning,
+)
 from npap.partitioning.va_electrical import (
     VAElectricalDistancePartitioning,
 )
@@ -31,10 +35,6 @@ from test.conftest import (
     all_nodes_assigned,
     nodes_in_different_clusters,
     nodes_in_same_cluster,
-)
-from npap.partitioning.locational_marginal_price import (
-    LMPConfig,
-    LMPPartitioning,
 )
 
 # =============================================================================

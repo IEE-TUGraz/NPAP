@@ -7,7 +7,7 @@ from sklearn.metrics.pairwise import euclidean_distances
 
 from npap.exceptions import PartitioningError
 from npap.interfaces import PartitioningStrategy
-from npap.logging import LogCategory, log_debug, log_info, log_warning
+from npap.logging import LogCategory, log_debug, log_info
 from npap.utils import (
     create_partition_map,
     run_hierarchical,

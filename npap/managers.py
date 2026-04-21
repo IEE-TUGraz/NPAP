@@ -14,7 +14,7 @@ from npap.interfaces import (
     TopologyStrategy,
 )
 from npap.logging import LogCategory, log_debug, log_info, log_warning
-from npap.partitioning import VAElectricalDistancePartitioning, LMPPartitioning
+from npap.partitioning import LMPPartitioning, VAElectricalDistancePartitioning
 
 
 class InputDataManager:
