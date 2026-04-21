@@ -20,10 +20,12 @@ from .electrical import ElectricalDistancePartitioning
 from .geographical import GeographicalPartitioning
 from .va_electrical import VAElectricalDistancePartitioning
 from .va_geographical import VAGeographicalPartitioning
+from .locational_marginal_price import LMPPartitioning
 
 __all__ = [
     "ElectricalDistancePartitioning",
     "GeographicalPartitioning",
     "VAElectricalDistancePartitioning",
     "VAGeographicalPartitioning",
+    "LMPPartitioning",
 ]
