@@ -33,6 +33,7 @@ class LMPConfig:
     use_connectivity : bool
         Whether to use graph connectivity as a constraint for clustering.
         If True, only adjacent nodes in the graph can be merged into a cluster.
+        It is recommended to set this to True, since otherwise nodes might get clustered, which are at different positions in the network.
     """
 
     hierarchical_linkage: str = "complete"
