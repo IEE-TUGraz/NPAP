@@ -4,6 +4,7 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
+from scipy.linalg import LinAlgError, solve
 
 from npap.exceptions import PartitioningError, ValidationError
 from npap.interfaces import EdgeType, PartitioningStrategy
@@ -14,7 +15,7 @@ from npap.utils import (
     with_runtime_config,
 )
 
-from NPAP.npap.logging import log_warning
+from npap.logging import log_warning
 
 
 @dataclass
@@ -202,7 +203,6 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
         config: InputDataCongestionSensitiveConfig,
         slack_bus: Any | None,
     ) -> np.ndarray:
-
         # Group nodes by AC island
         islands = self._group_nodes_by_ac_island(graph, nodes)
         n_islands = len(islands)
@@ -531,7 +531,6 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
         slack_bus: Any,
         config: InputDataCongestionSensitiveConfig,
     ) -> np.ndarray:
-
         # Build PTDF matrix for this island
         ptdf_matrix, active_nodes = self._build_ptdf_matrix(
             ac_subgraph, island_nodes, slack_bus, config
@@ -780,7 +779,7 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
         K_sba: np.ndarray,
         susceptances: np.ndarray,
         B_matrix: np.ndarray,
-        config: ElectricalDistanceConfig,
+        config: InputDataCongestionSensitiveConfig,
     ) -> np.ndarray:
         """
         Compute PTDF matrix by solving linear system directly.
