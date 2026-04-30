@@ -79,6 +79,9 @@ class PartitioningManager:
         """Register built-in partitioning strategies."""
         from npap.partitioning.electrical import ElectricalDistancePartitioning
         from npap.partitioning.geographical import GeographicalPartitioning
+        from npap.partitioning.input_data_congestion_sensitive import (
+            InputDataCongestionSensitivePartitioning,
+        )
         from npap.partitioning.va_geographical import (
             VAGeographicalConfig,
             VAGeographicalPartitioning,
@@ -114,6 +117,14 @@ class PartitioningManager:
         self._strategies["electrical_kmeans"] = ElectricalDistancePartitioning(algorithm="kmeans")
         self._strategies["electrical_kmedoids"] = ElectricalDistancePartitioning(
             algorithm="kmedoids"
+        )
+
+        # Input data congestion sensitive partitioning strategies
+        self._strategies["input_data_congestion_sensitive_kmeans"] = (
+            InputDataCongestionSensitivePartitioning(algorithm="kmeans")
+        )
+        self._strategies["input_data_congestion_sensitive_kmedoids"] = (
+            InputDataCongestionSensitivePartitioning(algorithm="kmedoids")
         )
 
         # Voltage-Aware Geographical partitioning strategies - Standard mode

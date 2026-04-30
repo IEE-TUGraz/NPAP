@@ -10,6 +10,8 @@ GeographicalPartitioning
     (kmeans, kmedoids, dbscan, hdbscan, hierarchical).
 ElectricalDistancePartitioning
     Partition based on electrical distance using PTDF analysis.
+InputDataCongestionSensitivePartitioning
+    Partition based on congestion sensitivity using PTDF and network data.
 VAGeographicalPartitioning
     Voltage-aware geographical partitioning respecting voltage level boundaries.
 VAElectricalDistancePartitioning
@@ -18,6 +20,7 @@ VAElectricalDistancePartitioning
 
 from .electrical import ElectricalDistancePartitioning
 from .geographical import GeographicalPartitioning
+from .input_data_congestion_sensitive import InputDataCongestionSensitivePartitioning
 from .locational_marginal_price import LMPPartitioning
 from .va_electrical import VAElectricalDistancePartitioning
 from .va_geographical import VAGeographicalPartitioning
@@ -25,6 +28,7 @@ from .va_geographical import VAGeographicalPartitioning
 __all__ = [
     "ElectricalDistancePartitioning",
     "GeographicalPartitioning",
+    "InputDataCongestionSensitivePartitioning",
     "LMPPartitioning",
     "VAElectricalDistancePartitioning",
     "VAGeographicalPartitioning",
