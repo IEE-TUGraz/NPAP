@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
@@ -12,6 +13,8 @@ from npap.utils import (
     validate_partition,
     with_runtime_config,
 )
+
+from NPAP.npap.logging import log_warning
 
 
 @dataclass
@@ -110,7 +113,7 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
     def required_attributes(self) -> dict[str, list[str]]:
         """Required attributes for congestion sensitive partitioning."""
         return {
-            "nodes": ["renewable_capacity", "dispatchable_capacity", "min_demand"],
+            "nodes": ["renewable_generators", "dispatchable_generators", "demand"],
             "edges": ["x", "capacity"],
         }
 
@@ -139,8 +142,28 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
             Dictionary mapping cluster_id -> list of node_ids.
         """
         try:
-            # Placeholder for implementation
+            # Get effective config
+            effective_config = kwargs.get("_effective_config", self.config)
+
+            # Resolve slack bus (kwargs override instance default)
+            effective_slack = kwargs.get("slack_bus", self.slack_bus)
+
+            # Validate AC island attributes
+            self._validate_ac_island_attributes(graph)
+
+            # Validate AC edges have reactance
+            self._validate_ac_edge_attributes(graph)
+
             n_clusters = kwargs.get("n_clusters")
+
+            nodes = list(graph.nodes())
+            n_nodes = len(nodes)
+
+            if n_clusters > n_nodes:
+                raise PartitioningError(
+                    f"Cannot create {n_clusters} clusters from {n_nodes}.",
+                    strategy=self._get_strategy_name(),
+                )
 
             log_info(
                 f"Starting input data congestion sensitive partitioning: {self.algorithm}, "
@@ -154,12 +177,9 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
                     strategy=self._get_strategy_name(),
                 )
 
-            nodes = list(graph.nodes())
-            n_nodes = len(nodes)
-
-            # Implementation will go here...
-            # 1. Validate island attributes
-            # 2. Calculate distance matrix based on the formula
+            distance_matrix = self._calculate_input_data_congestion_sensitive_distance_matrix(
+                graph, nodes, effective_config, effective_slack
+            )
             # 3. Perform clustering
 
             # For now, return a dummy partition or raise error
@@ -174,3 +194,639 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
                 f"Congestion sensitive partitioning failed: {e}",
                 strategy=self._get_strategy_name(),
             ) from e
+
+    def _calculate_input_data_congestion_sensitive_distance_matrix(
+        self,
+        graph: nx.DiGraph,
+        nodes: list[Any],
+        config: InputDataCongestionSensitiveConfig,
+        slack_bus: Any | None,
+    ) -> np.ndarray:
+
+        # Group nodes by AC island
+        islands = self._group_nodes_by_ac_island(graph, nodes)
+        n_islands = len(islands)
+
+        log_info(
+            f"Processing {n_islands} AC island(s) for PTDF computation",
+            LogCategory.PARTITIONING,
+        )
+
+        # Build node index mapping for the full matrix
+        node_to_idx = {node: idx for idx, node in enumerate(nodes)}
+        n_nodes = len(nodes)
+
+        # Initialize full distance matrix with infinite distances
+        distance_matrix = np.full((n_nodes, n_nodes), config.infinite_distance)
+        np.fill_diagonal(distance_matrix, 0.0)
+
+        # Process each island independently
+        for island_id, island_nodes in islands.items():
+            log_debug(
+                f"Processing AC island {island_id}: {len(island_nodes)} nodes",
+                LogCategory.PARTITIONING,
+            )
+
+            # Handle single-node islands
+            if len(island_nodes) == 1:
+                log_debug(
+                    f"Island {island_id} has single node, distance = 0",
+                    LogCategory.PARTITIONING,
+                )
+                continue
+
+            # Extract AC-only subgraph for this island
+            ac_subgraph = self._extract_ac_subgraph(graph, island_nodes)
+
+            # Validate island connectivity
+            self._validate_island_connectivity(ac_subgraph, island_id, island_nodes)
+
+            # Select slack bus for this island
+            island_slack = self._select_slack_bus_for_island(
+                ac_subgraph, island_nodes, slack_bus, island_id
+            )
+
+            # Compute PTDF-based distances for this island
+            island_distances = self._compute_island_distances(
+                ac_subgraph, island_nodes, island_slack, config
+            )
+
+            # Insert island distances into full matrix
+            self._insert_island_distances(
+                distance_matrix, island_distances, island_nodes, node_to_idx
+            )
+
+        return distance_matrix
+
+    # =========================================================================
+    # VALIDATION METHODS
+    # =========================================================================
+
+    def _validate_ac_island_attributes(self, graph: nx.DiGraph) -> None:
+        """
+        Validate that all nodes have the AC island attribute.
+
+        Provides a helpful error message directing users to use va_loader
+        or manually add the ac_island attribute.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            NetworkX DiGraph to validate.
+
+        Raises
+        ------
+        ValidationError
+            If any node is missing the ac_island attribute.
+        """
+        missing_nodes = []
+        for node in graph.nodes():
+            if self.ac_island_attr not in graph.nodes[node]:
+                missing_nodes.append(node)
+
+        if missing_nodes:
+            sample = missing_nodes[:5]
+            raise ValidationError(
+                f"Electrical distance partitioning requires '{self.ac_island_attr}' attribute "
+                f"on all nodes for AC island isolation. "
+                f"{len(missing_nodes)} node(s) are missing this attribute (first few: {sample}). "
+                f"Please use 'va_loader' data loading strategy to automatically detect AC islands, "
+                f"or manually add the '{self.ac_island_attr}' attribute to all nodes.",
+                missing_attributes={"nodes": [self.ac_island_attr]},
+                strategy=self._get_strategy_name(),
+            )
+
+    def _validate_ac_edge_attributes(self, graph: nx.DiGraph) -> None:
+        """
+        Validate that AC edges (lines and transformers) have reactance attribute.
+
+        DC links are excluded from this validation as they don't participate
+        in AC power flow and don't require reactance.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            NetworkX DiGraph to validate.
+
+        Raises
+        ------
+        ValidationError
+            If any AC edge is missing the 'x' attribute.
+        """
+        missing_edges = []
+        for u, v, data in graph.edges(data=True):
+            edge_type = data.get("type", EdgeType.LINE.value)
+
+            # Only validate AC edges
+            if edge_type in self.AC_EDGE_TYPES:
+                if "x" not in data:
+                    missing_edges.append((u, v))
+
+        if missing_edges:
+            sample = missing_edges[:5]
+            raise ValidationError(
+                f"AC edges (lines/transformers) require 'x' (reactance) attribute. "
+                f"{len(missing_edges)} edge(s) are missing this attribute (first few: {sample}).",
+                missing_attributes={"edges": ["x"]},
+                strategy=self._get_strategy_name(),
+            )
+
+    def _validate_island_connectivity(
+        self, ac_subgraph: nx.DiGraph, island_id: Any, island_nodes: list[Any]
+    ) -> None:
+        """
+        Validate that an island's AC subgraph is connected.
+
+        Parameters
+        ----------
+        ac_subgraph : nx.DiGraph
+            AC-only subgraph for the island.
+        island_id : Any
+            AC island identifier.
+        island_nodes : list[Any]
+            Nodes in this island.
+
+        Raises
+        ------
+        PartitioningError
+            If AC subgraph is not weakly connected.
+        """
+        if len(island_nodes) == 1:
+            # Single node is trivially connected
+            return
+
+        if ac_subgraph.number_of_edges() == 0:
+            raise PartitioningError(
+                f"AC island {island_id} has no AC edges (lines/transformers). "
+                f"Cannot compute electrical distances without AC connectivity.",
+                strategy=self._get_strategy_name(),
+                graph_info={"island_id": island_id, "n_nodes": len(island_nodes)},
+            )
+
+        if not nx.is_weakly_connected(ac_subgraph):
+            n_components = nx.number_weakly_connected_components(ac_subgraph)
+            raise PartitioningError(
+                f"AC island {island_id} is not AC-connected. Found {n_components} "
+                f"disconnected AC components within the island. This may indicate "
+                f"missing line/transformer data or incorrect AC island assignment.",
+                strategy=self._get_strategy_name(),
+                graph_info={
+                    "island_id": island_id,
+                    "n_nodes": len(island_nodes),
+                    "n_ac_edges": ac_subgraph.number_of_edges(),
+                    "n_components": n_components,
+                },
+            )
+
+    def _validate_cluster_ac_island_consistency(
+        self, graph: nx.DiGraph, partition_map: dict[int, list[Any]]
+    ) -> None:
+        """
+        Validate that clusters don't mix different AC islands.
+
+        With infinite distances between AC islands, clusters should never mix
+        nodes from different AC islands.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            Original NetworkX graph.
+        partition_map : dict[int, list[Any]]
+            Resulting partition mapping.
+        """
+        for cluster_id, nodes in partition_map.items():
+            ac_islands_in_cluster = set()
+
+            for node in nodes:
+                ac_island = graph.nodes[node].get(self.ac_island_attr)
+                if ac_island is not None:
+                    ac_islands_in_cluster.add(ac_island)
+
+            if len(ac_islands_in_cluster) > 1:
+                log_warning(
+                    f"Cluster {cluster_id} contains nodes from multiple AC islands: "
+                    f"{ac_islands_in_cluster}. This should not happen with infinite distances.",
+                    LogCategory.PARTITIONING,
+                    warn_user=False,
+                )
+
+    # =========================================================================
+    # MULTI AC-ISLAND ELECTRICAL DISTANCE CALCULATION
+    # =========================================================================
+
+    def _group_nodes_by_ac_island(
+        self, graph: nx.DiGraph, nodes: list[Any]
+    ) -> dict[Any, list[Any]]:
+        """
+        Group nodes by their AC island attribute.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            NetworkX DiGraph with ac_island attribute on nodes.
+        nodes : list[Any]
+            List of nodes to group.
+
+        Returns
+        -------
+        dict[Any, list[Any]]
+            Dictionary mapping island_id -> list of nodes in that island.
+        """
+        islands: dict[Any, list[Any]] = defaultdict(list)
+
+        for node in nodes:
+            island_id = graph.nodes[node].get(self.ac_island_attr)
+            islands[island_id].append(node)
+
+        return dict(islands)
+
+    def _extract_ac_subgraph(self, graph: nx.DiGraph, island_nodes: list[Any]) -> nx.DiGraph:
+        """
+        Extract AC-only subgraph for a set of nodes.
+
+        Includes only lines and transformers, excluding DC links.
+
+        Parameters
+        ----------
+        graph : nx.DiGraph
+            Full NetworkX DiGraph.
+        island_nodes : list[Any]
+            Nodes to include in subgraph.
+
+        Returns
+        -------
+        nx.DiGraph
+            Subgraph containing only AC edges between island nodes.
+        """
+        island_node_set = set(island_nodes)
+        ac_subgraph = nx.DiGraph()
+
+        # Add nodes with attributes
+        for node in island_nodes:
+            ac_subgraph.add_node(node, **graph.nodes[node])
+
+        # Add only AC edges (lines and transformers)
+        for u, v, data in graph.edges(data=True):
+            if u in island_node_set and v in island_node_set:
+                edge_type = data.get("type", EdgeType.LINE.value)
+                if edge_type in self.AC_EDGE_TYPES:
+                    ac_subgraph.add_edge(u, v, **data)
+
+        return ac_subgraph
+
+    @staticmethod
+    def _select_slack_bus_for_island(
+        ac_subgraph: nx.DiGraph,
+        island_nodes: list[Any],
+        user_slack: Any | None,
+        island_id: Any,
+    ) -> Any:
+        """
+        Select slack bus for a specific island.
+
+        If user specified a slack bus that's in this island, use it.
+        Otherwise, select the node with highest total degree in the AC subgraph.
+
+        Parameters
+        ----------
+        ac_subgraph : nx.DiGraph
+            AC-only subgraph for this island.
+        island_nodes : list[Any]
+            Nodes in this island.
+        user_slack : Any, optional
+            User-specified slack bus (may be None or in different island).
+        island_id : Any
+            AC island identifier for logging.
+
+        Returns
+        -------
+        Any
+            Selected slack bus node for this island.
+        """
+        island_node_set = set(island_nodes)
+
+        # Check if user-specified slack is in this island
+        if user_slack is not None and user_slack in island_node_set:
+            log_debug(
+                f"Using user-specified slack bus {user_slack} for island {island_id}",
+                LogCategory.PARTITIONING,
+            )
+            return user_slack
+
+        # Auto-select: use node with highest total degree in AC subgraph
+        degrees = {n: ac_subgraph.in_degree(n) + ac_subgraph.out_degree(n) for n in island_nodes}
+        selected = max(island_nodes, key=lambda n: degrees[n])
+
+        log_debug(
+            f"Auto-selected slack bus {selected} for island {island_id} (degree={degrees[selected]})",
+            LogCategory.PARTITIONING,
+        )
+
+        return selected
+
+    def _compute_island_distances(
+        self,
+        ac_subgraph: nx.DiGraph,
+        island_nodes: list[Any],
+        slack_bus: Any,
+        config: InputDataCongestionSensitiveConfig,
+    ) -> np.ndarray:
+
+        # Build PTDF matrix for this island
+        ptdf_matrix, active_nodes = self._build_ptdf_matrix(
+            ac_subgraph, island_nodes, slack_bus, config
+        )
+
+        log_debug(
+            f"Built island PTDF matrix: shape {ptdf_matrix.shape}",
+            LogCategory.PARTITIONING,
+        )
+
+        # Weight PTDF matrix with additional features (line capacities, generation/demand data)
+        weighted_PTDF = self._compute_weighted_ptdf(ptdf_matrix, active_nodes)
+
+        # Compute the distance matrix on the weighted PTDF
+        distance_matrix_island = self._compute_distance_from_weighted_ptdf(weighted_PTDF)
+
+        return distance_matrix_island
+
+        # Calculate distance matrix based on perturbed PTDF
+
+    # =========================================================================
+    # PTDF MATRIX CONSTRUCTION
+    # =========================================================================
+
+    def _build_ptdf_matrix(
+        self,
+        ac_subgraph: nx.DiGraph,
+        island_nodes: list[Any],
+        slack_bus: Any,
+        config: InputDataCongestionSensitiveConfig,
+    ) -> tuple[np.ndarray, list[Any]]:
+        """
+        Build the Power Transfer Distribution Factor (PTDF) matrix for a dc-island.
+
+        PTDF = diag{b} · K_sba · (K_sba^T · diag{b} · K_sba)^(-1)
+
+        Where:
+
+        - K_sba is the slack-bus-adjusted incidence matrix
+        - b is the vector of susceptances (1/reactance)
+        - The resulting PTDF has shape (n_edges × n_active_nodes)
+
+        Instead of computing B^(-1) explicitly, we solve the linear system
+        directly which is significantly faster for large networks.
+
+        Parameters
+        ----------
+        ac_subgraph : nx.DiGraph
+            AC-only DiGraph for this island.
+        island_nodes : list[Any]
+            Ordered list of nodes in this island.
+        slack_bus : Any
+            Slack bus node for this island.
+        config : ElectricalDistanceConfig
+            Configuration instance.
+
+        Returns
+        -------
+        tuple[np.ndarray, list[Any]]
+            Tuple of (PTDF matrix [n_edges × n_active], list of active nodes).
+
+        Raises
+        ------
+        PartitioningError
+            If matrix construction fails.
+        """
+        try:
+            # Extract edges and susceptances (AC edges only)
+            edges, susceptances = self._extract_edge_susceptances(ac_subgraph, config)
+
+            if len(edges) == 0:
+                raise PartitioningError(
+                    "No valid AC edges found for PTDF matrix construction.",
+                    strategy=self._get_strategy_name(),
+                )
+
+            # Build slack-bus-adjusted incidence matrix
+            K_sba, active_nodes = self._build_incidence_matrix(edges, island_nodes, slack_bus)
+            log_debug(
+                f"Built incidence matrix K_sba: shape {K_sba.shape}",
+                LogCategory.PARTITIONING,
+            )
+
+            # Build susceptance matrix B = K_sba^T @ diag(b) @ K_sba
+            B_matrix = self._compute_B_matrix(K_sba, susceptances)
+            log_debug(f"Built B matrix: shape {B_matrix.shape}", LogCategory.PARTITIONING)
+
+            # Compute PTDF using direct linear solve
+            ptdf_matrix = self._compute_ptdf(K_sba, susceptances, B_matrix, config)
+
+            return ptdf_matrix, active_nodes
+
+        except Exception as e:
+            if isinstance(e, PartitioningError):
+                raise
+            raise PartitioningError(
+                f"Failed to build PTDF matrix: {e}", strategy=self._get_strategy_name()
+            ) from e
+
+    def _extract_edge_susceptances(
+        self, ac_subgraph: nx.DiGraph, config: InputDataCongestionSensitiveConfig
+    ) -> tuple[list[tuple[Any, Any]], np.ndarray]:
+        """
+        Extract AC edges and their susceptances from the subgraph.
+
+        Only processes lines and transformers (AC edges).
+        Susceptance b = 1/x where x is the reactance.
+
+        Parameters
+        ----------
+        ac_subgraph : nx.DiGraph
+            AC-only subgraph.
+        config : ElectricalDistanceConfig
+            Configuration instance.
+
+        Returns
+        -------
+        tuple[list[tuple[Any, Any]], np.ndarray]
+            Tuple of (list of (from, to) edges, array of susceptances).
+
+        Raises
+        ------
+        PartitioningError
+            If reactance values are invalid.
+        """
+        edges = []
+        susceptances = []
+        zero_reactance_count = 0
+
+        for u, v, data in ac_subgraph.edges(data=True):
+            reactance = data.get("x")
+
+            if reactance is None:
+                raise PartitioningError(
+                    f"AC edge ({u}, {v}) missing reactance attribute 'x'",
+                    strategy=self._get_strategy_name(),
+                )
+
+            if not isinstance(reactance, (int, float)):
+                raise PartitioningError(
+                    f"Edge ({u}, {v}) reactance must be numeric, got {type(reactance)}",
+                    strategy=self._get_strategy_name(),
+                )
+
+            if reactance == 0:
+                zero_reactance_count += 1
+                reactance = config.zero_reactance_replacement
+
+            edges.append((u, v))
+            susceptances.append(1.0 / reactance)
+
+        # Emit single warning if any zero reactance edges found
+        if zero_reactance_count > 0:
+            log_warning(
+                f"{zero_reactance_count} edge(s) have zero reactance. "
+                f"Using replacement value: {config.zero_reactance_replacement}",
+                LogCategory.PARTITIONING,
+            )
+
+        return edges, np.array(susceptances)
+
+    @staticmethod
+    def _build_incidence_matrix(
+        edges: list[tuple[Any, Any]], nodes: list[Any], slack_bus: Any
+    ) -> tuple[np.ndarray, list[Any]]:
+        """
+        Build slack-bus-adjusted incidence matrix K_sba.
+
+        For each directed edge (u → v):
+
+        - K[edge_idx, u] = -1 (edge leaves u)
+        - K[edge_idx, v] = +1 (edge enters v)
+
+        The slack bus column is removed to make B invertible.
+
+        Parameters
+        ----------
+        edges : list[tuple[Any, Any]]
+            List of (from_node, to_node) tuples.
+        nodes : list[Any]
+            Ordered list of all nodes in island.
+        slack_bus : Any
+            Node to exclude (slack bus).
+
+        Returns
+        -------
+        tuple[np.ndarray, list[Any]]
+            Tuple of (K_sba matrix [n_edges × n_active], list of active nodes).
+        """
+        # Active nodes (without slack bus)
+        active_nodes = [n for n in nodes if n != slack_bus]
+        n_active = len(active_nodes)
+        n_edges = len(edges)
+
+        # Create node index mapping for active nodes
+        node_to_idx = {node: idx for idx, node in enumerate(active_nodes)}
+
+        # Build incidence matrix using vectorized assignment
+        K_sba = np.zeros((n_edges, n_active))
+
+        # Pre-compute indices for all edges (-1 means node not in active set)
+        u_indices = np.array([node_to_idx.get(u, -1) for u, v in edges])
+        v_indices = np.array([node_to_idx.get(v, -1) for u, v in edges])
+        edge_indices = np.arange(n_edges)
+
+        # Vectorized assignment for valid source nodes
+        valid_u = u_indices >= 0
+        K_sba[edge_indices[valid_u], u_indices[valid_u]] = -1.0
+
+        # Vectorized assignment for valid target nodes
+        valid_v = v_indices >= 0
+        K_sba[edge_indices[valid_v], v_indices[valid_v]] = 1.0
+
+        return K_sba, active_nodes
+
+    @staticmethod
+    def _compute_B_matrix(K_sba: np.ndarray, susceptances: np.ndarray) -> np.ndarray:
+        """
+        Compute susceptance matrix B = K_sba^T @ diag(b) @ K_sba.
+
+        Uses efficient broadcasting: B = (K^T * b) @ K, avoiding explicit
+        diagonal matrix construction.
+
+        Parameters
+        ----------
+        K_sba : np.ndarray
+            Slack-bus-adjusted incidence matrix (n_edges × n_active).
+        susceptances : np.ndarray
+            Array of susceptance values (n_edges,).
+
+        Returns
+        -------
+        np.ndarray
+            Symmetric susceptance matrix (n_active × n_active).
+        """
+        # Efficient: (K.T * b) @ K where b is broadcast along columns
+        # K.T shape: (n_active, n_edges), susceptances shape: (n_edges,)
+        K_scaled = K_sba.T * susceptances
+        B_matrix = K_scaled @ K_sba
+
+        # Ensure symmetry (handles floating point errors)
+        return (B_matrix + B_matrix.T) / 2.0
+
+    @staticmethod
+    def _compute_ptdf(
+        K_sba: np.ndarray,
+        susceptances: np.ndarray,
+        B_matrix: np.ndarray,
+        config: ElectricalDistanceConfig,
+    ) -> np.ndarray:
+        """
+        Compute PTDF matrix by solving linear system directly.
+
+        To avoid computing B^(-1) explicitly, we solve:
+        B @ X = A^T  where A = diag(b) @ K_sba
+        Then PTDF = X^T
+
+        This is mathematically equivalent but 3-5x faster for large matrices.
+
+        Parameters
+        ----------
+        K_sba : np.ndarray
+            Slack-bus-adjusted incidence matrix (n_edges × n_active).
+        susceptances : np.ndarray
+            Array of susceptance values (n_edges,).
+        B_matrix : np.ndarray
+            Susceptance matrix (n_active × n_active).
+        config : ElectricalDistanceConfig
+            Configuration instance.
+
+        Returns
+        -------
+        np.ndarray
+            PTDF matrix (n_edges × n_active).
+        """
+        # Apply Tikhonov regularization for numerical stability
+        if config.regularization_factor > 0:
+            B_matrix = B_matrix + config.regularization_factor * np.eye(B_matrix.shape[0])
+
+        # A = diag(b) @ K_sba, shape (n_edges, n_active)
+        A = susceptances[:, np.newaxis] * K_sba
+
+        try:
+            # Solve B @ X = A^T for X, then PTDF = X^T
+            # Using assume_a='sym' tells scipy B is symmetric -> uses faster algorithm
+            X = solve(B_matrix, A.T, assume_a="sym")
+            ptdf_matrix = X.T
+
+        except LinAlgError:
+            # Fallback to least-squares solution if matrix is singular
+            log_warning(
+                "B matrix is singular, using least-squares solution.",
+                LogCategory.PARTITIONING,
+            )
+            X, _, _, _ = np.linalg.lstsq(B_matrix, A.T, rcond=None)
+            ptdf_matrix = X.T
+
+        return ptdf_matrix
