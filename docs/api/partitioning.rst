@@ -35,7 +35,7 @@ Voltage-Aware Partitioning
    :no-index:
 
 Locational Marginal Price Partitioning
---------------------------
+--------------------------------------
 .. automodule:: npap.partitioning.locational_marginal_price
    :members:
    :show-inheritance:

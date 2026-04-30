@@ -164,29 +164,43 @@ Combines electrical distance (PTDF approach) with voltage level and AC island co
 
 **Required attributes**: Nodes: `voltage`, `ac_island` | Edges: `x` (reactance)
 
+### Locational Marginal Price Partitioning
+
+Clusters nodes based on nodal prices (LMP) or price profiles.
+
+| Strategy | Algorithm | Description |
+|----------|-----------|-------------|
+| `lmp_hierarchical_connected` | Hierarchical | Spatially contiguous price-based clustering |
+
+**Required attributes**: Nodes: `lmp`
+
 ### Choosing a Partitioning Strategy
 
 ```{mermaid}
 flowchart TD
     A[Start] --> B{Multi-voltage?}
     B -->|Yes| C{Need electrical distance?}
-    B -->|No| D{Need electrical distance?}
-    C -->|Yes| E[va_electrical_*]
-    C -->|No| F[va_geographical_*]
-    D -->|Yes| G[electrical_*]
-    D -->|No| H{AC islands?}
-    H -->|Yes| I[geographical_kmedoids_*]
-    H -->|No| L[geographical_*]
+    B -->|No| D{Price-based?}
+    D -->|Yes| E[lmp_*]
+    D -->|No| F{Need electrical distance?}
+    C -->|Yes| G[va_electrical_*]
+    C -->|No| H[va_geographical_*]
+    F -->|Yes| I[electrical_*]
+    F -->|No| J{AC islands?}
+    J -->|Yes| K[geographical_kmedoids_*]
+    J -->|No| L[geographical_*]
 
     style A fill:#2993B5,stroke:#1d6f8a,color:#fff
     style B fill:#FFBF00,stroke:#cc9900,color:#1e293b
     style C fill:#FFBF00,stroke:#cc9900,color:#1e293b
     style D fill:#FFBF00,stroke:#cc9900,color:#1e293b
     style E fill:#0fad6b,stroke:#076b3f,color:#fff
-    style F fill:#0fad6b,stroke:#076b3f,color:#fff
+    style F fill:#FFBF00,stroke:#cc9900,color:#1e293b
     style G fill:#0fad6b,stroke:#076b3f,color:#fff
-    style H fill:#FFBF00,stroke:#cc9900,color:#1e293b
+    style H fill:#0fad6b,stroke:#076b3f,color:#fff
     style I fill:#0fad6b,stroke:#076b3f,color:#fff
+    style J fill:#FFBF00,stroke:#cc9900,color:#1e293b
+    style K fill:#0fad6b,stroke:#076b3f,color:#fff
     style L fill:#0fad6b,stroke:#076b3f,color:#fff
 ```
 
