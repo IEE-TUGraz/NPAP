@@ -121,7 +121,7 @@ class PartitioningManager:
 
         # Input data congestion sensitive partitioning strategies
         self._strategies["input_data_congestion_sensitive_kmeans"] = (
-            InputDataCongestionSensitivePartitioning(algorithm="kmeans")
+            InputDataCongestionSensitivePartitioning(algorithm="hierarchical")
         )
         self._strategies["input_data_congestion_sensitive_kmedoids"] = (
             InputDataCongestionSensitivePartitioning(algorithm="kmedoids")

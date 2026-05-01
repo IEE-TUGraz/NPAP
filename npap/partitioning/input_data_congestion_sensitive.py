@@ -11,6 +11,8 @@ from npap.interfaces import EdgeType, PartitioningStrategy
 from npap.logging import LogCategory, log_debug, log_info
 from npap.utils import (
     create_partition_map,
+    run_kmedoids,
+    run_hierarchical,
     validate_partition,
     with_runtime_config,
 )
@@ -36,6 +38,7 @@ class InputDataCongestionSensitiveConfig:
     zero_reactance_replacement: float = 1e-5
     regularization_factor: float = 1e-10
     infinite_distance: float = 1e4
+    use_connectivity = True
 
 
 class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
@@ -114,7 +117,7 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
     def required_attributes(self) -> dict[str, list[str]]:
         """Required attributes for congestion sensitive partitioning."""
         return {
-            "nodes": ["renewable_generators", "dispatchable_generators", "demand"],
+            "nodes": ["renewable_generators", "dispatchable_generators", "demand_min"],
             "edges": ["x", "capacity"],
         }
 
@@ -182,19 +185,62 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
                 graph, nodes, effective_config, effective_slack
             )
             # 3. Perform clustering
+            label = self._run_clustering(distance_matrix, **kwargs)
 
-            # For now, return a dummy partition or raise error
-            raise NotImplementedError(
-                "Congestion sensitive partitioning logic is not yet implemented."
+            partition_map = create_partition_map(nodes, label)
+            validate_partition(partition_map, n_nodes, self._get_strategy_name())
+
+            # Validate AC island consistency
+            self._validate_cluster_ac_island_consistency(graph, partition_map)
+
+            log_info(
+                f"Input data congestion sensitive partitioning complete: {len(partition_map)} clusters",
+                LogCategory.PARTITIONING,
             )
 
         except Exception as e:
             if isinstance(e, (PartitioningError, ValidationError, NotImplementedError)):
                 raise
             raise PartitioningError(
-                f"Congestion sensitive partitioning failed: {e}",
+                f"Input data congestion sensitive partitioning failed: {e}",
                 strategy=self._get_strategy_name(),
             ) from e
+
+        return partition_map
+
+    def _run_clustering(self, distance_matrix: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        Dispatch to appropriate clustering algorithm.
+
+        Parameters
+        ----------
+        distance_matrix : np.ndarray
+            Precomputed distance matrix (n_nodes x n_nodes).
+        **kwargs : dict
+            Additional parameters including n_clusters, random_state, max_iter.
+
+        Returns
+        -------
+        np.ndarray
+            Array of cluster labels.
+        """
+        n_clusters = kwargs.get("n_clusters")
+        random_state = kwargs.get("random_state", 42)
+        max_iter = kwargs.get("max_iter", 300)
+
+        if self.algorithm == "kmedoids":
+            log_debug("Running K-medoids on distance matrix", LogCategory.PARTITIONING)
+            return run_kmedoids(distance_matrix, n_clusters)
+        if self.algorithm == "hierarchical":
+            log_debug(
+                "Running hierarchical clustering on distance matrix", LogCategory.PARTITIONING
+            )
+            return run_hierarchical(distance_matrix, n_clusters)
+        else:
+            raise PartitioningError(
+                f"Unknown algorithm: {self.algorithm}",
+                strategy=self._get_strategy_name(),
+            )
 
     def _calculate_input_data_congestion_sensitive_distance_matrix(
         self,
@@ -542,14 +588,162 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
         )
 
         # Weight PTDF matrix with additional features (line capacities, generation/demand data)
-        weighted_PTDF = self._compute_weighted_ptdf(ptdf_matrix, active_nodes)
+        weighted_PTDF = self._compute_weighted_ptdf(ptdf_matrix, active_nodes, ac_subgraph)
+
+        # Add slack bus to ptdf as zero columns (since slack bus has no injections)
+        n_edges, n_active = weighted_PTDF.shape
+        n_total = n_active + 1  # Add slack bus back in
+        weighted_ptdf_full = np.zeros((n_edges, n_total))
+        active_idx = 0
+        for node in island_nodes:
+            if node == slack_bus:
+                continue  # Skip slack bus column (remains zero)
+            weighted_ptdf_full[:, active_idx] = weighted_PTDF[:, active_idx]
+            active_idx += 1
 
         # Compute the distance matrix on the weighted PTDF
-        distance_matrix_island = self._compute_distance_from_weighted_ptdf(weighted_PTDF)
+        distance_matrix_island = self._compute_weighted_ptdf_distances(weighted_ptdf_full)
 
         return distance_matrix_island
 
-        # Calculate distance matrix based on perturbed PTDF
+    @staticmethod
+    def _compute_weighted_ptdf(
+        ptdf: np.array, active_nodes: list[Any], ac_subgraph: nx.DiGraph
+    ) -> np.array:
+        """
+        Apply weighting to the PTDF matrix based on line capacities and nodal data.
+
+        This is a placeholder for the actual weighting logic, which would involve
+        extracting line capacities and nodal generation/demand data, and applying
+        them to the PTDF matrix according to the defined distance feature basis.
+
+        Parameters
+        ----------
+        ptdf : np.ndarray
+            PTDF matrix for the island (n_edges × n_active).
+        active_nodes : list[Any]
+            List of active nodes corresponding to PTDF columns.
+        ac_subgraph: nx.DiGraph
+                AC-only subgraph for this island, used to extract line capacities and nodal data.
+
+        Returns
+        -------
+        np.ndarray
+            Weighted PTDF matrix.
+        """
+
+        # Define vector with reciprocal line capacities (F^-1)
+        capacities = []
+        for _, _, data in ac_subgraph.edges(data=True):
+            cap = data.get("p_max", 1.0)
+            capacities.append(1 / cap if cap > 0 else 1)
+
+        cap_inv = np.array(capacities)
+
+        # Define vector with nodal features (SUM(max_res_gen + max_disp_gen) - min(demand))
+        nodal_features = []
+        for node in active_nodes:
+            data = ac_subgraph.nodes[node]
+
+            # Aggregate capacities from generator lists
+            res_gen = data.get("renewable_generators", [])
+            p_res = sum(g.get("p_nom", 0) for g in res_gen)
+
+            dis_gen = data.get("dispatchable_generators", [])
+            p_dis = sum(g.get("p_nom", 0) for g in dis_gen)
+
+            p_demand = data.get("demand_min", 0)
+
+            nodal_features.append(p_res + p_dis - p_demand)
+
+        s_nodal = np.array(nodal_features)
+
+        # Apply weighting to PTDF: F^-1 * PTDF * diag(nodal_features)
+        weighted_ptdf = np.multiply(ptdf, cap_inv[:, np.newaxis]) @ np.diag(s_nodal)
+
+        return weighted_ptdf
+
+    def _compute_weighted_ptdf_distances(self, ptdf_matrix: np.ndarray) -> np.ndarray:
+        """
+        Compute electrical distances using Euclidean distance between PTDF columns.
+
+        Electrical distance: d_ij = ||PTDF[:,i] - PTDF[:,j]||_2
+
+        Uses the identity ||a-b||² = ||a||² + ||b||² - 2⟨a,b⟩ to compute all
+        pairwise distances via a single matrix multiplication (Gram matrix),
+        which is highly optimized by BLAS libraries.
+
+        Parameters
+        ----------
+        ptdf_matrix : np.ndarray
+            PTDF matrix (n_edges × n_active).
+
+        Returns
+        -------
+        np.ndarray
+            Distance matrix for active nodes (n_active × n_active).
+
+        Raises
+        ------
+        PartitioningError
+            If distance calculation produces invalid values.
+        """
+        # Use float32 for faster computation
+        X = ptdf_matrix.T.astype(np.float32, copy=False)
+
+        # Compute squared norms for each node's PTDF profile
+        norms_sq = np.einsum("ij,ij->i", X, X)
+
+        # Compute Gram matrix (all pairwise dot products) - BLAS optimized
+        gram = X @ X.T
+
+        # ||a - b||² = ||a||² + ||b||² - 2⟨a,b⟩
+        dist_sq = norms_sq[:, np.newaxis] + norms_sq
+        dist_sq -= 2.0 * gram  # In-place to save memory
+
+        # Handle numerical errors (small negative values from floating point)
+        np.maximum(dist_sq, 0.0, out=dist_sq)
+
+        # Take square root to get actual distances
+        distance_matrix = np.sqrt(dist_sq, out=dist_sq)  # In-place
+
+        # Ensure diagonal is exactly zero
+        np.fill_diagonal(distance_matrix, 0.0)
+
+        if np.any(np.isnan(distance_matrix)):
+            raise PartitioningError(
+                "Distance matrix contains NaN values after PTDF distance calculation.",
+                strategy=self._get_strategy_name(),
+            )
+
+        return distance_matrix.astype(np.float64)
+
+    @staticmethod
+    def _insert_island_distances(
+        full_matrix: np.ndarray,
+        island_distances: np.ndarray,
+        island_nodes: list[Any],
+        node_to_idx: dict[Any, int],
+    ) -> None:
+        """
+        Insert island distance matrix into the full distance matrix.
+
+        Parameters
+        ----------
+        full_matrix : np.ndarray
+            Full distance matrix (modified in place).
+        island_distances : np.ndarray
+            Distance matrix for this island.
+        island_nodes : list[Any]
+            Ordered list of nodes in this island.
+        node_to_idx : dict[Any, int]
+            Mapping from node to index in full matrix.
+        """
+        # Build index array for island nodes in full matrix
+        island_indices = np.array([node_to_idx[node] for node in island_nodes])
+
+        # Use np.ix_ for efficient block assignment
+        full_matrix[np.ix_(island_indices, island_indices)] = island_distances
 
     # =========================================================================
     # PTDF MATRIX CONSTRUCTION
