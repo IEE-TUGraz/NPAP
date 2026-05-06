@@ -241,7 +241,6 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
             log_debug(
                 "Running hierarchical clustering on distance matrix", LogCategory.PARTITIONING
             )
-            return run_hierarchical(distance_matrix, n_clusters)
             # Handle connectivity constraint
             connectivity = None
             if self.config.use_connectivity:
