@@ -4,6 +4,7 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
+from networkx.linalg.graphmatrix import adjacency_matrix
 from scipy.linalg import LinAlgError, solve
 
 from npap.exceptions import PartitioningError, ValidationError
@@ -159,6 +160,11 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
             self._validate_ac_edge_attributes(graph)
 
             n_clusters = kwargs.get("n_clusters")
+            use_connectivity = self.config.use_connectivity
+
+            if use_connectivity:
+                connectivity = adjacency_matrix(graph).toarray()
+                kwargs["connectivity"] = connectivity
 
             nodes = list(graph.nodes())
             n_nodes = len(nodes)
@@ -236,6 +242,15 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
                 "Running hierarchical clustering on distance matrix", LogCategory.PARTITIONING
             )
             return run_hierarchical(distance_matrix, n_clusters)
+            # Handle connectivity constraint
+            connectivity = None
+            if self.config.use_connectivity:
+                log_debug(
+                    "Using graph connectivity constraint for clustering", LogCategory.PARTITIONING
+                )
+                connectivity = kwargs.get('connectivity')
+
+            return run_hierarchical(distance_matrix, n_clusters, connectivity=connectivity)
         else:
             raise PartitioningError(
                 f"Unknown algorithm: {self.algorithm}",
