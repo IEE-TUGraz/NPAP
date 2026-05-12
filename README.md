@@ -15,7 +15,7 @@
 [![codecov](https://codecov.io/gh/IEE-TUGraz/npap/branch/main/graph/badge.svg)](https://codecov.io/gh/IEE-TUGraz/npap)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/IEE-TUGraz/NPAP/main.svg)](https://results.pre-commit.ci/latest/github/IEE-TUGraz/NPAP/main)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![status](https://joss.theoj.org/papers/a48865bb0af0faffe1c9074db581d072/status.svg)](https://joss.theoj.org/papers/a48865bb0af0faffe1c9074db581d072)
+[![JOSS status](https://joss.theoj.org/papers/a48865bb0af0faffe1c9074db581d072/status.svg)](https://joss.theoj.org/papers/a48865bb0af0faffe1c9074db581d072)
 
 ---
 
