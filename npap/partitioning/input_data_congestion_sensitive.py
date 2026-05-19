@@ -281,7 +281,16 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
         np.fill_diagonal(distance_matrix, 0.0)
 
         # Process each island independently
-        for island_id, island_nodes in islands.items():
+        # Sort island IDs to ensure deterministic processing order
+        for island_id in sorted(islands.keys(), key=lambda x: str(x)):
+            island_nodes = islands[island_id]
+
+            # Ensure deterministic order of nodes within each island
+            try:
+                island_nodes.sort()
+            except TypeError:
+                island_nodes.sort(key=str)
+
             log_debug(
                 f"Processing AC island {island_id}: {len(island_nodes)} nodes",
                 LogCategory.PARTITIONING,
@@ -648,7 +657,10 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
 
         # Define vector with reciprocal line capacities (F^-1)
         capacities = []
-        for _, _, data in ac_subgraph.edges(data=True):
+        # Sort edges by (from_node, to_node) to ensure deterministic order
+        sorted_edges = sorted(ac_subgraph.edges(data=True), key=lambda x: (str(x[0]), str(x[1])))
+
+        for _, _, data in sorted_edges:
             cap = data.get("p_max", 1.0)
             capacities.append(1 / cap if cap > 0 else 1)
 
@@ -868,7 +880,10 @@ class InputDataCongestionSensitivePartitioning(PartitioningStrategy):
         susceptances = []
         zero_reactance_count = 0
 
-        for u, v, data in ac_subgraph.edges(data=True):
+        # Sort edges by (from_node, to_node) to ensure deterministic order
+        sorted_edges = sorted(ac_subgraph.edges(data=True), key=lambda x: (str(x[0]), str(x[1])))
+
+        for u, v, data in sorted_edges:
             reactance = data.get("x")
 
             if reactance is None:
