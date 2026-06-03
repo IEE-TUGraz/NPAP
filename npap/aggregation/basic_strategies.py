@@ -486,7 +486,7 @@ class EquivalentReactanceStrategy(EdgePropertyStrategy):
             total_susceptance = np.sum(susceptances)
 
             if abs(total_susceptance) < epsilon:
-                return float("inf")
+                return float(1e6)
 
             return float(1.0 / total_susceptance)
 
