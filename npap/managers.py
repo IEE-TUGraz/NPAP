@@ -118,6 +118,7 @@ class PartitioningManager:
         self._strategies["electrical_kmedoids"] = ElectricalDistancePartitioning(
             algorithm="kmedoids"
         )
+        self._strategies["electrical_hierarchical"] = ElectricalDistancePartitioning(algorithm="hierarchical")
 
         # Input data congestion sensitive partitioning strategies
         self._strategies["input_data_congestion_sensitive_hierarchical"] = (

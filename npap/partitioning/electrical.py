@@ -11,6 +11,7 @@ from npap.interfaces import EdgeType, PartitioningStrategy
 from npap.logging import LogCategory, log_debug, log_info, log_warning
 from npap.utils import (
     create_partition_map,
+    run_hierarchical,
     run_kmeans,
     run_kmedoids,
     validate_partition,
@@ -78,7 +79,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
     Partition-time parameters override instance defaults for that call only.
     """
 
-    SUPPORTED_ALGORITHMS = ["kmeans", "kmedoids"]
+    SUPPORTED_ALGORITHMS = ["kmeans", "kmedoids", "hierarchical"]
 
     # Edge types that participate in AC power flow (have reactance)
     AC_EDGE_TYPES = {EdgeType.LINE.value, EdgeType.TRAFO.value}
@@ -103,7 +104,7 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         Parameters
         ----------
         algorithm : str, default='kmeans'
-            Clustering algorithm ('kmeans', 'kmedoids').
+            Clustering algorithm ('kmeans', 'kmedoids', 'hierarchical').
         slack_bus : Any, optional
             Specific node to use as slack bus (applied to its island),
             or None for auto-selection per island.
@@ -279,6 +280,16 @@ class ElectricalDistancePartitioning(PartitioningStrategy):
         elif self.algorithm == "kmedoids":
             log_debug("Running K-medoids on distance matrix", LogCategory.PARTITIONING)
             return run_kmedoids(distance_matrix, n_clusters)
+        elif self.algorithm == "hierarchical":
+            log_debug("Running Hierarchical clustering on distance matrix", LogCategory.PARTITIONING)
+            linkage: str = kwargs.get("linkage", "complete")
+            connectivity: Any | None = kwargs.get("connectivity", None)
+            return run_hierarchical(
+                distance_matrix,
+                n_clusters,
+                linkage=linkage,
+                connectivity=connectivity,
+            )
         else:
             raise PartitioningError(
                 f"Unknown algorithm: {self.algorithm}",
