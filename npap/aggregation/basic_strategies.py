@@ -477,8 +477,13 @@ class EquivalentReactanceStrategy(EdgePropertyStrategy):
 
             epsilon = 1e-10
 
-            # Replace any near-zero value with epsilon to prevent 0.0 return
-            values = np.where(np.abs(values) < epsilon, epsilon, values)
+            # Filter out values that are effectively zero
+            valid_mask = np.abs(values) >= epsilon
+            filtered_values = values[valid_mask]
+
+            # If all edges were zero, you need a fallback
+            if len(filtered_values) == 0:
+                return float("inf")  # Or raise an exception, depending on your needs
 
             # Vectorized susceptance calculation: b = 1/x
             susceptances = 1.0 / values
