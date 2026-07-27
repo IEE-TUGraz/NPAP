@@ -477,9 +477,8 @@ class EquivalentReactanceStrategy(EdgePropertyStrategy):
 
             epsilon = 1e-10
 
-            # Check for zero reactance (short circuit)
-            if np.any(np.abs(values) < epsilon):
-                return 0.0
+            # Replace any near-zero value with epsilon to prevent 0.0 return
+            values = np.where(np.abs(values) < epsilon, epsilon, values)
 
             # Vectorized susceptance calculation: b = 1/x
             susceptances = 1.0 / values
