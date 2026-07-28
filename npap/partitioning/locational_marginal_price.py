@@ -167,7 +167,9 @@ class LMPPartitioning(PartitioningStrategy):
         try:
             effective_config = kwargs.get("_effective_config", self.config)
             n_clusters = kwargs.get("n_clusters")
-            distance_threshold = kwargs.get("distance_threshold", effective_config.distance_threshold)
+            distance_threshold = kwargs.get(
+                "distance_threshold", effective_config.distance_threshold
+            )
 
             # Extract LMP data
             nodes = list(graph.nodes())

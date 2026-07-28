@@ -1293,9 +1293,13 @@ class TestLMPPartitioning:
         strategy = LMPPartitioning()
 
         # Neither specified
-        with pytest.raises(PartitioningError, match="requires either 'n_clusters' or 'distance_threshold'"):
+        with pytest.raises(
+            PartitioningError, match="requires either 'n_clusters' or 'distance_threshold'"
+        ):
             strategy.partition(lmp_graph)
 
         # Both specified
-        with pytest.raises(PartitioningError, match="cannot take both 'n_clusters' and 'distance_threshold'"):
+        with pytest.raises(
+            PartitioningError, match="cannot take both 'n_clusters' and 'distance_threshold'"
+        ):
             strategy.partition(lmp_graph, n_clusters=2, distance_threshold=5.0)
