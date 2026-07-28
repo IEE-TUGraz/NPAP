@@ -1249,3 +1249,57 @@ class TestLMPPartitioning:
         # Test that it doesn't crash and respects the parameter
         partition = strategy.partition(lmp_graph, n_clusters=2, use_connectivity=True)
         assert len(partition) == 2
+
+    def test_lmp_partitioning_distance_threshold(self):
+        """Test partitioning using distance_threshold instead of n_clusters."""
+        G = nx.Graph()
+        # Nodes 0, 1 have close LMPs (diff 1.0); Node 2 has distant LMP (diff 50.0)
+        G.add_node(0, lmp=10.0)
+        G.add_node(1, lmp=11.0)
+        G.add_node(2, lmp=60.0)
+        G.add_edge(0, 1)
+        G.add_edge(1, 2)
+
+        strategy = LMPPartitioning(config=LMPConfig(use_connectivity=False))
+        # Threshold of 5.0 RMS per timestep should merge 0 & 1, but keep 2 in a separate cluster
+        partition = strategy.partition(G, distance_threshold=5.0)
+        assert len(partition) == 2
+        assert nodes_in_same_cluster(partition, 0, 1)
+        assert nodes_in_different_clusters(partition, 0, 2)
+
+    def test_lmp_partitioning_distance_threshold_sqrt_scaling(self):
+        """Test that distance_threshold scales with sqrt(n_timesteps)."""
+        G = nx.Graph()
+        # 4 timesteps: difference per timestep is 3.0 -> RMS diff per timestep is 3.0
+        # Euclidean diff across 4 timesteps is sqrt(4 * 3.0^2) = 6.0
+        lmp_a = np.array([10.0, 10.0, 10.0, 10.0])
+        lmp_b = np.array([13.0, 13.0, 13.0, 13.0])
+        G.add_node(0, lmp=lmp_a)
+        G.add_node(1, lmp=lmp_b)
+        G.add_edge(0, 1)
+
+        strategy = LMPPartitioning(config=LMPConfig(use_connectivity=False))
+
+        # distance_threshold=2.5 (less than 3.0 RMS per timestep) -> should NOT merge (2 clusters)
+        partition_split = strategy.partition(G, distance_threshold=2.5)
+        assert len(partition_split) == 2
+
+        # distance_threshold=3.5 (greater than 3.0 RMS per timestep) -> SHOULD merge (1 cluster)
+        partition_merge = strategy.partition(G, distance_threshold=3.5)
+        assert len(partition_merge) == 1
+
+    def test_lmp_partitioning_invalid_parameters_raises(self, lmp_graph):
+        """Test that missing or specifying both n_clusters and distance_threshold raises error."""
+        strategy = LMPPartitioning()
+
+        # Neither specified
+        with pytest.raises(
+            PartitioningError, match="requires either 'n_clusters' or 'distance_threshold'"
+        ):
+            strategy.partition(lmp_graph)
+
+        # Both specified
+        with pytest.raises(
+            PartitioningError, match="cannot take both 'n_clusters' and 'distance_threshold'"
+        ):
+            strategy.partition(lmp_graph, n_clusters=2, distance_threshold=5.0)

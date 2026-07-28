@@ -41,6 +41,7 @@ For comprehensive guides, API reference, and tutorials, visit the official docum
 - **Multiple Partitioning Algorithms** - K-means, K-medoids, DBSCAN, HDBSCAN, and hierarchical clustering
 - **Distance Metrics** - Euclidean for local coordinates, Haversine for geographic data
 - **Electrical Distance** - Partition based on PTDF-derived electrical proximity
+- **Price-Based Clustering** - Partition based on Locational Marginal Price (LMP) profiles
 - **Voltage-Aware Clustering** - Respects voltage levels and transformer boundaries
 - **Flexible Aggregation** - Sum, average, or custom strategies for node/edge properties
 - **Extensible Design** - Easy to add your own partitioning or aggregation strategies

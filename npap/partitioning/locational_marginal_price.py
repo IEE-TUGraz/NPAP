@@ -33,11 +33,16 @@ class LMPConfig:
     use_connectivity : bool
         Whether to use graph connectivity as a constraint for clustering.
         If True, only adjacent nodes in the graph can be merged into a cluster.
+        It is recommended to set this to True, since otherwise nodes might get clustered, which are at different positions in the network.
+    distance_threshold : float, optional
+        Distance threshold for hierarchical clustering based on tolerated RMS
+        (quadratic mean) price difference per timestep. If specified, 'n_clusters' must be None.
     """
 
     hierarchical_linkage: str = "complete"
     infinite_distance: float = 1e4
     use_connectivity: bool = True
+    distance_threshold: float | None = None
 
 
 class LMPPartitioning(PartitioningStrategy):
@@ -71,6 +76,7 @@ class LMPPartitioning(PartitioningStrategy):
         "hierarchical_linkage",
         "infinite_distance",
         "use_connectivity",
+        "distance_threshold",
     }
 
     def __init__(
@@ -141,7 +147,8 @@ class LMPPartitioning(PartitioningStrategy):
         **kwargs : dict
             Additional parameters:
 
-            - n_clusters : Number of clusters (required for hierarchical)
+            - n_clusters : Number of clusters (required if distance_threshold is None)
+            - distance_threshold : Distance threshold per timestep (RMS) for hierarchical clustering
             - config : LMPConfig instance to override instance config
             - hierarchical_linkage : Override config parameter
             - infinite_distance : Override config parameter
@@ -160,10 +167,19 @@ class LMPPartitioning(PartitioningStrategy):
         try:
             effective_config = kwargs.get("_effective_config", self.config)
             n_clusters = kwargs.get("n_clusters")
+            distance_threshold = kwargs.get(
+                "distance_threshold", effective_config.distance_threshold
+            )
 
             # Extract LMP data
             nodes = list(graph.nodes())
             lmps = self._extract_lmps(graph, nodes)
+
+            log_param_str = (
+                f"n_clusters={n_clusters}"
+                if n_clusters is not None
+                else f"distance_threshold={distance_threshold}"
+            )
 
             # Auto-detect AC island data
             ac_islands = None
@@ -175,13 +191,13 @@ class LMPPartitioning(PartitioningStrategy):
 
                 log_info(
                     f"Starting AC-island-aware locational marginal prices partitioning: {self.algorithm}, "
-                    f"n_clusters={n_clusters}, metric={self.distance_metric}, "
+                    f"{log_param_str}, metric={self.distance_metric}, "
                     f"ac_islands={n_ac_islands}",
                     LogCategory.PARTITIONING,
                 )
             else:
                 log_info(
-                    f"Starting LMP partitioning: {self.algorithm}, n_clusters={n_clusters}",
+                    f"Starting LMP partitioning: {self.algorithm}, {log_param_str}",
                     LogCategory.PARTITIONING,
                 )
 
@@ -340,7 +356,7 @@ class LMPPartitioning(PartitioningStrategy):
         config : LMPConfig
             Configuration parameters.
         **kwargs : dict
-            Must include 'n_clusters'. May include 'ac_islands'.
+            May include 'n_clusters', 'distance_threshold', or 'ac_islands'.
 
         Returns
         -------
@@ -348,11 +364,28 @@ class LMPPartitioning(PartitioningStrategy):
             Array of cluster labels.
         """
         n_clusters = kwargs.get("n_clusters")
-        if n_clusters is None or n_clusters <= 0:
+        distance_threshold = kwargs.get("distance_threshold", config.distance_threshold)
+
+        if n_clusters is None and distance_threshold is None:
             raise PartitioningError(
-                "Hierarchical clustering requires a positive 'n_clusters' parameter.",
+                "Hierarchical clustering requires either 'n_clusters' or 'distance_threshold' parameter.",
                 strategy=self._get_strategy_name(),
             )
+        if n_clusters is not None and distance_threshold is not None:
+            raise PartitioningError(
+                "Hierarchical clustering cannot take both 'n_clusters' and 'distance_threshold'.",
+                strategy=self._get_strategy_name(),
+            )
+
+        scaled_distance_threshold = None
+        if distance_threshold is not None:
+            if distance_threshold < 0:
+                raise PartitioningError(
+                    "'distance_threshold' must be non-negative.",
+                    strategy=self._get_strategy_name(),
+                )
+            n_timesteps = lmps.shape[1] if lmps.ndim > 1 else 1
+            scaled_distance_threshold = distance_threshold * np.sqrt(n_timesteps)
 
         ac_islands = kwargs.get("ac_islands")
 
@@ -371,7 +404,8 @@ class LMPPartitioning(PartitioningStrategy):
 
         return run_hierarchical(
             distance_matrix,
-            n_clusters,
-            config.hierarchical_linkage,
+            n_clusters=n_clusters,
+            linkage=config.hierarchical_linkage,
             connectivity=connectivity,
+            distance_threshold=scaled_distance_threshold,
         )
