@@ -21,7 +21,7 @@ VAElectricalDistancePartitioning
 from .electrical import ElectricalDistancePartitioning
 from .geographical import GeographicalPartitioning
 from .input_data_congestion_sensitive import InputDataCongestionSensitivePartitioning
-from .locational_marginal_price import LMPPartitioning
+from .locational_marginal_price import LMPConfig, LMPPartitioning
 from .va_electrical import VAElectricalDistancePartitioning
 from .va_geographical import VAGeographicalPartitioning
 
@@ -29,6 +29,7 @@ __all__ = [
     "ElectricalDistancePartitioning",
     "GeographicalPartitioning",
     "InputDataCongestionSensitivePartitioning",
+    "LMPConfig",
     "LMPPartitioning",
     "VAElectricalDistancePartitioning",
     "VAGeographicalPartitioning",
