@@ -78,7 +78,7 @@ class LMPConfig:
     use_connectivity: bool = True
     distance_threshold: float | None = None
     demand_attr: str = "p_load"
-    use_demand_weighting: bool = True
+    use_demand_weighting: bool = False
 
 
 class LMPPartitioning(PartitioningStrategy):
@@ -223,8 +223,6 @@ class LMPPartitioning(PartitioningStrategy):
             nodes = list(graph.nodes())
             lmps = self._extract_lmps(graph, nodes)
             demands = self._extract_demands(graph, nodes, effective_config.demand_attr)
-
-            print(demands)
 
             log_param_str = (
                 f"n_clusters={n_clusters}"

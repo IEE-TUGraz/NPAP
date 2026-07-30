@@ -175,7 +175,7 @@ class PartitioningManager:
         # Locational Marginal Price partitioning strategies
         self._strategies["lmp_hierarchical_connected"] = LMPPartitioning(
             algorithm="hierarchical",
-            config=LMPConfig(hierarchical_linkage="ward", use_demand_weighting=True),
+            config=LMPConfig(hierarchical_linkage="ward"),
         )
         self._strategies["lmp_hierarchical_weighted"] = LMPPartitioning(
             algorithm="hierarchical",
