@@ -73,7 +73,7 @@ class LMPConfig:
         Whether to weight nodes by their demand during clustering.
     """
 
-    hierarchical_linkage: str = "complete"
+    hierarchical_linkage: str = "ward"
     infinite_distance: float = 1e4
     use_connectivity: bool = True
     distance_threshold: float | None = None
