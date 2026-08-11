@@ -43,7 +43,7 @@ Repository = "https://github.com/IEE-TUGraz/NPAP"
 Changelog = "https://github.com/IEE-TUGraz/NPAP/releases"
 
 [project.optional-dependencies]
-test = ["pytest>=7.0", "pytest-cov>=4.0"]
+test = ["pytest>=7.0", "pytest-cov>=4.0", "hypothesis>=6.0,<7.0"]
 dev = ["pre-commit>=3.0", "ruff>=0.8.0"]
 docs = [
     "sphinx>=7.0",
@@ -56,6 +56,12 @@ docs = [
     "sphinxcontrib-mermaid>=0.9",
     "sphinx-reredirects>=0.1",
 ]
+
+[project.scripts]
+npap-cluster = "npap.cli:cluster_entry"
+npap-aggregate = "npap.cli:aggregate_entry"
+npap-plot = "npap.cli:plot_entry"
+npap-diag = "npap.cli:diagnose_entry"
 
 [tool.setuptools.packages.find]
 include = ["npap", "npap.*"]

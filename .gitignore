@@ -55,3 +55,10 @@ Thumbs.db
 # Claude files
 CLAUDE.md
 .claude/
+
+# Hypothesis cache
+.hypothesis/
+
+# NPAP Examples data and results
+examples/data/
+examples/output/

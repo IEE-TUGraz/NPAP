@@ -39,9 +39,6 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     REQUIRED_TRANSFORMER_COLUMNS = [
         "bus0",
         "bus1",
-        "x",
-        "primary_voltage",
-        "secondary_voltage",
     ]
     REQUIRED_CONVERTER_COLUMNS = ["converter_id", "bus0", "bus1", "voltage"]
     REQUIRED_LINK_COLUMNS = ["link_id", "bus0", "bus1", "voltage"]
@@ -150,26 +147,29 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             If loading fails.
         """
         try:
-            delimiter = kwargs.get("delimiter", ",")
-            decimal = kwargs.get("decimal", ".")
+            delimiter = kwargs.pop("delimiter", ",")
+            decimal = kwargs.pop("decimal", ".")
+            node_id_col_req = kwargs.pop("node_id_col", None)
 
             log_debug(f"Loading nodes from {node_file}", LogCategory.INPUT)
 
             # Load and validate nodes
-            nodes_df = self._load_nodes(node_file, delimiter, decimal)
+            nodes_df = self._load_nodes(node_file, delimiter, decimal, **kwargs)
 
             # Load and validate lines
-            lines_df = self._load_lines(line_file, delimiter, decimal)
+            lines_df = self._load_lines(line_file, delimiter, decimal, **kwargs)
 
             # Load and validate transformers
-            transformers_df = self._load_transformers(transformer_file, delimiter, decimal)
+            transformers_df = self._load_transformers(
+                transformer_file, delimiter, decimal, **kwargs
+            )
 
             # Load DC link data
-            converters_df = self._load_converters(converter_file, delimiter, decimal)
-            links_df = self._load_links(link_file, delimiter, decimal)
+            converters_df = self._load_converters(converter_file, delimiter, decimal, **kwargs)
+            links_df = self._load_links(link_file, delimiter, decimal, **kwargs)
 
             # Get node ID column
-            node_id_col = kwargs.get("node_id_col", self._detect_id_column(nodes_df))
+            node_id_col = node_id_col_req or self._detect_id_column(nodes_df)
             if node_id_col not in nodes_df.columns:
                 raise DataLoadingError(
                     f"Node ID column '{node_id_col}' not found in node file",
@@ -418,7 +418,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
     # =========================================================================
 
     @staticmethod
-    def _load_nodes(file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
+    def _load_nodes(file_path: str, delimiter: str, decimal: str, **kwargs) -> pd.DataFrame:
         """
         Load and validate nodes DataFrame.
 
@@ -441,14 +441,16 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         DataLoadingError
             If node file is empty.
         """
-        nodes_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal)
+        nodes_df = pd.read_csv(
+            file_path, delimiter=delimiter, decimal=decimal, comment="#", **kwargs
+        )
 
         if nodes_df.empty:
             raise DataLoadingError("Node file is empty", strategy="va_loader")
 
         return nodes_df
 
-    def _load_lines(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
+    def _load_lines(self, file_path: str, delimiter: str, decimal: str, **kwargs) -> pd.DataFrame:
         """
         Load and validate lines DataFrame.
 
@@ -471,7 +473,9 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         DataLoadingError
             If lines file is missing required columns.
         """
-        lines_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        lines_df = pd.read_csv(
+            file_path, delimiter=delimiter, decimal=decimal, comment="#", **kwargs
+        )
 
         if lines_df.empty:
             log_warning(
@@ -490,7 +494,9 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
         return lines_df
 
-    def _load_transformers(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
+    def _load_transformers(
+        self, file_path: str, delimiter: str, decimal: str, **kwargs
+    ) -> pd.DataFrame:
         """
         Load and validate transformers DataFrame.
 
@@ -514,7 +520,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
             If transformers file is missing required columns or has invalid values.
         """
         transformers_df = pd.read_csv(
-            file_path, delimiter=delimiter, decimal=decimal, quotechar="'"
+            file_path, delimiter=delimiter, decimal=decimal, comment="#", **kwargs
         )
 
         if transformers_df.empty:
@@ -530,6 +536,27 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         if missing_cols:
             raise DataLoadingError(
                 f"Transformers file missing required columns: {missing_cols}",
+                strategy="va_loader",
+                details={"available_columns": list(transformers_df.columns)},
+            )
+
+        # Normalize column names for voltage
+        voltage_map = {
+            "voltage_bus0": "primary_voltage",
+            "voltage_bus1": "secondary_voltage",
+            "v_nom0": "primary_voltage",
+            "v_nom1": "secondary_voltage",
+        }
+        for old_col, new_col in voltage_map.items():
+            if old_col in transformers_df.columns and new_col not in transformers_df.columns:
+                transformers_df = transformers_df.rename(columns={old_col: new_col})
+
+        # Ensure required columns are present after renaming
+        final_required = ["primary_voltage", "secondary_voltage"]
+        missing_after = [col for col in final_required if col not in transformers_df.columns]
+        if missing_after:
+            raise DataLoadingError(
+                f"Transformers file missing required columns: {missing_after}",
                 strategy="va_loader",
                 details={"available_columns": list(transformers_df.columns)},
             )
@@ -567,7 +594,9 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
         return transformers_df
 
-    def _load_converters(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
+    def _load_converters(
+        self, file_path: str, delimiter: str, decimal: str, **kwargs
+    ) -> pd.DataFrame:
         """
         Load and validate converters DataFrame.
 
@@ -590,7 +619,9 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         DataLoadingError
             If converters file is missing required columns.
         """
-        converters_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        converters_df = pd.read_csv(
+            file_path, delimiter=delimiter, decimal=decimal, comment="#", **kwargs
+        )
 
         if converters_df.empty:
             log_warning(
@@ -611,7 +642,7 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
         return converters_df
 
-    def _load_links(self, file_path: str, delimiter: str, decimal: str) -> pd.DataFrame:
+    def _load_links(self, file_path: str, delimiter: str, decimal: str, **kwargs) -> pd.DataFrame:
         """
         Load and validate DC links DataFrame.
 
@@ -634,7 +665,9 @@ class VoltageAwareStrategy(DataLoadingStrategy):
         DataLoadingError
             If links file is missing required columns.
         """
-        links_df = pd.read_csv(file_path, delimiter=delimiter, decimal=decimal, quotechar="'")
+        links_df = pd.read_csv(
+            file_path, delimiter=delimiter, decimal=decimal, comment="#", **kwargs
+        )
 
         if links_df.empty:
             log_warning("Links file is empty. No DC links will be created.", LogCategory.INPUT)
@@ -792,11 +825,32 @@ class VoltageAwareStrategy(DataLoadingStrategy):
 
         edge_tuples = []
         for record in trafo_records:
+            # Handle aliases for voltage columns
+            primary_v = (
+                record.get("primary_voltage")
+                or record.get("voltage_bus0")
+                or record.get("v_nom0")
+                or 0
+            )
+            secondary_v = (
+                record.get("secondary_voltage")
+                or record.get("voltage_bus1")
+                or record.get("v_nom1")
+                or 0
+            )
+
             attrs = {
                 "type": EdgeType.TRAFO.value,
-                "primary_voltage": record["primary_voltage"],
-                "secondary_voltage": record["secondary_voltage"],
+                "primary_voltage": primary_v,
+                "secondary_voltage": secondary_v,
             }
+
+            # Handle optional reactance
+            if "x" in record and pd.notna(record["x"]):
+                attrs["x"] = record["x"]
+            else:
+                # Default small reactance for transformers if not provided
+                attrs["x"] = 0.001
 
             # Add all other columns as attributes
             for col, val in record.items():
