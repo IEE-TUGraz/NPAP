@@ -51,6 +51,7 @@ All strategies inherit from abstract base classes in `npap.interfaces`.
 from abc import ABC, abstractmethod
 import networkx as nx
 
+
 class DataLoadingStrategy(ABC):
     @abstractmethod
     def load(self, **kwargs) -> nx.DiGraph | nx.MultiDiGraph:
@@ -70,6 +71,7 @@ from npap.interfaces import DataLoadingStrategy
 import networkx as nx
 import json
 
+
 class JSONFileStrategy(DataLoadingStrategy):
     """Load network from a JSON file."""
 
@@ -79,6 +81,7 @@ class JSONFileStrategy(DataLoadingStrategy):
             return False
 
         import os
+
         return os.path.exists(kwargs["file_path"])
 
     def load(self, **kwargs) -> nx.DiGraph:
@@ -137,6 +140,7 @@ graph = manager.load_data("json_file", file_path="network.json")
 from abc import ABC, abstractmethod
 import networkx as nx
 
+
 class PartitioningStrategy(ABC):
     @property
     @abstractmethod
@@ -151,11 +155,7 @@ class PartitioningStrategy(ABC):
         pass
 
     @abstractmethod
-    def partition(
-        self,
-        graph: nx.DiGraph,
-        **kwargs
-    ) -> dict[int, list]:
+    def partition(self, graph: nx.DiGraph, **kwargs) -> dict[int, list]:
         """Partition the graph into clusters.
 
         Parameters
@@ -179,6 +179,7 @@ class PartitioningStrategy(ABC):
 from npap.interfaces import PartitioningStrategy
 import networkx as nx
 
+
 class DegreePartitioning(PartitioningStrategy):
     """Partition nodes based on their degree."""
 
@@ -187,12 +188,7 @@ class DegreePartitioning(PartitioningStrategy):
         # No special attributes required
         return {"nodes": [], "edges": []}
 
-    def partition(
-        self,
-        graph: nx.DiGraph,
-        n_clusters: int = 3,
-        **kwargs
-    ) -> dict[int, list]:
+    def partition(self, graph: nx.DiGraph, n_clusters: int = 3, **kwargs) -> dict[int, list]:
         """Partition by node degree into n_clusters groups.
 
         Parameters
@@ -247,6 +243,7 @@ NPAP provides a decorator for automatic attribute validation:
 from npap.interfaces import PartitioningStrategy
 from npap.utils import validate_required_attributes
 
+
 class MyPartitioning(PartitioningStrategy):
     @property
     def required_attributes(self) -> dict[str, list[str]]:
@@ -267,15 +264,11 @@ class MyPartitioning(PartitioningStrategy):
 from npap.interfaces import NodePropertyStrategy
 import networkx as nx
 
+
 class MedianNodeStrategy(NodePropertyStrategy):
     """Aggregate node properties using median."""
 
-    def aggregate_property(
-        self,
-        graph: nx.DiGraph,
-        nodes: list,
-        property_name: str
-    ):
+    def aggregate_property(self, graph: nx.DiGraph, nodes: list, property_name: str):
         """Compute median of property across nodes.
 
         Parameters
@@ -294,11 +287,7 @@ class MedianNodeStrategy(NodePropertyStrategy):
         """
         import numpy as np
 
-        values = [
-            graph.nodes[n][property_name]
-            for n in nodes
-            if property_name in graph.nodes[n]
-        ]
+        values = [graph.nodes[n][property_name] for n in nodes if property_name in graph.nodes[n]]
 
         if not values:
             return 0
@@ -311,14 +300,11 @@ class MedianNodeStrategy(NodePropertyStrategy):
 ```python
 from npap.interfaces import EdgePropertyStrategy
 
+
 class MaxEdgeStrategy(EdgePropertyStrategy):
     """Aggregate edge properties using maximum value."""
 
-    def aggregate_property(
-        self,
-        original_edges: list[dict[str, Any]],
-        property_name: str
-    ):
+    def aggregate_property(self, original_edges: list[dict[str, Any]], property_name: str):
         """Return maximum property value across edges.
 
         Parameters
@@ -333,11 +319,7 @@ class MaxEdgeStrategy(EdgePropertyStrategy):
         float
             Maximum value.
         """
-        values = [
-            edge[property_name]
-            for edge in original_edges
-            if property_name in edge
-        ]
+        values = [edge[property_name] for edge in original_edges if property_name in edge]
 
         if not values:
             return 0
@@ -365,7 +347,7 @@ profile = AggregationProfile(
     },
     edge_properties={
         "capacity": "max"  # Use our custom strategy
-    }
+    },
 )
 
 aggregated = manager.aggregate(profile=profile)
@@ -379,6 +361,7 @@ For custom network reduction approaches:
 from npap.interfaces import TopologyStrategy
 import networkx as nx
 
+
 class FullyConnectedTopology(TopologyStrategy):
     """Create fully connected aggregated network."""
 
@@ -387,11 +370,7 @@ class FullyConnectedTopology(TopologyStrategy):
         """This strategy creates edges that didn't exist."""
         return True
 
-    def create_topology(
-        self,
-        graph: nx.DiGraph,
-        partition_map: dict[int, list]
-    ) -> nx.DiGraph:
+    def create_topology(self, graph: nx.DiGraph, partition_map: dict[int, list]) -> nx.DiGraph:
         """Create fully connected topology.
 
         Parameters
@@ -458,13 +437,10 @@ def partition(self, graph, n_clusters=10, **kwargs):
 from typing import Any
 import networkx as nx
 
+
 def partition(
-    self,
-    graph: nx.DiGraph,
-    n_clusters: int = 10,
-    **kwargs: Any
-) -> dict[int, list[Any]]:
-    ...
+    self, graph: nx.DiGraph, n_clusters: int = 10, **kwargs: Any
+) -> dict[int, list[Any]]: ...
 ```
 
 ### 4. Document Your Strategy
@@ -497,22 +473,17 @@ class MyPartitioning(PartitioningStrategy):
 ```python
 from npap import PartitioningError, ValidationError
 
+
 class MyPartitioning(PartitioningStrategy):
     def partition(self, graph, n_clusters=10, **kwargs):
         if n_clusters < 1:
-            raise ValidationError(
-                "n_clusters must be positive",
-                strategy="my_partitioning"
-            )
+            raise ValidationError("n_clusters must be positive", strategy="my_partitioning")
 
         try:
             # Algorithm logic
             ...
         except Exception as e:
-            raise PartitioningError(
-                f"Partitioning failed: {e}",
-                strategy="my_partitioning"
-            )
+            raise PartitioningError(f"Partitioning failed: {e}", strategy="my_partitioning")
 ```
 
 ## Complete Example: LMP-Based Partitioning
@@ -524,6 +495,7 @@ from npap.interfaces import PartitioningStrategy
 from npap.utils import validate_required_attributes, create_partition_map
 import networkx as nx
 import numpy as np
+
 
 class LMPPartitioning(PartitioningStrategy):
     """Partition based on Locational Marginal Prices.
@@ -542,12 +514,7 @@ class LMPPartitioning(PartitioningStrategy):
         return {"nodes": ["lmp"], "edges": []}
 
     @validate_required_attributes
-    def partition(
-        self,
-        graph: nx.DiGraph,
-        n_clusters: int = 10,
-        **kwargs
-    ) -> dict[int, list]:
+    def partition(self, graph: nx.DiGraph, n_clusters: int = 10, **kwargs) -> dict[int, list]:
         """Partition by LMP using k-means.
 
         Parameters
@@ -565,10 +532,7 @@ class LMPPartitioning(PartitioningStrategy):
         from sklearn.cluster import KMeans
 
         nodes = list(graph.nodes())
-        lmps = np.array([
-            [graph.nodes[n]["lmp"]]
-            for n in nodes
-        ])
+        lmps = np.array([[graph.nodes[n]["lmp"]] for n in nodes])
 
         # Cluster by LMP
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
@@ -595,6 +559,7 @@ partition = manager.partition("lmp", n_clusters=10)
 import pytest
 import networkx as nx
 from my_strategies import MyPartitioning
+
 
 class TestMyPartitioning:
     def test_basic_partition(self):

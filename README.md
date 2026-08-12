@@ -62,25 +62,24 @@ manager = PartitionAggregatorManager()
 
 # 2. Load data (voltage-aware loader for power systems)
 manager.load_data(
-    strategy='va_loader',
+    strategy="va_loader",
     node_file="buses.csv",
     line_file="lines.csv",
     transformer_file="transformers.csv",
     converter_file="converters.csv",
-    link_file="dc_links.csv"
+    link_file="dc_links.csv",
 )
 
 # 3. Aggregate parallel edges (optional)
 manager.aggregate_parallel_edges(
-    edge_properties={"x": "equivalent_reactance", "type": "first"},
-    default_strategy="average"
+    edge_properties={"x": "equivalent_reactance", "type": "first"}, default_strategy="average"
 )
 
 # 4. Partition the network
 manager.partition(strategy="electrical_kmedoids", n_clusters=50)
 
 # 5. Visualize the partitioned network
-manager.plot_network(style='clustered', title='Partitioned Network')
+manager.plot_network(style="clustered", title="Partitioned Network")
 
 # 6. Aggregate with a custom profile
 profile = AggregationProfile(
@@ -89,12 +88,12 @@ profile = AggregationProfile(
     node_properties={"lat": "average", "lon": "average", "voltage": "average"},
     edge_properties={"p_max": "sum", "x": "equivalent_reactance"},
     default_node_strategy="average",
-    default_edge_strategy="average"
+    default_edge_strategy="average",
 )
 aggregated_network = manager.aggregate(profile=profile)
 
 # 7. Visualize the reduced network
-manager.plot_network(style='simple', title='Aggregated Network')
+manager.plot_network(style="simple", title="Aggregated Network")
 ```
 
 ## Contributing

@@ -154,12 +154,12 @@ NPAP provides a comprehensive exception hierarchy:
 
 ```python
 from npap import (
-    NPAPError,              # Base exception
-    DataLoadingError,       # Input/loading issues
-    PartitioningError,      # Partitioning failures
-    AggregationError,       # Aggregation issues
-    ValidationError,        # Input validation
-    GraphCompatibilityError # Partition/graph mismatch
+    NPAPError,  # Base exception
+    DataLoadingError,  # Input/loading issues
+    PartitioningError,  # Partitioning failures
+    AggregationError,  # Aggregation issues
+    ValidationError,  # Input validation
+    GraphCompatibilityError,  # Partition/graph mismatch
 )
 
 try:
@@ -183,6 +183,7 @@ configure_logging(level=logging.DEBUG)
 
 # Or disable all logging
 from npap.logging import disable_logging
+
 disable_logging()
 ```
 

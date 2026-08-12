@@ -17,10 +17,7 @@ Combines electrical distance (PTDF) with voltage level constraints.
 ## Basic Usage
 
 ```python
-partition = manager.partition(
-    "va_electrical_kmedoids",
-    n_clusters=20
-)
+partition = manager.partition("va_electrical_kmedoids", n_clusters=20)
 ```
 
 ## How It Works

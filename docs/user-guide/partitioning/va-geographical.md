@@ -22,10 +22,7 @@ Combines geographic distance with voltage level and AC island constraints.
 Nodes in different voltage levels or AC islands receive infinite distance:
 
 ```python
-partition = manager.partition(
-    "va_geographical_kmedoids_haversine",
-    n_clusters=20
-)
+partition = manager.partition("va_geographical_kmedoids_haversine", n_clusters=20)
 ```
 
 ## Proportional Mode
@@ -40,10 +37,7 @@ Distributes clusters proportionally among voltage/island groups:
 # - 10 clusters for 380 kV nodes
 # - 5 clusters for 220 kV nodes
 
-partition = manager.partition(
-    "va_geographical_proportional_kmedoids_haversine",
-    n_clusters=15
-)
+partition = manager.partition("va_geographical_proportional_kmedoids_haversine", n_clusters=15)
 ```
 
 ## Configuration
@@ -52,15 +46,11 @@ partition = manager.partition(
 from npap.partitioning import VAGeographicalConfig
 
 config = VAGeographicalConfig(
-    voltage_tolerance=1.0,        # kV tolerance for grouping
+    voltage_tolerance=1.0,  # kV tolerance for grouping
     infinite_distance=1e4,
     proportional_clustering=False,
-    hierarchical_linkage="complete"
+    hierarchical_linkage="complete",
 )
 
-partition = manager.partition(
-    "va_geographical_kmedoids_haversine",
-    n_clusters=20,
-    config=config
-)
+partition = manager.partition("va_geographical_kmedoids_haversine", n_clusters=20, config=config)
 ```

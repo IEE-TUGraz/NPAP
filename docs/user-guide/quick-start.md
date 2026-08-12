@@ -44,11 +44,11 @@ manager = npap.PartitionAggregatorManager()
 # The VA loader handles multi-voltage networks with transformers and DC links
 graph = manager.load_data(
     strategy="va_loader",
-    node_file="buses.csv",           # Bus/substation data
-    line_file="lines.csv",           # AC transmission lines
+    node_file="buses.csv",  # Bus/substation data
+    line_file="lines.csv",  # AC transmission lines
     transformer_file="transformers.csv",  # Transformers between voltage levels
-    converter_file="converters.csv", # AC/DC converters
-    link_file="dc_links.csv"         # HVDC links
+    converter_file="converters.csv",  # AC/DC converters
+    link_file="dc_links.csv",  # HVDC links
 )
 
 print(f"Loaded network: {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges")
@@ -63,10 +63,10 @@ if isinstance(graph, nx.MultiDiGraph):
         edge_properties={
             "x": "equivalent_reactance",  # Parallel reactance formula: 1/(1/x1 + 1/x2)
             "r": "equivalent_reactance",  # Same for resistance
-            "p_max": "sum",               # Sum the capacities
+            "p_max": "sum",  # Sum the capacities
         },
         default_strategy="average",
-        warn_on_defaults=False
+        warn_on_defaults=False,
     )
     print(f"After parallel edge aggregation: {manager.get_current_graph().number_of_edges()} edges")
 
@@ -75,10 +75,7 @@ if isinstance(graph, nx.MultiDiGraph):
 # =============================================================================
 
 # VA-geographical partitioning respects voltage levels and AC islands
-partition_result = manager.partition(
-    strategy="va_geographical_kmedoids_haversine",
-    n_clusters=50
-)
+partition_result = manager.partition(strategy="va_geographical_kmedoids_haversine", n_clusters=50)
 
 print(f"Created {partition_result.n_clusters} clusters")
 print(f"Strategy used: {partition_result.strategy_name}")
@@ -92,10 +89,7 @@ for cluster_id, nodes in list(partition_result.mapping.items())[:3]:
 # =============================================================================
 
 # Plot the network colored by cluster assignment
-manager.plot_network(
-    style="clustered",
-    title="Partitioned VA Network"
-)
+manager.plot_network(style="clustered", title="Partitioned VA Network")
 
 # =============================================================================
 # Step 6: Aggregate the Network
@@ -104,18 +98,16 @@ manager.plot_network(
 # Aggregate using the GEOGRAPHICAL mode (averages coordinates, sums loads)
 aggregated_graph = manager.aggregate(mode=AggregationMode.GEOGRAPHICAL)
 
-print(f"Aggregated network: {aggregated_graph.number_of_nodes()} nodes, "
-      f"{aggregated_graph.number_of_edges()} edges")
+print(
+    f"Aggregated network: {aggregated_graph.number_of_nodes()} nodes, "
+    f"{aggregated_graph.number_of_edges()} edges"
+)
 
 # =============================================================================
 # Step 7: Visualize Aggregated Network
 # =============================================================================
 
-manager.plot_network(
-    graph=aggregated_graph,
-    style="voltage_aware",
-    title="Aggregated Network"
-)
+manager.plot_network(graph=aggregated_graph, style="voltage_aware", title="Aggregated Network")
 ```
 
 ## Understanding the Data Files
@@ -207,20 +199,20 @@ from npap import AggregationProfile
 profile = AggregationProfile(
     topology_strategy="simple",
     node_properties={
-        "lat": "average",           # Geographic center
+        "lat": "average",  # Geographic center
         "lon": "average",
-        "p_load": "sum",            # Total load
+        "p_load": "sum",  # Total load
         "q_load": "sum",
-        "voltage": "average",       # Average voltage
+        "voltage": "average",  # Average voltage
     },
     edge_properties={
         "x": "equivalent_reactance",  # Parallel impedance formula
         "r": "equivalent_reactance",
-        "p_max": "sum",               # Total capacity
-        "length": "sum",              # Total length
+        "p_max": "sum",  # Total capacity
+        "length": "sum",  # Total length
     },
     default_node_strategy="sum",
-    default_edge_strategy="average"
+    default_edge_strategy="average",
 )
 
 aggregated = manager.aggregate(profile=profile)

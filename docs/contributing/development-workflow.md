@@ -59,6 +59,7 @@ import pytest
 import networkx as nx
 from npap import PartitionAggregatorManager
 
+
 class TestMyFeature:
     def test_basic_functionality(self):
         """Test the basic case."""
@@ -165,11 +166,8 @@ Use [type hints](https://docs.python.org/3/library/typing.html) throughout your 
 from typing import Any
 import networkx as nx
 
-def my_function(
-    graph: nx.DiGraph,
-    n_clusters: int = 10,
-    **kwargs: Any
-) -> dict[int, list[str]]:
+
+def my_function(graph: nx.DiGraph, n_clusters: int = 10, **kwargs: Any) -> dict[int, list[str]]:
     """Function with type hints."""
     ...
 ```
