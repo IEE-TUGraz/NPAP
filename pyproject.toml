@@ -44,7 +44,7 @@ Changelog = "https://github.com/IEE-TUGraz/NPAP/releases"
 
 [project.optional-dependencies]
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
-dev = ["pre-commit>=3.0", "ruff>=0.8.0"]
+dev = ["pre-commit>=3.0", "ruff==0.16.2"]
 docs = [
     "sphinx>=7.0",
     "pydata-sphinx-theme==0.15.4",
