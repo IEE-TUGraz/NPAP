@@ -327,12 +327,12 @@ class AggregationManager:
             )
         else:
             self._aggregate_edge_properties(
-                graph,
-                partition_map,
-                aggregated,
-                profile,
-                physical_modified_properties,
-                cluster_edge_map,
+                graph=graph,
+                partition_map=partition_map,
+                aggregated=aggregated,
+                profile=profile,
+                skip_properties=physical_modified_properties,
+                cluster_edge_map=cluster_edge_map,
             )
 
         log_info(
@@ -531,6 +531,7 @@ class AggregationManager:
 
     @staticmethod
     def _resolve_property_strategies(
+        *,
         properties: set[str],
         user_specified: dict[str, str],
         available_strategies: dict[str, Any],
@@ -628,6 +629,7 @@ class AggregationManager:
 
     def _aggregate_edge_properties(
         self,
+        *,
         graph: nx.DiGraph,
         partition_map: dict[int, list[Any]],
         aggregated: nx.DiGraph,
