@@ -14,7 +14,7 @@ from npap.interfaces import (
     TopologyStrategy,
 )
 from npap.logging import LogCategory, log_debug, log_info, log_warning
-from npap.partitioning import VAElectricalDistancePartitioning
+from npap.partitioning import LMPPartitioning, VAElectricalDistancePartitioning
 
 
 class InputDataManager:
@@ -155,6 +155,9 @@ class PartitioningManager:
         self._strategies["va_electrical_hierarchical"] = VAElectricalDistancePartitioning(
             algorithm="hierarchical"
         )
+
+        # Locational Marginal Price partitioning strategies
+        self._strategies["lmp_hierarchical_connected"] = LMPPartitioning(algorithm="hierarchical")
 
         log_debug("Registered default partitioning strategies", LogCategory.MANAGER)
 

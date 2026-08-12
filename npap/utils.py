@@ -413,7 +413,11 @@ def run_kmedoids(distance_matrix: np.ndarray, n_clusters: int) -> np.ndarray:
 
 
 def run_hierarchical(
-    distance_matrix: np.ndarray, n_clusters: int, linkage: str = "complete"
+    distance_matrix: np.ndarray,
+    n_clusters: int | None = None,
+    linkage: str = "complete",
+    connectivity: Any | None = None,
+    distance_threshold: float | None = None,
 ) -> np.ndarray:
     """
     Perform hierarchical (agglomerative) clustering with precomputed distance matrix.
@@ -424,11 +428,17 @@ def run_hierarchical(
     ----------
     distance_matrix : np.ndarray
         Precomputed distance matrix (n x n).
-    n_clusters : int
-        Number of clusters to form.
+    n_clusters : int, optional
+        Number of clusters to form. Must be specified if distance_threshold is None.
     linkage : str, default='complete'
         Linkage criterion ('complete', 'average', 'single').
         Note: 'ward' is NOT supported with precomputed distances.
+    connectivity : array-like or callable, optional
+        Connectivity matrix. Defines for each sample the neighboring samples
+        which can be merged together into a single cluster.
+    distance_threshold : float, optional
+        The linkage distance threshold above which clusters will not be merged.
+        If specified, n_clusters must be None.
 
     Returns
     -------
@@ -438,7 +448,7 @@ def run_hierarchical(
     Raises
     ------
     PartitioningError
-        If clustering fails or invalid linkage specified.
+        If clustering fails or invalid parameters specified.
     """
     from sklearn.cluster import AgglomerativeClustering
 
@@ -452,14 +462,30 @@ def run_hierarchical(
             "Note: 'ward' requires Euclidean distance on raw features."
         )
 
-    if n_clusters is None or n_clusters <= 0:
+    if n_clusters is None and distance_threshold is None:
+        raise PartitioningError(
+            "Hierarchical clustering requires either 'n_clusters' or 'distance_threshold'."
+        )
+    if n_clusters is not None and distance_threshold is not None:
+        raise PartitioningError(
+            "Cannot specify both 'n_clusters' and 'distance_threshold' for hierarchical clustering."
+        )
+    if n_clusters is not None and n_clusters <= 0:
         raise PartitioningError(
             "Hierarchical clustering requires a positive 'n_clusters' parameter."
+        )
+    if distance_threshold is not None and distance_threshold < 0:
+        raise PartitioningError(
+            "Hierarchical clustering requires a non-negative 'distance_threshold' parameter."
         )
 
     try:
         clustering = AgglomerativeClustering(
-            n_clusters=n_clusters, metric="precomputed", linkage=linkage
+            n_clusters=n_clusters,
+            distance_threshold=distance_threshold,
+            metric="precomputed",
+            linkage=linkage,
+            connectivity=connectivity,
         )
         return clustering.fit_predict(distance_matrix)
 

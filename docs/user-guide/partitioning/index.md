@@ -4,12 +4,13 @@ Partitioning divides a network into clusters of nodes based on distance metrics.
 
 ## Overview
 
-| Strategy Family | Distance Metric            | Use Case                                  |
-|-----------------|----------------------------|-------------------------------------------|
-| Geographical | Euclidean / Haversine      | Spatial proximity clustering              |
-| Electrical | PTDF-based                 | Electrical behavior clustering            |
-| VA Geographical | Geographical + Voltage aware | Multi-voltage-level networks              |
-| VA Electrical | PTDF + Voltage aware       | Multi-voltage-level electrical clustering |
+| Strategy Family                  | Distance Metric                   | Use Case                                  |
+|----------------------------------|-----------------------------------|-------------------------------------------|
+| Geographical                     | Euclidean / Haversine             | Spatial proximity clustering              |
+| Electrical                       | PTDF-based                        | Electrical behavior clustering            |
+| VA Geographical                  | Geographical + Voltage aware      | Multi-voltage-level networks              |
+| VA Electrical                    | PTDF + Voltage aware              | Multi-voltage-level electrical clustering |
+| Locational Marginal Prices (LMP) | Duals of nodal balance constraint | Congestion sensitive clustering           |
 
 ## Basic Usage
 
@@ -44,6 +45,7 @@ print(partition_result.strategy_name)
 
 geographical
 electrical
+locational_marginal_price
 va-geographical
 va-electrical
 ```
@@ -111,13 +113,14 @@ flowchart TD
 
 ### Recommendations by Use Case
 
-| Use Case                     | Recommended Strategy |
-|------------------------------|---------------------|
-| Geographical clustering      | `geographical_kmeans` |
-| Geographical with AC islands | `geographical_kmedoids_haversine` |
-| Electrical behavior grouping | `electrical_kmedoids` |
-| Multi-voltage network        | `va_geographical_kmedoids_haversine` |
-| Unknown cluster count        | `geographical_dbscan_*` or `geographical_hdbscan_*` |
+| Use Case                        | Recommended Strategy                                |
+|---------------------------------|-----------------------------------------------------|
+| Geographical clustering         | `geographical_kmeans`                               |
+| Geographical with AC islands    | `geographical_kmedoids_haversine`                   |
+| Electrical behavior grouping    | `electrical_kmedoids`                               |
+| Multi-voltage network           | `va_geographical_kmedoids_haversine`                |
+| Unknown cluster count           | `geographical_dbscan_*` or `geographical_hdbscan_*` |
+| Identification of Bidding Zones | `lmp_hierarchical_connected`                     |
 
 ### Performance Comparison
 

@@ -142,11 +142,12 @@ G = nx.MultiDiGraph()
 
 Different strategies require specific node and edge attributes:
 
-| Strategy Type | Node Attributes | Edge Attributes |
-|---------------|-----------------|-----------------|
-| Geographical | `lat`, `lon` | — |
-| Electrical | `ac_island` | `x` (reactance) |
-| Voltage-Aware | `lat`, `lon`, `voltage`, `ac_island` | `x`, `type` |
+| Strategy Type             | Node Attributes | Edge Attributes |
+|---------------------------|-----------------|-----------------|
+| Geographical              | `lat`, `lon` | — |
+| Electrical                | `ac_island` | `x` (reactance) |
+| Voltage-Aware             | `lat`, `lon`, `voltage`, `ac_island` | `x`, `type` |
+| Locational Marginal Price | `lmp` | — |
 
 ## Error Handling
 
