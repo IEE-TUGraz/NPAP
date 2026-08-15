@@ -193,7 +193,7 @@ nb_execution_mode = "off"
 # Notebooks live in examples/ so they stay runnable next to the repository.
 # They are copied into the docs tree at build time; see _copy_example_notebooks.
 EXAMPLES_SOURCE = Path(__file__).parent.parent / "examples"
-EXAMPLES_TARGET = Path(__file__).parent / "user-guide" / "examples"
+EXAMPLES_TARGET = Path(__file__).parent / "user-guide"
 
 
 def _copy_example_notebooks(app=None):

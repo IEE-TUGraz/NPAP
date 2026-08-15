@@ -111,15 +111,15 @@ You can read them two ways:
 :hidden:
 :maxdepth: 1
 
-examples/getting_started
-examples/european_network_pypsa
+getting_started
+european_network_pypsa
 ```
 
 ::::{grid} 1 2 2 2
 :gutter: 3
 
 :::{grid-item-card} Getting Started
-:link: examples/getting_started
+:link: getting_started
 :link-type: doc
 
 The whole pipeline in ten minutes, first on a plain graph and then with the
@@ -127,7 +127,7 @@ power-systems features enabled, so the difference between the two is immediate.
 :::
 
 :::{grid-item-card} European High-Voltage Network
-:link: examples/european_network_pypsa
+:link: european_network_pypsa
 :link-type: doc
 
 A deeper walkthrough of the same grid: voltage-level harmonisation, AC-island

@@ -30,7 +30,8 @@ docs/_build/
 docs/api/generated/
 
 # Example notebooks copied into the docs tree at build time
-docs/user-guide/examples/
+docs/user-guide/*.ipynb
+docs/user-guide/figures/
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
