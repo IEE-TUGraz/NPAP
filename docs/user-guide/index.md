@@ -175,15 +175,14 @@ except NPAPError as e:
 Configure logging to monitor NPAP operations:
 
 ```python
-from npap.logging import configure_logging, LogCategory
 import logging
+
+from npap import configure_logging, disable_logging
 
 # Enable debug logging
 configure_logging(level=logging.DEBUG)
 
 # Or disable all logging
-from npap.logging import disable_logging
-
 disable_logging()
 ```
 

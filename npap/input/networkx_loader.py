@@ -1,8 +1,8 @@
 import networkx as nx
 
+from npap._logging import LogCategory, log_debug, log_info, log_warning
 from npap.exceptions import DataLoadingError
 from npap.interfaces import DataLoadingStrategy
-from npap.logging import LogCategory, log_debug, log_info, log_warning
 
 
 class NetworkXDirectStrategy(DataLoadingStrategy):

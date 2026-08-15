@@ -29,12 +29,28 @@ Examples
 
 __author__ = "Marco Anarmo"
 
+import sys as _sys
 from importlib.metadata import PackageNotFoundError, version
 
 try:
     __version__ = version("npap")
 except PackageNotFoundError:
     __version__ = "unknown"
+
+# Logging helpers.
+#
+# The implementation module is named `_logging` rather than `logging`: a file
+# called `logging.py` inside the package shadows the standard library module
+# for any process whose working directory is the package directory, which
+# breaks `venv`, `pip` and anything else that imports stdlib logging.
+from npap import _logging as _logging_module
+from npap._logging import (
+    LogCategory,
+    configure_logging,
+    disable_logging,
+    enable_logging,
+    get_logger,
+)
 
 # Core components
 # Aggregation mode helper
@@ -54,6 +70,10 @@ from npap.exceptions import (
 from npap.interfaces import AggregationMode, AggregationProfile, PartitionResult
 from npap.managers import PartitionAggregatorManager
 
+# Backwards-compatible alias so that `from npap.logging import ...` keeps
+# working even though no `logging.py` file exists on disk anymore.
+_sys.modules.setdefault(__name__ + ".logging", _logging_module)
+
 # Main interface
 __all__ = [
     "AggregationError",
@@ -62,12 +82,17 @@ __all__ = [
     "DataLoadingError",
     "ElectricalCalculationError",
     "GraphCompatibilityError",
+    "LogCategory",
     "NPAPError",
     "PartitionAggregatorManager",
     "PartitionResult",
     "PartitioningError",
     "StrategyNotFoundError",
     "ValidationError",
+    "configure_logging",
+    "disable_logging",
+    "enable_logging",
+    "get_logger",
     "get_mode_profile",
 ]
 

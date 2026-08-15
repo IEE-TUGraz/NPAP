@@ -2,6 +2,7 @@ from typing import Any
 
 import networkx as nx
 
+from npap._logging import LogCategory, log_debug, log_info, log_warning
 from npap.interfaces import (
     AggregationMode,
     AggregationProfile,
@@ -13,7 +14,6 @@ from npap.interfaces import (
     PhysicalAggregationStrategy,
     TopologyStrategy,
 )
-from npap.logging import LogCategory, log_debug, log_info, log_warning
 from npap.partitioning import VAElectricalDistancePartitioning
 
 

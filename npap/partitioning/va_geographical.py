@@ -4,9 +4,9 @@ from typing import Any
 import networkx as nx
 import numpy as np
 
+from npap._logging import LogCategory, log_debug, log_info, log_warning
 from npap.exceptions import PartitioningError, ValidationError
 from npap.interfaces import PartitioningStrategy
-from npap.logging import LogCategory, log_debug, log_info, log_warning
 from npap.utils import (
     compute_geographical_distances,
     create_partition_map,

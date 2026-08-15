@@ -5,9 +5,9 @@ from typing import Any
 import networkx as nx
 import numpy as np
 
+from npap._logging import LogCategory, log_debug, log_warning
 from npap.exceptions import AggregationError
 from npap.interfaces import EdgePropertyStrategy, NodePropertyStrategy, TopologyStrategy
-from npap.logging import LogCategory, log_debug, log_warning
 
 # ============================================================================
 # PRECOMPUTATION UTILITIES - Build mappings for fast lookups
