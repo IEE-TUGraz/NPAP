@@ -129,6 +129,12 @@ rather than the "what" — the code shows what changed.
 
 ## Reporting Bugs
 
+Bugs, questions and feature requests all go through GitHub Issues:
+**[open a new issue](https://github.com/IEE-TUGraz/NPAP/issues/new/choose)** and
+pick the matching template. Please
+[search the existing issues](https://github.com/IEE-TUGraz/NPAP/issues) first, in
+case it has already been reported.
+
 When reporting bugs, please include:
 
 | Information | How to Get It |
@@ -142,7 +148,9 @@ When reporting bugs, please include:
 
 ## Suggesting Features
 
-Feature requests are welcome! When suggesting a feature:
+Feature requests are welcome — open one with the
+[feature request template](https://github.com/IEE-TUGraz/NPAP/issues/new/choose).
+When suggesting a feature:
 
 - Explain the **problem** you're trying to solve
 - Describe your **proposed solution**

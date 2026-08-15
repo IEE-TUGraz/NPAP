@@ -2,6 +2,14 @@
 
 Help us improve NPAP by reporting bugs and suggesting features.
 
+:::{admonition} Open an issue
+:class: tip
+
+Bugs, questions and feature requests all go to
+**[github.com/IEE-TUGraz/NPAP/issues/new/choose](https://github.com/IEE-TUGraz/NPAP/issues/new/choose)**,
+where a template picker will guide you to the right form.
+:::
+
 ## Reporting Bugs
 
 ### Before Reporting
@@ -66,7 +74,7 @@ Paste full error traceback here
 
 ### Where to Report
 
-Open an issue at: [https://github.com/IEE-TUGraz/NPAP/issues/new](https://github.com/IEE-TUGraz/NPAP/issues/new)
+Open an issue at: [https://github.com/IEE-TUGraz/NPAP/issues/new/choose](https://github.com/IEE-TUGraz/NPAP/issues/new/choose)
 
 ## Suggesting Features
 

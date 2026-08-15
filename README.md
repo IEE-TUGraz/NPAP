@@ -101,7 +101,15 @@ manager.plot_network(style="simple", title="Aggregated Network")
 We warmly welcome contributions from everyone! Whether it's fixing a typo, improving documentation, reporting bugs, or implementing new features —
 every contribution matters.
 
-Please read our [Contributing Guide](CONTRIBUTING.md) to get started, or visit the full [Contributing Documentation](https://npap.readthedocs.io/en/latest/contributing.html) for detailed guidelines. Don't hesitate to open an issue if you have questions or ideas!
+Please read our [Contributing Guide](CONTRIBUTING.md) to get started, or visit the full [Contributing Documentation](https://npap.readthedocs.io/en/latest/contributing.html) for detailed guidelines.
+
+## Reporting Issues and Asking Questions
+
+Found a bug, want to request a feature, or have a question about using NPAP?
+**[Open an issue](https://github.com/IEE-TUGraz/NPAP/issues/new/choose)** — the
+template picker will guide you to the right form. Please
+[search the existing issues](https://github.com/IEE-TUGraz/NPAP/issues) first, in
+case it has already been reported.
 
 ## License
 
