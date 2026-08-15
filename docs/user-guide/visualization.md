@@ -239,17 +239,13 @@ manager.load_data("csv_files", node_file="...", edge_file="...")
 partition = manager.partition("geographical_kmeans", n_clusters=20)
 
 # Plot original with clusters
-fig_original = manager.plot_network(
-    style="clustered", title="Original Network (Clustered)"
-)
+fig_original = manager.plot_network(style="clustered", title="Original Network (Clustered)")
 
 # Aggregate
 aggregated = manager.aggregate(mode=AggregationMode.GEOGRAPHICAL)
 
 # Plot aggregated
-fig_aggregated = manager.plot_network(
-    graph=aggregated, style="simple", title="Aggregated Network"
-)
+fig_aggregated = manager.plot_network(graph=aggregated, style="simple", title="Aggregated Network")
 
 # Display side by side (in Jupyter)
 from plotly.subplots import make_subplots
@@ -365,9 +361,7 @@ manager.plot_network(style="voltage_aware", config=config)
 for n_clusters in [5, 10, 20, 50]:
     partition = manager.partition("geographical_kmeans", n_clusters=n_clusters)
 
-    fig = manager.plot_network(
-        style="clustered", title=f"Partitioning with {n_clusters} Clusters"
-    )
+    fig = manager.plot_network(style="clustered", title=f"Partitioning with {n_clusters} Clusters")
 
     fig.write_html(f"partition_{n_clusters}.html")
 ```
