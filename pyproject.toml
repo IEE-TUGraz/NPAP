@@ -10,7 +10,12 @@ name = "npap"
 dynamic = ["version"]
 description = "Network Partitioning & Aggregation Package"
 readme = "README.md"
-authors = [{ name = "Marco Anarmo" }]
+authors = [
+    { name = "Marco Anarmo" },
+    { name = "Benjamin Stöckl" },
+    { name = "Yannick Werner" },
+    { name = "Sonja Wogrin" },
+]
 license = { file = "LICENSE" }
 classifiers = [
     "License :: OSI Approved :: MIT License",
@@ -47,6 +52,9 @@ Changelog = "https://github.com/IEE-TUGraz/NPAP/releases"
 [project.optional-dependencies]
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
 dev = ["pre-commit>=3.0", "ruff==0.16.2"]
+# Single source of truth for the documentation toolchain: Read the Docs
+# installs this extra directly (see .readthedocs.yaml), so a local build
+# reproduces the published one.
 docs = [
     "sphinx>=8.2",
     "pydata-sphinx-theme==0.15.4",
