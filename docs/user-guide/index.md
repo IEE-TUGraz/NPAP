@@ -7,6 +7,7 @@
 
 installation
 quick-start
+examples
 available-strategies
 ```
 
@@ -47,6 +48,13 @@ Install NPAP from PyPI or source, including development dependencies.
 :link-type: doc
 
 Complete workflow example using a voltage-aware power network.
+:::
+
+:::{grid-item-card} Examples
+:link: examples
+:link-type: doc
+
+Runnable notebooks taking a real European power grid through the full pipeline.
 :::
 
 :::{grid-item-card} Available Strategies

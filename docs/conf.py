@@ -4,7 +4,9 @@
 """Sphinx configuration for NPAP documentation."""
 
 import os
+import shutil
 import sys
+from pathlib import Path
 
 # Add package to path for autodoc
 sys.path.insert(0, os.path.abspath(".."))
@@ -36,7 +38,9 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_copybutton",
     "sphinx_design",
-    "myst_parser",
+    # myst_nb supersedes myst_parser: it provides the same MyST Markdown
+    # support plus rendering of Jupyter notebooks.
+    "myst_nb",
     "numpydoc",
     "sphinxcontrib.mermaid",
     "sphinx_reredirects",
@@ -51,10 +55,12 @@ redirects = {
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "diagram_prompts/**"]
 
-# Source file suffixes
+# Source file suffixes.
+# ".md" and ".ipynb" are both handled by myst_nb, which registers them itself.
 source_suffix = {
     ".rst": "restructuredtext",
-    ".md": "markdown",
+    ".md": "myst-nb",
+    ".ipynb": "myst-nb",
 }
 
 # The master toctree document
@@ -175,6 +181,54 @@ myst_enable_extensions = [
 ]
 myst_heading_anchors = 3
 myst_dmath_double_inline = True  # Allow $$ for display math
+
+# -- MyST-NB (notebook rendering) --------------------------------------------
+
+# Notebooks are rendered from their stored outputs and never executed during
+# the build. Executing them would require downloading the PyPSA-Eur dataset and
+# running the full clustering pipeline on every documentation build.
+# Re-run the notebooks locally and commit the outputs when the API changes.
+nb_execution_mode = "off"
+
+# Notebooks live in examples/ so they stay runnable next to the repository.
+# They are copied into the docs tree at build time; see _copy_example_notebooks.
+EXAMPLES_SOURCE = Path(__file__).parent.parent / "examples"
+EXAMPLES_TARGET = Path(__file__).parent / "user-guide" / "examples"
+
+
+def _copy_example_notebooks(app=None):
+    """
+    Copy the example notebooks and their assets into the documentation tree.
+
+    Parameters
+    ----------
+    app : sphinx.application.Sphinx, optional
+        Unused; present so this can be used as a `builder-inited` handler.
+    """
+    if not EXAMPLES_SOURCE.is_dir():
+        return
+
+    EXAMPLES_TARGET.mkdir(parents=True, exist_ok=True)
+    for notebook in sorted(EXAMPLES_SOURCE.glob("*.ipynb")):
+        shutil.copy2(notebook, EXAMPLES_TARGET / notebook.name)
+
+    # Images referenced from the notebooks, resolved relative to them
+    figures = EXAMPLES_SOURCE / "figures"
+    if figures.is_dir():
+        shutil.copytree(figures, EXAMPLES_TARGET / "figures", dirs_exist_ok=True)
+
+
+def setup(app):
+    """
+    Register Sphinx hooks.
+
+    Parameters
+    ----------
+    app : sphinx.application.Sphinx
+        The Sphinx application.
+    """
+    app.connect("builder-inited", _copy_example_notebooks)
+
 
 # Intersphinx mapping
 intersphinx_mapping = {

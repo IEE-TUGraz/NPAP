@@ -51,7 +51,9 @@ Changelog = "https://github.com/IEE-TUGraz/NPAP/releases"
 
 [project.optional-dependencies]
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
-dev = ["pre-commit>=3.0", "ruff==0.16.2"]
+# nbconvert is only needed to regenerate the stored outputs of the example
+# notebooks; building the documentation never executes them.
+dev = ["pre-commit>=3.0", "ruff==0.16.2", "nbconvert>=7.0", "ipykernel>=6.0"]
 # Single source of truth for the documentation toolchain: Read the Docs
 # installs this extra directly (see .readthedocs.yaml), so a local build
 # reproduces the published one.
@@ -59,7 +61,7 @@ docs = [
     "sphinx>=8.2",
     "pydata-sphinx-theme==0.15.4",
     "sphinx-design>=0.6.1",
-    "myst-parser>=4.0",
+    "myst-nb>=1.2",
     "sphinx-autodoc-typehints>=3.5",
     "sphinx-copybutton>=0.5.2",
     "numpydoc>=1.10",

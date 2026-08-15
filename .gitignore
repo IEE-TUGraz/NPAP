@@ -29,6 +29,9 @@ docs/_build/
 # Auto-generated API documentation
 docs/api/generated/
 
+# Example notebooks copied into the docs tree at build time
+docs/user-guide/examples/
+
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 examples/ipynb_checkpoints/
