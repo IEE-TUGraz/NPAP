@@ -13,6 +13,9 @@ sphinx:
 
 python:
   install:
-    - requirements: docs/requirements.txt
+    # The docs toolchain lives in the [docs] extra of pyproject.toml, so this
+    # build and a local `pip install -e ".[docs]"` resolve identically.
     - method: pip
       path: .
+      extra_requirements:
+        - docs
