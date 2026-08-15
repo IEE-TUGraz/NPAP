@@ -46,8 +46,8 @@ We value **every type of contribution**, not just code!
 ### 1. Fork and Clone
 
 ```bash
-git clone https://github.com/IEE-TUGraz/npap.git
-cd npap
+git clone https://github.com/IEE-TUGraz/NPAP.git
+cd NPAP
 ```
 
 ### 2. Set Up Development Environment
