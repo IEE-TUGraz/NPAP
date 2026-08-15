@@ -11,6 +11,7 @@ This section contains the complete API reference for NPAP.
    partitioning
    aggregation
    visualization
+   datasets
    exceptions
 
 Core Module
