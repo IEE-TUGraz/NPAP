@@ -158,6 +158,31 @@ def partition(self, strategy: str, n_clusters: int, **kwargs) -> PartitionResult
     """
 ```
 
+### Regenerating the example notebooks
+
+The notebooks in `examples/` are rendered in the documentation from their
+**stored outputs** — the build never executes them, so it stays fast and needs
+no network access. After changing anything they exercise, re-run them and commit
+the result:
+
+```bash
+pip install -e ".[dev,docs]"
+
+PLOTLY_RENDERER=notebook_connected jupyter nbconvert \
+    --to notebook --execute --inplace \
+    --ExecutePreprocessor.timeout=1800 \
+    examples/getting_started.ipynb examples/european_network_pypsa.ipynb
+```
+
+Two details matter here:
+
+- **`PLOTLY_RENDERER=notebook_connected` is not optional.** Without it Plotly
+  stores only its own `application/vnd.plotly.v1+json` mime type, which the
+  documentation builder skips. The notebooks still look fine in Jupyter, but
+  every map silently disappears from the rendered pages.
+- **The default cell timeout is 30 seconds**, far below what clustering 6,800
+  buses takes, hence `--ExecutePreprocessor.timeout=1800`.
+
 ## Type Hints
 
 Use [type hints](https://docs.python.org/3/library/typing.html) throughout your code:

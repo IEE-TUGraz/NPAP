@@ -13,22 +13,27 @@ by hand is tedious and easy to get wrong: reactances do not average, capacities
 do not, and merging buses across a DC link or across voltage levels produces a
 grid that no longer means anything physically.
 
-NPAP does this reduction for you, and lets you choose how much detail to keep:
+NPAP does this reduction for you, and lets you choose how much detail to keep.
+Running the same pipeline on the real European grid at two settings gives:
 
-| Clusters | Buses | Edges | Reduction |
-|---------:|------:|------:|-----------|
-| 6,863 (original) | 6,863 | 8,065 | — |
-| 200 | 200 | 567 | to 2.9% of buses |
-| 50 | 50 | 153 | to 0.7% of buses |
+| `n_clusters` | Buses | Edges | Smallest cluster | Largest cluster |
+|-------------:|------:|------:|-----------------:|----------------:|
+| — (original) | 6,863 | 8,065 | — | — |
+| 200 | 200 | 567 | 5 | 190 |
+| 50 | 50 | 153 | 34 | 310 |
 
-The rest of this page walks through producing exactly that, on the real network,
-in about twenty lines of code.
+Fewer clusters means a smaller model but coarser geography, and the spread
+between the smallest and largest group widens.
 
-## Getting the data
+## Installing
 
-Every example in this documentation runs on the same network: the prebuilt
+```bash
+pip install npap
+```
+
+Every example in this documentation runs on the same network — the prebuilt
 PyPSA-Eur grid derived from OpenStreetMap. NPAP downloads and caches it for you,
-so there is nothing to prepare by hand.
+so there is nothing to prepare by hand:
 
 ```python
 from npap.datasets import fetch_pypsa_eur
@@ -38,193 +43,124 @@ files = fetch_pypsa_eur()
 
 The first call downloads about 20 MB from Zenodo and leaves roughly 2.7 MB in a
 local cache; later calls return immediately. See
-{doc}`the datasets API <../api/datasets>` for where that cache lives.
+{doc}`the datasets API <../api/datasets>` for where that cache lives and how to
+clear it.
 
-## Loading the network
+## A complete example
 
-`PartitionAggregatorManager` is the single entry point for the whole workflow.
-The `csv_files` strategy needs only a node file and an edge file, and treats
-every edge alike — a good starting point when you do not need the full grid
-topology.
+This runs as-is and takes about a minute. It reduces the European grid from
+6,863 buses to 50: load the network, collapse the double-circuit lines, cluster
+geographically, then aggregate each cluster into a single representative bus.
 
 ```python
 import npap
+from npap import AggregationProfile
+from npap.datasets import fetch_pypsa_eur
+
+files = fetch_pypsa_eur()
 
 manager = npap.PartitionAggregatorManager()
 
-graph = manager.load_data(
+manager.load_data(
     strategy="csv_files",
     node_file=str(files["buses.csv"]),
     edge_file=str(files["lines.csv"]),
 )
-```
 
-This loads 6,863 buses and 9,162 lines. NPAP warns that it returned a
-`MultiDiGraph` rather than a `DiGraph`, because the dataset contains
-double-circuit lines: two separate lines between the same pair of buses.
-
-## Collapsing parallel edges
-
-Partitioning strategies operate on simple graphs, so those parallel lines have
-to be merged first. This is the first place where the physics matters, and where
-NPAP asks you to be explicit: two parallel lines carry the *sum* of their
-capacities but the *equivalent* of their reactances, not the average.
-
-```python
-graph = manager.aggregate_parallel_edges(
-    edge_properties={
-        "x": "equivalent_reactance",
-        "r": "equivalent_reactance",
-        "s_nom": "sum",
-        "length": "average",
-    },
+manager.aggregate_parallel_edges(
+    edge_properties={"x": "equivalent_reactance", "s_nom": "sum"},
     default_strategy="average",
 )
-```
 
-That collapses 1,097 parallel edges, leaving 8,065.
-
-## Partitioning
-
-Partitioning assigns every bus to a cluster without yet modifying the graph.
-Here we use geographical k-medoids with Haversine distance, which keeps clusters
-geographically compact and measures distance on the sphere rather than on a flat
-projection.
-
-```python
-partition = manager.partition(
-    strategy="geographical_kmedoids_haversine",
-    n_clusters=50,
-)
-```
-
-The result carries the mapping and its metadata, so you can inspect the outcome
-before committing to it:
-
-```python
-import pandas as pd
-
-sizes = pd.Series({k: len(v) for k, v in partition.mapping.items()})
-print(f"{partition.n_clusters} clusters, sizes {sizes.min()}–{sizes.max()}")
-```
-
-With 50 clusters the groups range from 34 to 310 buses, averaging 137.
-
-## Aggregating
-
-Aggregation builds the reduced graph. An `AggregationProfile` states what should
-happen to every property: coordinates get averaged so the representative bus
-sits at the centre of its cluster, capacities are summed, and reactances use the
-parallel-impedance formula.
-
-```python
-from npap import AggregationProfile
+manager.partition(strategy="geographical_kmedoids_haversine", n_clusters=50)
 
 profile = AggregationProfile(
     topology_strategy="simple",
     node_properties={"lat": "average", "lon": "average", "voltage": "first"},
-    edge_properties={
-        "x": "equivalent_reactance",
-        "r": "equivalent_reactance",
-        "s_nom": "sum",
-        "length": "average",
-    },
+    edge_properties={"x": "equivalent_reactance", "s_nom": "sum"},
     default_node_strategy="average",
     default_edge_strategy="average",
 )
-
 reduced = manager.aggregate(profile=profile)
-```
 
-The network is now 50 buses and 153 lines — 0.7% of the buses and 1.9% of the
-edges you started with.
-
-## Visualising
-
-Every plotting call returns a Plotly figure. Run as a script it also writes a
-standalone HTML file next to you; inside a notebook it renders inline.
-
-```python
-manager.plot_network(style="clustered", title="50 clusters")
 manager.plot_network(graph=reduced, style="simple", title="Reduced network")
 ```
 
-Pass `renderer="browser"` to open the interactive map directly from an IDE. See
-{doc}`visualization` for styling options.
+The result is a 50-bus, 153-line network — 0.7% of the buses you started with.
+Run as a script, the last line also writes a standalone HTML map next to you;
+inside a notebook it renders inline. Pass `renderer="browser"` to open it
+directly from an IDE.
 
-## Choosing how much to reduce
+## Going further: the example notebooks
 
-`n_clusters` is the main lever, and its effect is easy to quantify. Running the
-same pipeline at two settings on this network gives:
+The example above is deliberately minimal. **Everything else — choosing between
+geographical and electrical distance, harmonising voltage levels, handling AC
+islands and DC links, and applying the physically correct aggregation strategy
+per edge type — is covered step by step in the two example notebooks.**
 
-| `n_clusters` | Buses | Edges | Smallest cluster | Largest cluster |
-|-------------:|------:|------:|-----------------:|----------------:|
-| 200 | 200 | 567 | 5 | 190 |
-| 50 | 50 | 153 | 34 | 310 |
+You can read them two ways:
 
-Fewer clusters means a smaller model but coarser geography, and the spread
-between the smallest and largest cluster widens — with 50 clusters one group
-holds 310 buses while another holds 34. If that imbalance matters for your
-application, the voltage-aware strategies offer a proportional mode that
-distributes clusters across voltage levels instead.
+- **Here in the documentation.** The pages linked below are the notebooks
+  rendered from their stored outputs, interactive maps included. Nothing to
+  install, nothing to run.
+- **On your own machine.** The notebooks live in the
+  [`examples/`](https://github.com/IEE-TUGraz/NPAP/tree/main/examples) directory
+  of the repository and are meant to be executed and modified.
 
-The other lever is the strategy itself. Geographical strategies cluster on
-distance; electrical ones cluster on impedance, so buses that are far apart but
-electrically close end up together. {doc}`available-strategies` lists all of
-them.
+```{toctree}
+:hidden:
+:maxdepth: 1
 
-## Power systems: the voltage-aware workflow
-
-The workflow above treats every edge alike. Real grids have transformers and DC
-links, and merging buses across them is physically wrong. The `va_loader`
-strategy reads all five PyPSA-Eur files, classifies each edge as a line,
-transformer or DC link, and assigns every bus to an AC island — the set of buses
-reachable without crossing a DC link.
-
-```python
-va_manager = npap.PartitionAggregatorManager()
-
-va_graph = va_manager.load_data(
-    strategy="va_loader",
-    node_file=str(files["buses.csv"]),
-    line_file=str(files["lines.csv"]),
-    transformer_file=str(files["transformers.csv"]),
-    converter_file=str(files["converters.csv"]),
-    link_file=str(files["links.csv"]),
-)
-
-va_manager.partition(strategy="va_geographical_kmedoids_haversine", n_clusters=50)
+examples/getting_started
+examples/european_network_pypsa
 ```
 
-Buses in different AC islands or at different voltage levels are then never
-merged. {doc}`partitioning/index` covers this in depth, and the
-{doc}`example notebooks <examples>` run the full voltage-aware pipeline end to
-end with per-edge-type aggregation.
+::::{grid} 1 2 2 2
+:gutter: 3
 
-## Using your own network
+:::{grid-item-card} Getting Started
+:link: examples/getting_started
+:link-type: doc
 
-Nothing above is specific to power systems, or to CSV files. Any NetworkX
-directed graph with `lat` and `lon` attributes works:
+The whole pipeline in ten minutes, first on a plain graph and then with the
+power-systems features enabled, so the difference between the two is immediate.
+:::
 
-```python
-import networkx as nx
+:::{grid-item-card} European High-Voltage Network
+:link: examples/european_network_pypsa
+:link-type: doc
 
-graph = nx.DiGraph()
-graph.add_node("a", lat=47.0, lon=15.0)
-graph.add_node("b", lat=47.1, lon=15.1)
-graph.add_edge("a", "b", x=0.01)
+A deeper walkthrough of the same grid: voltage-level harmonisation, AC-island
+handling, and per-edge-type aggregation with the physically correct strategy
+for lines, transformers and DC links.
+:::
 
-manager = npap.PartitionAggregatorManager()
-manager.load_data("networkx_direct", graph=graph)
+::::
+
+### Getting the notebook files
+
+The rendered pages above are read-only. To run or modify them, take the `.ipynb`
+files from the repository:
+
+| Notebook | Direct link |
+|----------|-------------|
+| Getting Started | <https://github.com/IEE-TUGraz/NPAP/blob/main/examples/getting_started.ipynb> |
+| European High-Voltage Network | <https://github.com/IEE-TUGraz/NPAP/blob/main/examples/european_network_pypsa.ipynb> |
+
+Or clone the repository and launch Jupyter from the `examples/` directory:
+
+```bash
+git clone https://github.com/IEE-TUGraz/NPAP.git
+cd NPAP
+pip install -e ".[dev,test,docs]"
+jupyter lab examples/
 ```
 
-{doc}`data-loading` documents the CSV column conventions and the voltage-aware
-file formats, and {doc}`extending` shows how to register a loader for a format
-NPAP does not know about.
+## Where to go next
 
-## Next steps
-
-- {doc}`examples` — the same pipeline as runnable notebooks, with figures
 - {doc}`available-strategies` — every partitioning and aggregation option
-- {doc}`aggregation` — how the three-tier aggregation system works
+- {doc}`data-loading` — CSV column conventions and the voltage-aware formats
 - {doc}`partitioning/index` — choosing between geographical and electrical distance
+- {doc}`aggregation` — how the three-tier aggregation system works
+- {doc}`visualization` — styling the interactive maps
+- {doc}`extending` — registering your own loaders, partitioners and strategies
