@@ -1145,7 +1145,11 @@ class PartitionAggregatorManager:
         self,
         style: str = "simple",
         graph: nx.DiGraph = None,
-        show: bool = True,
+        *,
+        renderer: str = None,
+        save_html: bool = None,
+        output_dir=None,
+        filename: str = None,
         config=None,
         **kwargs,
     ):
@@ -1162,8 +1166,20 @@ class PartitionAggregatorManager:
             - 'clustered': Nodes colored by cluster assignment
         graph : nx.DiGraph, optional
             Graph to plot (uses current graph if not provided).
-        show : bool
-            Whether to display immediately.
+        renderer : str, optional
+            Plotly renderer used to display the figure. ``None`` (default) does
+            not display anything and only returns the figure. ``"auto"`` lets
+            Plotly choose based on the environment. Any other value (e.g.
+            ``"browser"`` to explore the interactive map from an IDE) is
+            forwarded to Plotly as-is.
+        save_html : bool, optional
+            Whether to export a standalone HTML file. ``None`` (default)
+            exports only when running outside a Jupyter kernel, so notebooks
+            render inline without writing files to disk.
+        output_dir : str or Path, optional
+            Directory for the exported HTML. Defaults to the working directory.
+        filename : str, optional
+            File name for the exported HTML. Defaults to a slug of the title.
         config : PlotConfig, optional
             PlotConfig instance to override defaults. If provided,
             kwargs will further override values from this config.
@@ -1184,6 +1200,8 @@ class PartitionAggregatorManager:
         --------
         >>> manager.plot_network(style="voltage_aware", title="My Network")
         >>> manager.plot_network(style="clustered")  # After partitioning
+        >>> manager.plot_network(renderer="browser")  # Explore interactively
+        >>> manager.plot_network(output_dir="figures", filename="grid.html")
         """
         from npap.visualization import plot_network
 
@@ -1206,7 +1224,10 @@ class PartitionAggregatorManager:
             graph=target_graph,
             style=style,
             partition_map=partition_map,
-            show=show,
+            renderer=renderer,
+            save_html=save_html,
+            output_dir=output_dir,
+            filename=filename,
             config=config,
             **kwargs,
         )
