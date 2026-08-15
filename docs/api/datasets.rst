@@ -44,7 +44,8 @@ The cache location is resolved in this order:
 
    Cached files **never expire on their own**. They stay on disk until you
    remove them, either with :func:`clear_data_home` or by deleting the
-   directory. The full PyPSA-Eur network is roughly 20 MB.
+   directory. The download is about 20 MB; after the column
+   harmonisation the cache holds roughly 2.7 MB.
 
    Because the Zenodo record is pinned in the source, the cache always matches
    the dataset version NPAP expects, which keeps examples reproducible. If that

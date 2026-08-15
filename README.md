@@ -54,47 +54,51 @@ pip install npap
 
 ## Quick Start
 
+This example runs as-is: NPAP downloads and caches the network for you. It
+reduces the European high-voltage grid from 6,863 buses to 50, and takes about a
+minute.
+
 ```python
-from npap import PartitionAggregatorManager, AggregationProfile, AggregationMode
+import npap
+from npap import AggregationProfile
+from npap.datasets import fetch_pypsa_eur
 
-# 1. Initialize the manager
-manager = PartitionAggregatorManager()
+files = fetch_pypsa_eur()
 
-# 2. Load data (voltage-aware loader for power systems)
+manager = npap.PartitionAggregatorManager()
+
 manager.load_data(
-    strategy="va_loader",
-    node_file="buses.csv",
-    line_file="lines.csv",
-    transformer_file="transformers.csv",
-    converter_file="converters.csv",
-    link_file="dc_links.csv",
+    strategy="csv_files",
+    node_file=str(files["buses.csv"]),
+    edge_file=str(files["lines.csv"]),
 )
 
-# 3. Aggregate parallel edges (optional)
 manager.aggregate_parallel_edges(
-    edge_properties={"x": "equivalent_reactance", "type": "first"}, default_strategy="average"
+    edge_properties={"x": "equivalent_reactance", "s_nom": "sum"},
+    default_strategy="average",
 )
 
-# 4. Partition the network
-manager.partition(strategy="electrical_kmedoids", n_clusters=50)
+manager.partition(strategy="geographical_kmedoids_haversine", n_clusters=50)
 
-# 5. Visualize the partitioned network
-manager.plot_network(style="clustered", title="Partitioned Network")
-
-# 6. Aggregate with a custom profile
 profile = AggregationProfile(
-    mode=AggregationMode.GEOGRAPHICAL,
     topology_strategy="simple",
-    node_properties={"lat": "average", "lon": "average", "voltage": "average"},
-    edge_properties={"p_max": "sum", "x": "equivalent_reactance"},
+    node_properties={"lat": "average", "lon": "average", "voltage": "first"},
+    edge_properties={"x": "equivalent_reactance", "s_nom": "sum"},
     default_node_strategy="average",
     default_edge_strategy="average",
 )
-aggregated_network = manager.aggregate(profile=profile)
+reduced = manager.aggregate(profile=profile)
 
-# 7. Visualize the reduced network
-manager.plot_network(style="simple", title="Aggregated Network")
+manager.plot_network(graph=reduced, style="simple", title="Reduced network")
 ```
+
+The result is a 50-bus, 153-line network — 0.7% of the buses you started with.
+
+The [Quick Start guide](https://npap.readthedocs.io/en/latest/user-guide/quick-start.html)
+explains each step and how the configuration choices affect the outcome, and the
+[example notebooks](https://npap.readthedocs.io/en/latest/user-guide/examples.html)
+run the full voltage-aware pipeline, which respects transformers, DC links and
+voltage levels.
 
 ## Contributing
 

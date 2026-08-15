@@ -78,7 +78,7 @@ PLOTLY_RENDERER=notebook_connected jupyter nbconvert \
 
 :::{note}
 The first call to {py:func}`~npap.datasets.fetch_pypsa_eur` downloads about
-20 MB from [Zenodo](https://doi.org/10.5281/ZENODO.18619025) and caches it, so
+20 MB from [Zenodo](https://doi.org/10.5281/ZENODO.18619025), leaving about 2.7 MB in the cache, so
 subsequent runs start immediately. See {doc}`the datasets API <../api/datasets>`
 for where the cache lives and how to clear it.
 :::
