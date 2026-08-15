@@ -195,7 +195,7 @@ Available colorscales include:
 
 ```python
 # Get the Plotly figure without displaying
-fig = manager.plot_network(style="voltage_aware", show=False)
+fig = manager.plot_network(style="voltage_aware")
 
 # Customize further
 fig.update_layout(title="My Network", title_x=0.5)
@@ -240,7 +240,7 @@ partition = manager.partition("geographical_kmeans", n_clusters=20)
 
 # Plot original with clusters
 fig_original = manager.plot_network(
-    style="clustered", title="Original Network (Clustered)", show=False
+    style="clustered", title="Original Network (Clustered)"
 )
 
 # Aggregate
@@ -248,7 +248,7 @@ aggregated = manager.aggregate(mode=AggregationMode.GEOGRAPHICAL)
 
 # Plot aggregated
 fig_aggregated = manager.plot_network(
-    graph=aggregated, style="simple", title="Aggregated Network", show=False
+    graph=aggregated, style="simple", title="Aggregated Network"
 )
 
 # Display side by side (in Jupyter)
@@ -321,7 +321,7 @@ Default hover shows:
 Customize with Plotly's hovertemplate:
 
 ```python
-fig = manager.plot_network(style="simple", show=False)
+fig = manager.plot_network(style="simple")
 
 # Update node hover
 for trace in fig.data:
@@ -366,7 +366,7 @@ for n_clusters in [5, 10, 20, 50]:
     partition = manager.partition("geographical_kmeans", n_clusters=n_clusters)
 
     fig = manager.plot_network(
-        style="clustered", title=f"Partitioning with {n_clusters} Clusters", show=False
+        style="clustered", title=f"Partitioning with {n_clusters} Clusters"
     )
 
     fig.write_html(f"partition_{n_clusters}.html")
@@ -383,7 +383,7 @@ import plotly.graph_objects as go
 frames = []
 for n_clusters in range(5, 51, 5):
     partition = manager.partition("geographical_kmeans", n_clusters=n_clusters)
-    fig = manager.plot_network(style="clustered", show=False)
+    fig = manager.plot_network(style="clustered")
     frames.append(go.Frame(data=fig.data, name=str(n_clusters)))
 
 # Create animated figure
