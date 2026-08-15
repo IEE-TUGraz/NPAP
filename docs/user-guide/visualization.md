@@ -213,11 +213,11 @@ fig.show()
 ```python
 import plotly.graph_objects as go
 
-fig = manager.plot_network(style="simple", show=False)
+fig = manager.plot_network(style="simple")
 
 # Add custom markers
 fig.add_trace(
-    go.Scattermapbox(
+    go.Scattermap(
         lat=[47.0, 47.5],
         lon=[15.0, 15.5],
         mode="markers",

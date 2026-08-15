@@ -158,6 +158,60 @@ class TestPlotNetwork:
         assert "from kwargs" in str(fig.layout.title.text)
 
 
+class TestPlotlyTraceTypes:
+    """NPAP must use the MapLibre-based traces, not the deprecated mapbox ones."""
+
+    def test_uses_scattermap_traces(self, geo_graph, tmp_path):
+        fig = plot_network(geo_graph, output_dir=tmp_path, save_html=False)
+        assert fig.data
+        assert all(trace.type == "scattermap" for trace in fig.data)
+
+    def test_emits_no_plotly_deprecation_warning(self, geo_graph, recwarn):
+        plot_network(geo_graph, save_html=False)
+        assert [w for w in recwarn if "scattermapbox" in str(w.message).lower()] == []
+
+
+class TestDeprecatedShow:
+    """The legacy `show` flag still works, but warns and maps onto `renderer`."""
+
+    def test_show_true_maps_to_browser(self, geo_graph, monkeypatch):
+        calls = []
+        monkeypatch.setattr(go.Figure, "show", lambda self, **kw: calls.append(kw))
+        with pytest.warns(DeprecationWarning, match="'show' argument"):
+            plot_network(geo_graph, show=True, save_html=False)
+        assert calls[0]["renderer"] == "browser"
+
+    def test_show_false_does_not_display(self, geo_graph, monkeypatch):
+        calls = []
+        monkeypatch.setattr(go.Figure, "show", lambda self, **kw: calls.append(kw))
+        with pytest.warns(DeprecationWarning):
+            plot_network(geo_graph, show=False, save_html=False)
+        assert calls == []
+
+    def test_explicit_renderer_wins_over_show(self, geo_graph, monkeypatch):
+        calls = []
+        monkeypatch.setattr(go.Figure, "show", lambda self, **kw: calls.append(kw))
+        with pytest.warns(DeprecationWarning):
+            plot_network(geo_graph, show=False, renderer="png", save_html=False)
+        assert calls[0]["renderer"] == "png"
+
+    def test_no_warning_when_show_omitted(self, geo_graph, recwarn):
+        plot_network(geo_graph, save_html=False)
+        npap_warnings = [
+            w
+            for w in recwarn
+            if issubclass(w.category, DeprecationWarning) and "'show' argument" in str(w.message)
+        ]
+        assert npap_warnings == []
+
+    def test_manager_forwards_deprecated_show(self, geo_graph, monkeypatch):
+        monkeypatch.setattr(go.Figure, "show", lambda self, **kw: None)
+        manager = npap.PartitionAggregatorManager()
+        manager.load_data("networkx_direct", graph=geo_graph)
+        with pytest.warns(DeprecationWarning):
+            manager.plot_network(show=True, save_html=False)
+
+
 class TestManagerPlotNetwork:
     """Cover the facade wrapper on PartitionAggregatorManager."""
 

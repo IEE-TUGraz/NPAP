@@ -1150,6 +1150,7 @@ class PartitionAggregatorManager:
         save_html: bool = None,
         output_dir=None,
         filename: str = None,
+        show: bool = None,
         config=None,
         **kwargs,
     ):
@@ -1180,6 +1181,9 @@ class PartitionAggregatorManager:
             Directory for the exported HTML. Defaults to the working directory.
         filename : str, optional
             File name for the exported HTML. Defaults to a slug of the title.
+        show : bool, optional
+            Deprecated. ``show=True`` maps to ``renderer="browser"`` and
+            ``show=False`` to ``renderer=None``. Use ``renderer`` instead.
         config : PlotConfig, optional
             PlotConfig instance to override defaults. If provided,
             kwargs will further override values from this config.
@@ -1228,6 +1232,7 @@ class PartitionAggregatorManager:
             save_html=save_html,
             output_dir=output_dir,
             filename=filename,
+            show=show,
             config=config,
             **kwargs,
         )

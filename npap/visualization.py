@@ -1,4 +1,5 @@
 import re
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -15,6 +16,38 @@ DEFAULT_HTML_FILENAME = "npap_network.html"
 
 #: Plotly figure config applied to every rendered/exported figure.
 _FIGURE_CONFIG = {"scrollZoom": True}
+
+
+def _resolve_deprecated_show(show: bool | None, renderer: str | None) -> str | None:
+    """
+    Map the deprecated `show` flag onto the `renderer` argument.
+
+    Parameters
+    ----------
+    show : bool or None
+        Legacy flag. `None` means the caller did not pass it.
+    renderer : str or None
+        Renderer explicitly requested by the caller, which always wins.
+
+    Returns
+    -------
+    str or None
+        Effective renderer to use.
+    """
+    if show is None:
+        return renderer
+
+    warnings.warn(
+        "The 'show' argument of NPAP plotting functions is deprecated and will "
+        "be removed in a future release. Use renderer='browser' to display the "
+        "figure in a browser, or renderer=None (the default) to only return it.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+    if renderer is not None:
+        return renderer
+    return "browser" if show else None
 
 
 def _in_notebook() -> bool:
@@ -205,7 +238,7 @@ class PlotConfig:
     node_size : int
         Size of node markers in pixels.
     map_style : str
-        Mapbox style for the base map.
+        MapLibre style for the base map.
     map_center_lat : float
         Initial map center latitude.
     map_center_lon : float
@@ -550,7 +583,7 @@ class NetworkPlotter:
 
         return groups
 
-    def _build_edge_traces_voltage_aware(self, config: PlotConfig) -> list[go.Scattermapbox]:
+    def _build_edge_traces_voltage_aware(self, config: PlotConfig) -> list[go.Scattermap]:
         """
         Build edge traces grouped by type and voltage category.
 
@@ -565,8 +598,8 @@ class NetworkPlotter:
 
         Returns
         -------
-        list[go.Scattermapbox]
-            List of Scattermapbox traces for edges.
+        list[go.Scattermap]
+            List of Scattermap traces for edges.
         """
         groups = self._group_edges_by_type(config)
         traces = []
@@ -580,7 +613,7 @@ class NetworkPlotter:
             color = EdgeStyleRegistry.get_color(group_key, config)
             name = EdgeStyleRegistry.get_display_name(group_key, config)
 
-            trace = go.Scattermapbox(
+            trace = go.Scattermap(
                 lon=group.lons,
                 lat=group.lats,
                 mode="lines",
@@ -593,7 +626,7 @@ class NetworkPlotter:
 
         return traces
 
-    def _build_edge_traces_simple(self, config: PlotConfig) -> list[go.Scattermapbox]:
+    def _build_edge_traces_simple(self, config: PlotConfig) -> list[go.Scattermap]:
         """
         Build a single edge trace with uniform styling.
 
@@ -607,7 +640,7 @@ class NetworkPlotter:
 
         Returns
         -------
-        list[go.Scattermapbox]
+        list[go.Scattermap]
             List containing single edge trace (or empty if no valid edges).
         """
         lons = []
@@ -626,7 +659,7 @@ class NetworkPlotter:
         if not lons:
             return []
 
-        trace = go.Scattermapbox(
+        trace = go.Scattermap(
             lon=lons,
             lat=lats,
             mode="lines",
@@ -638,7 +671,7 @@ class NetworkPlotter:
 
     def _build_node_trace(
         self, config: PlotConfig, color_by_cluster: bool = False
-    ) -> go.Scattermapbox | None:
+    ) -> go.Scattermap | None:
         """
         Build node trace with optional cluster-based coloring.
 
@@ -655,8 +688,8 @@ class NetworkPlotter:
 
         Returns
         -------
-        go.Scattermapbox or None
-            Scattermapbox trace for nodes, or None if nodes are hidden.
+        go.Scattermap or None
+            Scattermap trace for nodes, or None if nodes are hidden.
         """
         if not config.show_nodes:
             return None
@@ -712,7 +745,7 @@ class NetworkPlotter:
             # Uniform coloring: single color for all nodes
             marker = dict(size=config.node_size, color=config.node_color)
 
-        trace = go.Scattermapbox(
+        trace = go.Scattermap(
             lon=node_lons,
             lat=node_lats,
             mode="markers",
@@ -725,18 +758,18 @@ class NetworkPlotter:
         return trace
 
     @staticmethod
-    def _create_figure(traces: list[go.Scattermapbox], config: PlotConfig) -> go.Figure:
+    def _create_figure(traces: list[go.Scattermap], config: PlotConfig) -> go.Figure:
         """
         Assemble Plotly figure with all traces and layout configuration.
 
         This method handles the final assembly: combining edge and node traces,
-        configuring the mapbox layout, and setting up the legend for optimal
+        configuring the map layout, and setting up the legend for optimal
         user interaction.
 
         Parameters
         ----------
-        traces : list[go.Scattermapbox]
-            List of all Scattermapbox traces (edges + nodes).
+        traces : list[go.Scattermap]
+            List of all Scattermap traces (edges + nodes).
         config : PlotConfig
             Plot configuration with layout settings.
 
@@ -769,7 +802,7 @@ class NetworkPlotter:
                 itemsizing="constant",
                 tracegroupgap=5,
             ),
-            mapbox=dict(
+            map=dict(
                 style=config.map_style,
                 bearing=0,
                 center=dict(lat=config.map_center_lat, lon=config.map_center_lon),
@@ -797,6 +830,7 @@ class NetworkPlotter:
         save_html: bool | None = None,
         output_dir: str | Path | None = None,
         filename: str | None = None,
+        show: bool | None = None,
     ) -> go.Figure:
         """
         Execute centralized plotting for all visualization styles.
@@ -820,6 +854,8 @@ class NetworkPlotter:
             Directory for the exported HTML. Defaults to the working directory.
         filename : str or None
             File name for the exported HTML.
+        show : bool or None
+            Deprecated. Use `renderer` instead.
 
         Returns
         -------
@@ -831,6 +867,7 @@ class NetworkPlotter:
         ValueError
             If CLUSTERED style requested without partition_map.
         """
+        renderer = _resolve_deprecated_show(show, renderer)
         config = config or PlotConfig()
 
         # Validate prerequisites for clustered visualization
@@ -952,6 +989,7 @@ def plot_network(
     save_html: bool | None = None,
     output_dir: str | Path | None = None,
     filename: str | None = None,
+    show: bool | None = None,
     config: PlotConfig | None = None,
     **kwargs,
 ) -> go.Figure:
@@ -984,6 +1022,9 @@ def plot_network(
         Directory for the exported HTML. Defaults to the working directory.
     filename : str or None
         File name for the exported HTML. Defaults to a slug of the title.
+    show : bool or None
+        Deprecated. `show=True` maps to `renderer="browser"` and `show=False`
+        to `renderer=None`. Use `renderer` directly instead.
     config : PlotConfig or None
         Optional PlotConfig instance to override defaults. If provided,
         kwargs will further override values from this config.
@@ -1024,6 +1065,7 @@ def plot_network(
         "save_html": save_html,
         "output_dir": output_dir,
         "filename": filename,
+        "show": show,
     }
 
     # Support both string and enum style specifications
