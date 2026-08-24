@@ -53,7 +53,7 @@ Changelog = "https://github.com/IEE-TUGraz/NPAP/releases"
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
 # nbconvert is only needed to regenerate the stored outputs of the example
 # notebooks; building the documentation never executes them.
-dev = ["pre-commit>=3.0", "ruff==0.16.3", "nbconvert>=7.0", "ipykernel>=6.0"]
+dev = ["pre-commit>=3.0", "ruff==0.16.4", "nbconvert>=7.0", "ipykernel>=6.0"]
 # Single source of truth for the documentation toolchain: Read the Docs
 # installs this extra directly (see .readthedocs.yaml), so a local build
 # reproduces the published one.
