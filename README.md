@@ -96,7 +96,7 @@ The result is a 50-bus, 153-line network — 0.7% of the buses you started with.
 
 The [Quick Start guide](https://npap.readthedocs.io/en/latest/user-guide/quick-start.html)
 explains each step and how the configuration choices affect the outcome, and the
-[example notebooks](https://npap.readthedocs.io/en/latest/user-guide/examples.html)
+[example notebooks](https://github.com/IEE-TUGraz/NPAP/tree/main/examples)
 run the full voltage-aware pipeline, which respects transformers, DC links and
 voltage levels.
 
