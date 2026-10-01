@@ -1303,3 +1303,80 @@ class TestLMPPartitioning:
             PartitioningError, match="cannot take both 'n_clusters' and 'distance_threshold'"
         ):
             strategy.partition(lmp_graph, n_clusters=2, distance_threshold=5.0)
+
+    # -------------------------------------------------------------------------
+    # Demand-Weighted Ward Clustering & AC-Island Adjacency Tests
+    # -------------------------------------------------------------------------
+
+    def test_weighted_ward_clustering_preserves_load_payment(self):
+        """Test that weighted Ward representation preserves total load payment sum_i d_i * lambda_i."""
+        G = nx.Graph()
+        G.add_node(0, lmp=10.0, demand=100.0)
+        G.add_node(1, lmp=20.0, demand=50.0)
+        G.add_node(2, lmp=30.0, demand=200.0)
+        G.add_edge(0, 1)
+        G.add_edge(1, 2)
+
+        strategy = LMPPartitioning(config=LMPConfig(hierarchical_linkage="ward"))
+        partition = strategy.partition(G, n_clusters=2)
+
+        # Calculate original total load payment
+        total_payment_orig = sum(G.nodes[i]["lmp"] * G.nodes[i]["demand"] for i in G.nodes())
+
+        # Calculate clustered total load payment sum_c D_c * mu_c
+        total_payment_clustered = 0.0
+        for cluster_nodes in partition.values():
+            d_c = sum(G.nodes[i]["demand"] for i in cluster_nodes)
+            mu_c = sum(G.nodes[i]["lmp"] * G.nodes[i]["demand"] for i in cluster_nodes) / d_c
+            total_payment_clustered += d_c * mu_c
+
+        assert np.isclose(total_payment_orig, total_payment_clustered)
+
+    def test_weighted_ward_demand_influence(self):
+        """Test that node demand weighting influences Ward merge decisions."""
+        # Line graph: 0 -- 1 -- 2
+        # Node 1 is equally distant in LMP from 0 and 2 (|LMP_1 - LMP_0| = 10, |LMP_1 - LMP_2| = 10)
+        # But Node 0 has high demand (1000) while Node 2 has low demand (1)
+        G = nx.Graph()
+        G.add_node(0, lmp=10.0, demand=1000.0)
+        G.add_node(1, lmp=20.0, demand=10.0)
+        G.add_node(2, lmp=30.0, demand=1.0)
+        G.add_edge(0, 1)
+        G.add_edge(1, 2)
+
+        strategy = LMPPartitioning(config=LMPConfig(hierarchical_linkage="ward"))
+        partition = strategy.partition(G, n_clusters=2)
+
+        # Pair (1, 2) has cost (10 * 1 / 11) * 100 = 90.9
+        # Pair (0, 1) has cost (1000 * 10 / 1010) * 100 = 990.1
+        # Smaller Ward increase is (1, 2), so 1 and 2 merge first!
+        assert nodes_in_same_cluster(partition, 1, 2)
+        assert nodes_in_different_clusters(partition, 0, 1)
+
+    def test_more_components_than_n_clusters_raises_value_error(self):
+        """Test that ValueError naming component count is raised if n_components > n_clusters."""
+        G = nx.Graph()
+        # 3 disconnected components
+        G.add_node(0, lmp=10.0)
+        G.add_node(1, lmp=20.0)
+        G.add_node(2, lmp=30.0)
+
+        strategy = LMPPartitioning(config=LMPConfig(hierarchical_linkage="ward"))
+
+        with pytest.raises(ValueError, match="Graph has 3 connected components"):
+            strategy.partition(G, n_clusters=2)
+
+    def test_ac_island_adjacency_filtering(self):
+        """Test that AC island boundaries strip inter-island edges from adjacency."""
+        G = nx.Graph()
+        G.add_node(0, lmp=10.0, ac_island=0)
+        G.add_node(1, lmp=10.0, ac_island=1)
+        # Edge exists physically, but spans across AC islands
+        G.add_edge(0, 1)
+
+        strategy = LMPPartitioning(config=LMPConfig(hierarchical_linkage="ward"))
+
+        # Since inter-island edge is removed, the graph has 2 connected components
+        with pytest.raises(ValueError, match="Graph has 2 connected components"):
+            strategy.partition(G, n_clusters=1)
+
