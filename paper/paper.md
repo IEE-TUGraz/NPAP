@@ -118,15 +118,8 @@ The next section explains the software design in more detail.
 
 A broad overview of NPAP’s design is shown in Figure \ref{fig:design}. The whole workflow is
 orchestrated and accessed by the `PartitionAggregatorManager`. NPAP follows a strategy pattern with
-four categories — data loading, partitioning, topology aggregation, and property aggregation — all
-orchestrated by three manager classes, shown at the bottom of the Figure. New strategies inherit
-from abstract base classes and register with their respective managers, enabling users to seamlessly
-add custom strategies without modifying core code. To reduce entry barriers for contributing to
-NPAP, the whole library is built on well-established Python packages, such as NetworkX [@NetworkX]
-for graph representation, pandas [@McKinney2010] for tabular data handling, NumPy [@Harris2020], SciPy
-[@Virtanen2020], and scikit-learn [@scikit-learn] for numerical computation, and Plotly [@plotly] for
-interactive map-based visualization of results. In the following sections, we introduce the loading and 
-pre-processing of input data, partitioning, and the aggregation processes in more detail.
+five categories — data loading, partitioning, topology aggregation, physical aggregation, and property
+aggregation — all orchestrated by three manager classes, shown at the bottom of the Figure. New
 
 ## Data loading and pre-processing
 
