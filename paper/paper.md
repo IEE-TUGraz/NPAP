@@ -177,7 +177,7 @@ pre-defined aggregation profiles.
 NPAP is designed as a standalone, pip-installable open-source Python package, released under the MIT
 license. The library is fully documented on ReadTheDocs and includes an automated test suite with
 continuous integration across Python 3.10 to 3.14. It has been tested on small- and
-large-scale networks with up to a few thousand nodes.
+large-scale networks with up to around 7,000 nodes.
 
 One potential application of NPAP is within energy system modeling frameworks. For illustration
 purposes, we have opened a pull request to the well-established PyPSA [@Brown2018a] framework that
@@ -190,11 +190,12 @@ their original data model.
 [^1]: https://github.com/PyPSA/PyPSA/pull/1568
 
 We further utilized this implementation to demonstrate NPAP’s usability and scalability by applying
-it to the full pan-European transmission network [@Xiong2025;@Xiong2026], comprising around 6800 nodes and
-17500 edges. Leveraging the voltage-aware partitioning strategy with geographical distance and
-k-means clustering [@lloyd1982least], we analyze the required infrastructure investments for power
-lines on different voltage levels and transformers using PyPSA [@Brown2018a]. The work has been
-submitted to the International Conference on the European Energy Market 2026.
+it to the full pan-European transmission network [@Xiong2025;@Xiong2026], comprising around 6,800 nodes and
+17,500 edges, within the PyPSA-Eur workflow [@Hoersch2018]. In @Stoeckl2026, we use k-medoids clustering 
+[@schubert2021fast] with geographical (haversine) distances to compare voltage-unaware and voltage-aware
+partitioning and aggregation, and analyze the resulting infrastructure investments for power lines on
+different voltage levels and transformers in a transmission expansion planning problem solved with PyPSA
+[@Brown2018a].
 
 Active development directions include the extension of the available partitioning strategies, e.g.,
 the Adjacent Node Agglomerative Clustering algorithm [@Stoeckl2025a], and aggregation strategies,
