@@ -39,9 +39,9 @@ treating the spatial reduction process as a single action, NPAP explicitly split
 distinct steps: partitioning, which assigns vertices (nodes) to groups (clusters), and aggregation,
 which reduces the network based on a given assignment. NPAP’s strategy pattern architecture allows
 users to employ and register custom partitioning and aggregation strategies seamlessly without
-modifying the core code. Currently, NPAP provides 13 different partitioning strategies and two
-pre-defined aggregation profiles. Although initially developed with a focus on power systems, its
-architecture is general-purpose and applicable to any network graph.
+modifying the core code. Currently, NPAP provides 18 partitioning strategies and two pre-defined
+aggregation profiles. Although initially developed with a focus on power systems, its architecture
+is general-purpose and applicable to any network graph.
 
 # Statement of need
 Real-world electricity grids have grown significantly in size and complexity, potentially spanning
@@ -143,8 +143,9 @@ voltage-aware partitioning strategies.
 ## Partitioning strategies
 NPAP currently provides four families of partitioning strategies combining geographical and
 electrical node distance with the option of partitioning voltage levels independently
-(voltage-awareness). Each family supports 13 different partitioning strategies, such as k-means
-[@lloyd1982least], k-medoids [@schubert2021fast;@schubert2022fast], DBSCAN [@ester1996density], HDBSCAN
+(voltage-awareness). Across these families, NPAP offers 18 partitioning strategies based on
+five well-established clustering algorithms: k-means [@lloyd1982least], k-medoids
+[@schubert2021fast;@schubert2022fast], DBSCAN [@ester1996density], HDBSCAN
 [@campello2013density;@McInnes2017], and hierarchical clustering [@ward1963hierarchical]. Geographical
 distance captures latitudes and longitudes and is suitable for any geo-referenced network. Electrical
 distance computes Power Transfer Distribution Factors (PTDFs) [@wood2012power] to capture the
