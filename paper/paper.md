@@ -180,10 +180,12 @@ continuous integration across Python 3.10 to 3.14. It has been tested on small- 
 large-scale networks with up to a few thousand nodes.
 
 One potential application of NPAP is within energy system modeling frameworks. For illustration
-purposes, we have integrated it into the well-established PyPSA-Eur [@Hoersch2018] framework through
-an open pull request introducing NPAP as an alternative to PyPSA’s native spatial clustering
-backend.[^1] Thereby showcasing NPAP’s framework-agnostic design and highlighting the minimal
-adoption effort.
+purposes, we have opened a pull request to the well-established PyPSA [@Brown2018a] framework that
+adds NPAP as an optional alternative to PyPSA’s native spatial clustering backend.[^1] The integration is
+self-contained: it converts PyPSA's network object into a NetworkX graph, applies NPAP's partitioning
+and aggregation strategies, and passes the result back to PyPSA's existing clustering and mapping pipeline.
+This showcases how NPAP’s framework-agnostic design can be leveraged by existing tools without changing
+their original data model.
 
 [^1]: https://github.com/PyPSA/PyPSA/pull/1568
 
