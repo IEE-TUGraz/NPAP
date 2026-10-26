@@ -122,10 +122,10 @@ orchestrated by three manager classes, shown at the bottom of the Figure. New st
 from abstract base classes and register with their respective managers, enabling users to seamlessly
 add custom strategies without modifying core code. To reduce entry barriers for contributing to
 NPAP, the whole library is built on well-established Python packages, such as NetworkX [@NetworkX]
-for graph representation, NumPy [@Harris2020], SciPy [@Virtanen2020], and scikit-learn
-[@scikit-learn] for numerical computation, and Plotly [@plotly] for interactive map-based
-visualization of results. In the following sections, we introduce the loading and pre-processing of
-input data, partitioning, and the aggregation processes in more detail.
+for graph representation, pandas [@McKinney2010] for tabular data handling, NumPy [@Harris2020], SciPy
+[@Virtanen2020], and scikit-learn [@scikit-learn] for numerical computation, and Plotly [@plotly] for
+interactive map-based visualization of results. In the following sections, we introduce the loading and 
+pre-processing of input data, partitioning, and the aggregation processes in more detail.
 
 ## Data loading and pre-processing
 
@@ -144,9 +144,9 @@ voltage-aware partitioning strategies.
 NPAP currently provides four families of partitioning strategies combining geographical and
 electrical node distance with the option of partitioning voltage levels independently
 (voltage-awareness). Each family supports 13 different partitioning strategies, such as k-means
-[@lloyd1982least], k-medoids [@schubert2021fast], DBSCAN [@ester1996density], HDBSCAN
-[@campello2013density], and hierarchical clustering [@ward1963hierarchical]. Geographical distance
-captures latitudes and longitudes and is suitable for any geo-referenced network. Electrical
+[@lloyd1982least], k-medoids [@schubert2021fast;@schubert2022fast], DBSCAN [@ester1996density], HDBSCAN
+[@campello2013density;@McInnes2017], and hierarchical clustering [@ward1963hierarchical]. Geographical
+distance captures latitudes and longitudes and is suitable for any geo-referenced network. Electrical
 distance computes Power Transfer Distribution Factors (PTDFs) [@wood2012power] to capture the
 electrical behavior of a power grid rather than its geographical topology.
 
