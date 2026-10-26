@@ -175,7 +175,7 @@ pre-defined aggregation profiles.
 
 NPAP is designed as a standalone, pip-installable open-source Python package, released under the MIT
 license. The library is fully documented on ReadTheDocs and includes an automated test suite with
-continuous integration across Python 3.10, 3.11, and 3.12. It has been tested on small- and
+continuous integration across Python 3.10 to 3.14. It has been tested on small- and
 large-scale networks with up to a few thousand nodes.
 
 One potential application of NPAP is within energy system modeling frameworks. For illustration
