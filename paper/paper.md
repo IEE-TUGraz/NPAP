@@ -193,7 +193,7 @@ their original data model.
 
 We further utilized this implementation to demonstrate NPAP’s usability and scalability by applying
 it to the full pan-European transmission network [@Xiong2025;@Xiong2026], comprising around 6,800 nodes and
-17,500 edges, within the PyPSA-Eur workflow [@Hoersch2018]. In @Stoeckl2026, we use k-medoids clustering 
+17,500 edges, within the PyPSA-Eur workflow [@Hoersch2018]. In @Stoeckl2026, we use k-medoids clustering
 [@schubert2021fast] with geographical (haversine) distances to compare voltage-unaware and voltage-aware
 partitioning and aggregation, and analyze the resulting infrastructure investments for power lines on
 different voltage levels and transformers in a transmission expansion planning problem solved with PyPSA
@@ -208,9 +208,9 @@ country or region, as an additional pre-processing step before partitioning.
 
 # AI Usage Disclosure
 
-Several artificial intelligence (AI) tools were used during the development of NPAP and this manuscript. 
-Google Gemini (Pro) was used for non-code-related tasks, such as learning about power systems. Anthropic 
-Claude (Sonnet 4.5, Opus 4.5, 4.6, and 5.5), accessed through both the desktop application and the Claude 
+Several artificial intelligence (AI) tools were used during the development of NPAP and this manuscript.
+Google Gemini (Pro) was used for non-code-related tasks, such as learning about power systems. Anthropic
+Claude (Sonnet 4.5, Opus 4.5, 4.6, and 5.5), accessed through both the desktop application and the Claude
 Code terminal interface, was used for code-related activities, including software design brainstorming,
 implementation support, test coverage, or writing the documentation. It was also used for consistency and
 reference checks during the manuscript preparation. Grammarly was used for grammar and spell checking.
