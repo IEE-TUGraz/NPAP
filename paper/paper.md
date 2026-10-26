@@ -138,11 +138,9 @@ facilitating an easy integration into other frameworks or software. Besides, NPA
 supports importing data from CSV files with two main strategies. The first one works with general
 node and edge data targeting generic graph structures. The second one is a domain-dependent strategy
 focused on power grids and includes buses, lines, transformers, converters, and DC links.
-User-specific data loading strategies can be registered straightforward as shown in
-Figure \ref{fig:design}. Afterward, optional pre-processing steps are carried out through
-the `PartitionAggregatorManager`, such as the aggregation of parallel edges. For power grids,
-voltage-level grouping separates the network into independent sub-graphs per voltage level, enabling
-voltage-aware partitioning strategies.
+User-specific data loading strategies can be registered easily, as shown in Figure \ref{fig:design}. Afterward, optional pre-processing steps are carried out through the `PartitionAggregatorManager`,
+such as the aggregation of parallel edges. For power grids, voltage-level grouping separates the
+network into independent sub-graphs per voltage level, enabling voltage-aware partitioning strategies.
 
 ## Partitioning strategies
 NPAP currently provides four families of partitioning strategies combining geographical and
@@ -160,7 +158,7 @@ interconnections and partitions them independently. This, and the voltage-aware 
 achieved by setting the distance matrix entries of nodes in different AC islands and voltage levels,
 respectively, to infinity. Both approaches are algorithm-agnostic, i.e., they work with any
 distance-based partitioning method without requiring modifications to the algorithm itself. The
-partitioning outcome, along with other metadata, is then stored in the PartitionResult.
+partitioning outcome, along with other metadata, is then stored in the `PartitionResult`.
 
 ## Three-tier aggregation strategy pipeline
 
