@@ -65,15 +65,16 @@ anyone interested in reducing the spatial complexity of a graph.
 
 # State of the field
 Within the energy system optimization community, existing implementations of network partitioning
-and aggregation methods are usually tightly rooted to the respective frameworks’ internal data
+and aggregation methods are usually tightly coupled to the respective frameworks’ internal data
 structure and cannot be reused independently or by other tools and frameworks. The built-in spatial
 clustering module of PyPSA [@Brown2018a], for example, provides busmap-based spatial aggregation
-using methods such as k-means or hierarchical clustering on geographical coordinates of buses, based
-on PyPSA’s `Network` object and `buses` DataFrame. As another example, ETHOS.FINE [@Kluetz2025]
-implements spatial reduction through string-, distance-, and parameter-based partitioning modes
-[@Patil2022], which are strictly tied to the framework’s internal region-based data model.
-Researchers working with other frameworks or custom network representations cannot leverage these
-implementations without significant adaptation to the core code structure.
+using methods such as k-means and hierarchical clustering from scikit-learn [@scikit-learn], and
+modularity-based community detection from NetworkX [@NetworkX], but implements the bus weightings
+and the aggregation of component attributes specifically for PyPSA’s `Network` object. As another
+example, ETHOS.FINE [@Kluetz2025] implements spatial reduction through string-, distance-, and
+parameter-based partitioning modes [@Patil2022], which are strictly tied to the framework’s internal
+region-based data model. Researchers working with other frameworks or custom network representations
+cannot leverage these implementations without significant adaptation to the core code structure.
 
 The analogy with temporal complexity reduction and the tsam package [@Hoffmann2022] is instructive.
 NPAP extends this paradigm to the spatial dimension. Its unique contributions include:
