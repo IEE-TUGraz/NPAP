@@ -187,7 +187,7 @@ adoption effort.
 [^1]: https://github.com/PyPSA/PyPSA/pull/1568
 
 We further utilized this implementation to demonstrate NPAP’s usability and scalability by applying
-it to the full pan-European transmission network [@Xiong2025], comprising around 6800 nodes and
+it to the full pan-European transmission network [@Xiong2025;@Xiong2026], comprising around 6800 nodes and
 17500 edges. Leveraging the voltage-aware partitioning strategy with geographical distance and
 k-means clustering [@lloyd1982least], we analyze the required infrastructure investments for power
 lines on different voltage levels and transformers using PyPSA [@Brown2018a]. The work has been
