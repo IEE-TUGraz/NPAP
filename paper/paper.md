@@ -208,14 +208,15 @@ country or region, as an additional pre-processing step before partitioning.
 
 # AI Usage Disclosure
 
-Several artificial intelligence (AI) tools were used during the development of NPAP. Google Gemini
-(Pro) was used for non-code-related tasks, such as learning about power systems. Anthropic Claude
-(Sonnet 4.5, Opus 4.5, and 4.6), accessed through both the desktop application and the Claude Code
-terminal interface, was used for code-related activities, including software design brainstorming,
-implementation support, test coverage, or writing the documentation. Grammarly was used for grammar
-and spell checking. No other code-generation tools (such as GitHub Copilot, Codex, or Cursor) were
-used. All AI-generated output was carefully reviewed, tested, and frequently modified before
-inclusion. The authors take full responsibility for the code.
+Several artificial intelligence (AI) tools were used during the development of NPAP and this manuscript. 
+Google Gemini (Pro) was used for non-code-related tasks, such as learning about power systems. Anthropic 
+Claude (Sonnet 4.5, Opus 4.5, 4.6, and 5.5), accessed through both the desktop application and the Claude 
+Code terminal interface, was used for code-related activities, including software design brainstorming,
+implementation support, test coverage, or writing the documentation. It was also used for consistency and
+reference checks during the manuscript preparation. Grammarly was used for grammar and spell checking.
+No other code-generation tools (such as GitHub Copilot, Codex, or Cursor) were used. All AI-generated
+output was carefully reviewed, tested, and frequently modified before inclusion. The authors take full
+responsibility for the code and the manuscript.
 
 
 # Acknowledgements
