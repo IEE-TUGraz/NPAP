@@ -153,7 +153,7 @@ electrical behavior of a power grid rather than its geographical topology.
 In power grids, NPAP automatically detects alternating current (AC) islands linked solely by DC
 interconnections and partitions them independently. This, and the voltage-aware partitioning, is
 achieved by setting the distance matrix entries of nodes in different AC islands and voltage levels,
-respectively, to infinity. Both approaches are algorithm-agnostic, i.e, they work with any
+respectively, to infinity. Both approaches are algorithm-agnostic, i.e., they work with any
 distance-based partitioning method without requiring modifications to the algorithm itself. The
 partitioning outcome, along with other metadata, is then stored in the PartitionResult.
 
@@ -166,7 +166,7 @@ cases we do not foresee and usability outside the power system domain, we have i
 (domain-specific) tier. There, users can modify physical properties of the network graph, e.g.,
 adding new edges that did not exist in the original graph or explicitly modifying certain
 properties, such as line reactances. In the third (property aggregation) tier, user-specified functions,
-e.g, sum, average, or equivalent reactances, are then applied to the remaining node and edge
+e.g., sum, average, or equivalent reactances, are then applied to the remaining node and edge
 properties. These property aggregation strategies can be configured by the user in detail through
 the aggregation profiles shown in Figure \ref{fig:design}. At the moment, NPAP provides two
 pre-defined aggregation profiles.
