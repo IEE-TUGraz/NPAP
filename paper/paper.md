@@ -26,7 +26,7 @@ affiliations:
     index: 1
   - name: Research Center ENERGETIC, Graz University of Technology, Rechbauerstraße 12, Graz, Austria
     index: 2
-date: 10 April 2026
+date: 26 October 2026
 bibliography: paper.bib
 ---
 
