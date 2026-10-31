@@ -8,6 +8,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Weekly run against the latest dependency releases, so upstream breakage
+  # surfaces before a bot PR (or a user) runs into it.
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -74,3 +79,37 @@ jobs:
           files: ./coverage.xml
           fail_ci_if_error: false
           verbose: true
+
+  # Single required status check for branch protection, independent of the
+  # matrix layout.
+  ci-success:
+    name: CI success
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: always()
+    steps:
+      - name: Check job results
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+
+  report-scheduled-failure:
+    name: Report scheduled failure
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: failure() && github.event_name == 'schedule'
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Scheduled CI failing on main"
+          number=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "Still failing: $RUN_URL"
+          else
+            gh issue create --title "$title" --body "The weekly CI run against the latest dependency releases failed: $RUN_URL"
+          fi
