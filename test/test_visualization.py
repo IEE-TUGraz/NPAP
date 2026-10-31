@@ -71,7 +71,8 @@ class TestDeliverFigure:
         written = deliver_figure(figure, output_dir=tmp_path, filename="out")
         assert written is not None
         assert written.exists()
-        assert written.read_text(encoding="utf-8").lstrip().startswith("<html")
+        head = written.read_text(encoding="utf-8").lstrip().lower()
+        assert head.startswith(("<html", "<!doctype html"))
 
     def test_no_html_inside_notebook(self, figure, tmp_path, monkeypatch):
         monkeypatch.setattr("npap.visualization._in_notebook", lambda: True)
