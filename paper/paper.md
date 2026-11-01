@@ -26,7 +26,7 @@ affiliations:
     index: 1
   - name: Research Center ENERGETIC, Graz University of Technology, Rechbauerstraße 12, Graz, Austria
     index: 2
-date: 10 April 2026
+date: 26 October 2026
 bibliography: paper.bib
 ---
 
@@ -39,9 +39,9 @@ treating the spatial reduction process as a single action, NPAP explicitly split
 distinct steps: partitioning, which assigns vertices (nodes) to groups (clusters), and aggregation,
 which reduces the network based on a given assignment. NPAP’s strategy pattern architecture allows
 users to employ and register custom partitioning and aggregation strategies seamlessly without
-modifying the core code. Currently, NPAP provides 13 different partitioning strategies and two
-pre-defined aggregation profiles. Although initially developed with a focus on power systems, its
-architecture is general-purpose and applicable to any network graph.
+modifying the core code. Currently, NPAP provides 18 partitioning strategies and two pre-defined
+aggregation profiles. Although initially developed with a focus on power systems, its architecture
+is general-purpose and applicable to any network graph.
 
 # Statement of need
 Real-world electricity grids have grown significantly in size and complexity, potentially spanning
@@ -65,15 +65,16 @@ anyone interested in reducing the spatial complexity of a graph.
 
 # State of the field
 Within the energy system optimization community, existing implementations of network partitioning
-and aggregation methods are usually tightly rooted to the respective frameworks’ internal data
+and aggregation methods are usually tightly coupled to the respective frameworks’ internal data
 structure and cannot be reused independently or by other tools and frameworks. The built-in spatial
 clustering module of PyPSA [@Brown2018a], for example, provides busmap-based spatial aggregation
-using methods such as k-means or hierarchical clustering on geographical coordinates of buses, based
-on PyPSA’s `Network` object and `buses` DataFrame. As another example, ETHOS.FINE [@Kluetz2025]
-implements spatial reduction through string-, distance-, and parameter-based partitioning modes
-[@Patil2022], which are strictly tied to the framework’s internal region-based data model.
-Researchers working with other frameworks or custom network representations cannot leverage these
-implementations without significant adaptation to the core code structure.
+using methods such as k-means and hierarchical clustering from scikit-learn [@scikit-learn], and
+modularity-based community detection from NetworkX [@NetworkX], but implements the bus weightings
+and the aggregation of component attributes specifically for PyPSA’s `Network` object. As another
+example, ETHOS.FINE [@Kluetz2025] implements spatial reduction through string-, distance-, and
+parameter-based partitioning modes [@Patil2022], which are strictly tied to the framework’s internal
+region-based data model. Researchers working with other frameworks or custom network representations
+cannot leverage these implementations without significant adaptation to the core code structure.
 
 The analogy with temporal complexity reduction and the tsam package [@Hoffmann2022] is instructive.
 NPAP extends this paradigm to the spatial dimension. Its unique contributions include:
@@ -88,7 +89,7 @@ for real-world electricity networks.
 
 # Pipeline architecture
 
-![NPAP pipeline architecture. \label{fig:pipeline}](figures/pipeline-architecture-JOSS.svg){width=100%, height=100%}
+![NPAP pipeline architecture. \label{fig:pipeline}](figures/pipeline-architecture-JOSS.svg){width=100%}
 
 The full NPAP pipeline is shown in Figure \ref{fig:pipeline}. Initially, NPAP performs two stages,
 preparing the network graph. In the first stage, data is loaded and a NetworkX graph — used for the
@@ -113,17 +114,20 @@ The next section explains the software design in more detail.
 
 # Software design
 
-![NPAP general class diagram. \label{fig:design}](figures/class-facade-registry-JOSS.svg){width=100%, height=100%}
+![NPAP general class diagram. \label{fig:design}](figures/class-facade-registry-JOSS.svg){width=100%}
 
 A broad overview of NPAP’s design is shown in Figure \ref{fig:design}. The whole workflow is
 orchestrated and accessed by the `PartitionAggregatorManager`. NPAP follows a strategy pattern with
-four categories — data loading, partitioning, topology aggregation, and property aggregation — all
-orchestrated by three manager classes, shown at the bottom of the Figure. New strategies inherit
-from abstract base classes and register with their respective managers, enabling users to seamlessly
-add custom strategies without modifying core code. To reduce entry barriers for contributing to
-NPAP, the whole library is built on well-established Python packages, such as NetworkX [@NetworkX]
-for graph representation, NumPy [@Harris2020], SciPy [@Virtanen2020], and scikit-learn
-[@scikit-learn] for numerical computation, and Plotly [@plotly] for interactive map-based
+five categories — data loading, partitioning, topology aggregation, physical aggregation, and property
+aggregation — all orchestrated by three manager classes, shown at the bottom of the Figure. New
+strategies inherit from abstract base classes and register with their respective managers, enabling
+users to seamlessly add custom strategies without modifying core code. We chose this strategy pattern
+over a monolithic, flag-driven implementation to keep methods self-contained and make contributing new
+strategies straightforward, accepting additional boilerplate and indirection through the manager classes
+in exchange for better structure and maintainability. To further lower the entry barrier, the whole
+library is built on well-established Python packages, such as NetworkX [@NetworkX] for graph representation,
+pandas [@McKinney2010] for tabular data handling, NumPy [@Harris2020], SciPy [@Virtanen2020], and
+scikit-learn [@scikit-learn] for numerical computation, and Plotly [@plotly] for interactive map-based
 visualization of results. In the following sections, we introduce the loading and pre-processing of
 input data, partitioning, and the aggregation processes in more detail.
 
@@ -134,28 +138,27 @@ facilitating an easy integration into other frameworks or software. Besides, NPA
 supports importing data from CSV files with two main strategies. The first one works with general
 node and edge data targeting generic graph structures. The second one is a domain-dependent strategy
 focused on power grids and includes buses, lines, transformers, converters, and DC links.
-User-specific data loading strategies can be registered straightforward as shown in
-Figure \ref{fig:design}. Afterward, optional pre-processing steps are carried out through
-the `PartitionAggregatorManager`, such as the aggregation of parallel edges. For power grids,
-voltage-level grouping separates the network into independent sub-graphs per voltage level, enabling
-voltage-aware partitioning strategies.
+User-specific data loading strategies can be registered easily, as shown in Figure \ref{fig:design}. Afterward, optional pre-processing steps are carried out through the `PartitionAggregatorManager`,
+such as the aggregation of parallel edges. For power grids, voltage-level grouping separates the
+network into independent sub-graphs per voltage level, enabling voltage-aware partitioning strategies.
 
 ## Partitioning strategies
 NPAP currently provides four families of partitioning strategies combining geographical and
 electrical node distance with the option of partitioning voltage levels independently
-(voltage-awareness). Each family supports 13 different partitioning strategies, such as k-means
-[@lloyd1982least], k-medoids [@schubert2021fast], DBSCAN [@ester1996density], HDBSCAN
-[@campello2013density], and hierarchical clustering [@ward1963hierarchical]. Geographical distance
-captures latitudes and longitudes and is suitable for any geo-referenced network. Electrical
+(voltage-awareness). Across these families, NPAP offers 18 partitioning strategies based on
+five well-established clustering algorithms: k-means [@lloyd1982least], k-medoids
+[@schubert2021fast;@schubert2022fast], DBSCAN [@ester1996density], HDBSCAN
+[@campello2013density;@McInnes2017], and hierarchical clustering [@ward1963hierarchical]. Geographical
+distance captures latitudes and longitudes and is suitable for any geo-referenced network. Electrical
 distance computes Power Transfer Distribution Factors (PTDFs) [@wood2012power] to capture the
 electrical behavior of a power grid rather than its geographical topology.
 
 In power grids, NPAP automatically detects alternating current (AC) islands linked solely by DC
 interconnections and partitions them independently. This, and the voltage-aware partitioning, is
 achieved by setting the distance matrix entries of nodes in different AC islands and voltage levels,
-respectively, to infinity. Both approaches are algorithm-agnostic, i.e, they work with any
+respectively, to infinity. Both approaches are algorithm-agnostic, i.e., they work with any
 distance-based partitioning method without requiring modifications to the algorithm itself. The
-partitioning outcome, along with other metadata, is then stored in the PartitionResult.
+partitioning outcome, along with other metadata, is then stored in the `PartitionResult`.
 
 ## Three-tier aggregation strategy pipeline
 
@@ -166,7 +169,7 @@ cases we do not foresee and usability outside the power system domain, we have i
 (domain-specific) tier. There, users can modify physical properties of the network graph, e.g.,
 adding new edges that did not exist in the original graph or explicitly modifying certain
 properties, such as line reactances. In the third (property aggregation) tier, user-specified functions,
-e.g, sum, average, or equivalent reactances, are then applied to the remaining node and edge
+e.g., sum, average, or equivalent reactances, are then applied to the remaining node and edge
 properties. These property aggregation strategies can be configured by the user in detail through
 the aggregation profiles shown in Figure \ref{fig:design}. At the moment, NPAP provides two
 pre-defined aggregation profiles.
@@ -175,23 +178,26 @@ pre-defined aggregation profiles.
 
 NPAP is designed as a standalone, pip-installable open-source Python package, released under the MIT
 license. The library is fully documented on ReadTheDocs and includes an automated test suite with
-continuous integration across Python 3.10, 3.11, and 3.12. It has been tested on small- and
-large-scale networks with up to a few thousand nodes.
+continuous integration across Python 3.10 to 3.14. It has been tested on small- and
+large-scale networks with up to around 7,000 nodes.
 
 One potential application of NPAP is within energy system modeling frameworks. For illustration
-purposes, we have integrated it into the well-established PyPSA-Eur [@Hoersch2018] framework through
-an open pull request introducing NPAP as an alternative to PyPSA’s native spatial clustering
-backend.[^1] Thereby showcasing NPAP’s framework-agnostic design and highlighting the minimal
-adoption effort.
+purposes, we have opened a pull request to the well-established PyPSA [@Brown2018a] framework that
+adds NPAP as an optional alternative to PyPSA’s native spatial clustering backend.[^1] The integration is
+self-contained: it converts PyPSA's network object into a NetworkX graph, applies NPAP's partitioning
+and aggregation strategies, and passes the result back to PyPSA's existing clustering and mapping pipeline.
+This showcases how NPAP’s framework-agnostic design can be leveraged by existing tools without changing
+their original data model.
 
 [^1]: https://github.com/PyPSA/PyPSA/pull/1568
 
 We further utilized this implementation to demonstrate NPAP’s usability and scalability by applying
-it to the full pan-European transmission network [@Xiong2025], comprising around 6800 nodes and
-17500 edges. Leveraging the voltage-aware partitioning strategy with geographical distance and
-k-means clustering [@lloyd1982least], we analyze the required infrastructure investments for power
-lines on different voltage levels and transformers using PyPSA [@Brown2018a]. The work has been
-submitted to the International Conference on the European Energy Market 2026.
+it to the full pan-European transmission network [@Xiong2025;@Xiong2026], comprising around 6,800 nodes and
+17,500 edges, within the PyPSA-Eur workflow [@Hoersch2018]. In @Stoeckl2026, we use k-medoids clustering
+[@schubert2021fast] with geographical (haversine) distances to compare voltage-unaware and voltage-aware
+partitioning and aggregation, and analyze the resulting infrastructure investments for power lines on
+different voltage levels and transformers in a transmission expansion planning problem solved with PyPSA
+[@Brown2018a].
 
 Active development directions include the extension of the available partitioning strategies, e.g.,
 the Adjacent Node Agglomerative Clustering algorithm [@Stoeckl2025a], and aggregation strategies,
@@ -202,14 +208,15 @@ country or region, as an additional pre-processing step before partitioning.
 
 # AI Usage Disclosure
 
-Several artificial intelligence (AI) tools were used during the development of NPAP. Google Gemini
-(Pro) was used for non-code-related tasks, such as learning about power systems. Anthropic Claude
-(Sonnet 4.5, Opus 4.5, and 4.6), accessed through both the desktop application and the Claude Code
-terminal interface, was used for code-related activities, including software design brainstorming,
-implementation support, test coverage, or writing the documentation. Grammarly was used for grammar
-and spell checking. No other code-generation tools (such as GitHub Copilot, Codex, or Cursor) were
-used. All AI-generated output was carefully reviewed, tested, and frequently modified before
-inclusion. The authors take full responsibility for the code.
+Several artificial intelligence (AI) tools were used during the development of NPAP and this manuscript.
+Google Gemini (Pro) was used for non-code-related tasks, such as learning about power systems. Anthropic
+Claude (Sonnet 4.5, Opus 4.5, 4.6, and 5.5), accessed through both the desktop application and the Claude
+Code terminal interface, was used for code-related activities, including software design brainstorming,
+implementation support, test coverage, or writing the documentation. It was also used for consistency and
+reference checks during the manuscript preparation. Grammarly was used for grammar and spell checking.
+No other code-generation tools (such as GitHub Copilot, Codex, or Cursor) were used. All AI-generated
+output was carefully reviewed, tested, and frequently modified before inclusion. The authors take full
+responsibility for the code and the manuscript.
 
 
 # Acknowledgements
