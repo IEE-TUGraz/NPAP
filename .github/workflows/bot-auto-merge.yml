@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: Contributors to NPAP
+# SPDX-License-Identifier: MIT
+
+# Approve and enable auto-merge on routine bot PRs. GitHub only merges them
+# once the required status checks pass, so a red PR never reaches main.
+# Major Dependabot updates are left for manual review.
+
+name: Bot auto-merge
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot:
+    name: Dependabot
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Fetch update metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+
+      - name: Approve and enable auto-merge
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr review --approve "$PR_URL"
+          gh pr merge --auto --squash "$PR_URL"
+
+  pre-commit-ci:
+    name: pre-commit.ci
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'pre-commit-ci[bot]'
+    steps:
+      - name: Approve and enable auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr review --approve "$PR_URL"
+          gh pr merge --auto --squash "$PR_URL"

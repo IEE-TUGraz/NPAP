@@ -2,6 +2,7 @@ from typing import Any
 
 import networkx as nx
 
+from npap._logging import LogCategory, log_debug, log_info, log_warning
 from npap.interfaces import (
     AggregationMode,
     AggregationProfile,
@@ -13,7 +14,6 @@ from npap.interfaces import (
     PhysicalAggregationStrategy,
     TopologyStrategy,
 )
-from npap.logging import LogCategory, log_debug, log_info, log_warning
 from npap.partitioning import VAElectricalDistancePartitioning
 
 
@@ -327,12 +327,12 @@ class AggregationManager:
             )
         else:
             self._aggregate_edge_properties(
-                graph,
-                partition_map,
-                aggregated,
-                profile,
-                physical_modified_properties,
-                cluster_edge_map,
+                graph=graph,
+                partition_map=partition_map,
+                aggregated=aggregated,
+                profile=profile,
+                skip_properties=physical_modified_properties,
+                cluster_edge_map=cluster_edge_map,
             )
 
         log_info(
@@ -531,6 +531,7 @@ class AggregationManager:
 
     @staticmethod
     def _resolve_property_strategies(
+        *,
         properties: set[str],
         user_specified: dict[str, str],
         available_strategies: dict[str, Any],
@@ -628,6 +629,7 @@ class AggregationManager:
 
     def _aggregate_edge_properties(
         self,
+        *,
         graph: nx.DiGraph,
         partition_map: dict[int, list[Any]],
         aggregated: nx.DiGraph,
@@ -1143,7 +1145,12 @@ class PartitionAggregatorManager:
         self,
         style: str = "simple",
         graph: nx.DiGraph = None,
-        show: bool = True,
+        *,
+        renderer: str = None,
+        save_html: bool = None,
+        output_dir=None,
+        filename: str = None,
+        show: bool = None,
         config=None,
         **kwargs,
     ):
@@ -1160,8 +1167,23 @@ class PartitionAggregatorManager:
             - 'clustered': Nodes colored by cluster assignment
         graph : nx.DiGraph, optional
             Graph to plot (uses current graph if not provided).
-        show : bool
-            Whether to display immediately.
+        renderer : str, optional
+            Plotly renderer used to display the figure. ``None`` (default) does
+            not display anything and only returns the figure. ``"auto"`` lets
+            Plotly choose based on the environment. Any other value (e.g.
+            ``"browser"`` to explore the interactive map from an IDE) is
+            forwarded to Plotly as-is.
+        save_html : bool, optional
+            Whether to export a standalone HTML file. ``None`` (default)
+            exports only when running outside a Jupyter kernel, so notebooks
+            render inline without writing files to disk.
+        output_dir : str or Path, optional
+            Directory for the exported HTML. Defaults to the working directory.
+        filename : str, optional
+            File name for the exported HTML. Defaults to a slug of the title.
+        show : bool, optional
+            Deprecated. ``show=True`` maps to ``renderer="browser"`` and
+            ``show=False`` to ``renderer=None``. Use ``renderer`` instead.
         config : PlotConfig, optional
             PlotConfig instance to override defaults. If provided,
             kwargs will further override values from this config.
@@ -1182,6 +1204,8 @@ class PartitionAggregatorManager:
         --------
         >>> manager.plot_network(style="voltage_aware", title="My Network")
         >>> manager.plot_network(style="clustered")  # After partitioning
+        >>> manager.plot_network(renderer="browser")  # Explore interactively
+        >>> manager.plot_network(output_dir="figures", filename="grid.html")
         """
         from npap.visualization import plot_network
 
@@ -1204,6 +1228,10 @@ class PartitionAggregatorManager:
             graph=target_graph,
             style=style,
             partition_map=partition_map,
+            renderer=renderer,
+            save_html=save_html,
+            output_dir=output_dir,
+            filename=filename,
             show=show,
             config=config,
             **kwargs,

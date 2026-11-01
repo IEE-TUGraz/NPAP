@@ -68,7 +68,7 @@ def configure_logging(
 
     Examples
     --------
-    >>> from npap.logging import configure_logging
+    >>> from npap._logging import configure_logging
     >>> import logging
     >>> # Enable debug logging
     >>> configure_logging(level=logging.DEBUG)

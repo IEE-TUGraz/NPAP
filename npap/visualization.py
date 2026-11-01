@@ -1,12 +1,184 @@
+import re
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 import networkx as nx
 import plotly.graph_objects as go
-import plotly.io as pio
 
+from npap._logging import LogCategory, log_info
 from npap.interfaces import EdgeType
+
+#: Filename used for the exported HTML when no title or filename is available.
+DEFAULT_HTML_FILENAME = "npap_network.html"
+
+#: Plotly figure config applied to every rendered/exported figure.
+_FIGURE_CONFIG = {"scrollZoom": True}
+
+
+def _resolve_deprecated_show(show: bool | None, renderer: str | None) -> str | None:
+    """
+    Map the deprecated `show` flag onto the `renderer` argument.
+
+    Parameters
+    ----------
+    show : bool or None
+        Legacy flag. `None` means the caller did not pass it.
+    renderer : str or None
+        Renderer explicitly requested by the caller, which always wins.
+
+    Returns
+    -------
+    str or None
+        Effective renderer to use.
+    """
+    if show is None:
+        return renderer
+
+    warnings.warn(
+        "The 'show' argument of NPAP plotting functions is deprecated and will "
+        "be removed in a future release. Use renderer='browser' to display the "
+        "figure in a browser, or renderer=None (the default) to only return it.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+    if renderer is not None:
+        return renderer
+    return "browser" if show else None
+
+
+def _in_notebook() -> bool:
+    """
+    Detect whether NPAP is running inside a Jupyter notebook kernel.
+
+    Returns
+    -------
+    bool
+        True when executed inside a Jupyter/JupyterLab kernel, False in plain
+        scripts, IPython terminals and test runners.
+    """
+    try:
+        from IPython import get_ipython
+    except ImportError:
+        return False
+
+    shell = get_ipython()
+    if shell is None:
+        return False
+    return type(shell).__name__ == "ZMQInteractiveShell"
+
+
+def _slugify(text: str) -> str:
+    """
+    Convert a plot title into a filesystem-safe file stem.
+
+    Parameters
+    ----------
+    text : str
+        Arbitrary title text.
+
+    Returns
+    -------
+    str
+        Lowercase slug containing only alphanumerics, dashes and underscores.
+    """
+    slug = re.sub(r"[^\w\-]+", "_", text, flags=re.UNICODE).strip("_").lower()
+    return slug or Path(DEFAULT_HTML_FILENAME).stem
+
+
+def resolve_html_path(
+    output_dir: str | Path | None = None,
+    filename: str | None = None,
+    title: str | None = None,
+) -> Path:
+    """
+    Determine the destination path of the exported HTML figure.
+
+    Parameters
+    ----------
+    output_dir : str or Path or None
+        Target directory. Defaults to the current working directory.
+    filename : str or None
+        Explicit file name. Defaults to a slug of `title`, or
+        `DEFAULT_HTML_FILENAME` when no title is set.
+    title : str or None
+        Plot title used to derive the file name.
+
+    Returns
+    -------
+    Path
+        Absolute path the HTML figure will be written to.
+    """
+    directory = Path(output_dir) if output_dir is not None else Path.cwd()
+
+    if filename is None:
+        filename = f"{_slugify(title)}.html" if title else DEFAULT_HTML_FILENAME
+    elif not filename.lower().endswith(".html"):
+        filename = f"{filename}.html"
+
+    return (directory / filename).resolve()
+
+
+def deliver_figure(
+    fig: go.Figure,
+    *,
+    renderer: str | None = None,
+    save_html: bool | None = None,
+    output_dir: str | Path | None = None,
+    filename: str | None = None,
+    title: str | None = None,
+) -> Path | None:
+    """
+    Export and/or display a figure without mutating global Plotly state.
+
+    By default the figure is written to a standalone HTML file when running
+    outside a Jupyter kernel, and left untouched inside one so that the
+    returned figure renders inline. Displaying is opt-in via `renderer`.
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Figure to deliver.
+    renderer : str or None
+        Plotly renderer used to display the figure. `None` (default) does not
+        display anything. `"auto"` lets Plotly pick the renderer for the
+        current environment. Any other value (e.g. `"browser"`, `"notebook"`,
+        `"vscode"`, `"png"`) is forwarded to Plotly as-is.
+    save_html : bool or None
+        Whether to export a standalone HTML file. `None` (default) exports
+        only when not running inside a Jupyter kernel.
+    output_dir : str or Path or None
+        Directory for the exported HTML. Defaults to the working directory.
+    filename : str or None
+        File name for the exported HTML. Defaults to a slug of `title`.
+    title : str or None
+        Plot title used to derive the default file name.
+
+    Returns
+    -------
+    Path or None
+        Path of the written HTML file, or None when nothing was exported.
+    """
+    if save_html is None:
+        save_html = not _in_notebook()
+
+    written: Path | None = None
+    if save_html:
+        written = resolve_html_path(output_dir, filename, title)
+        written.parent.mkdir(parents=True, exist_ok=True)
+        fig.write_html(str(written), config=_FIGURE_CONFIG)
+        log_info(f"Figure exported to {written}", LogCategory.VISUALIZATION)
+
+    if renderer is not None:
+        if renderer == "auto":
+            fig.show(config=_FIGURE_CONFIG)
+        else:
+            fig.show(renderer=renderer, config=_FIGURE_CONFIG)
+
+    return written
 
 
 class PlotStyle(Enum):
@@ -66,7 +238,7 @@ class PlotConfig:
     node_size : int
         Size of node markers in pixels.
     map_style : str
-        Mapbox style for the base map.
+        MapLibre style for the base map.
     map_center_lat : float
         Initial map center latitude.
     map_center_lon : float
@@ -411,7 +583,7 @@ class NetworkPlotter:
 
         return groups
 
-    def _build_edge_traces_voltage_aware(self, config: PlotConfig) -> list[go.Scattermapbox]:
+    def _build_edge_traces_voltage_aware(self, config: PlotConfig) -> list[go.Scattermap]:
         """
         Build edge traces grouped by type and voltage category.
 
@@ -426,8 +598,8 @@ class NetworkPlotter:
 
         Returns
         -------
-        list[go.Scattermapbox]
-            List of Scattermapbox traces for edges.
+        list[go.Scattermap]
+            List of Scattermap traces for edges.
         """
         groups = self._group_edges_by_type(config)
         traces = []
@@ -441,7 +613,7 @@ class NetworkPlotter:
             color = EdgeStyleRegistry.get_color(group_key, config)
             name = EdgeStyleRegistry.get_display_name(group_key, config)
 
-            trace = go.Scattermapbox(
+            trace = go.Scattermap(
                 lon=group.lons,
                 lat=group.lats,
                 mode="lines",
@@ -454,7 +626,7 @@ class NetworkPlotter:
 
         return traces
 
-    def _build_edge_traces_simple(self, config: PlotConfig) -> list[go.Scattermapbox]:
+    def _build_edge_traces_simple(self, config: PlotConfig) -> list[go.Scattermap]:
         """
         Build a single edge trace with uniform styling.
 
@@ -468,7 +640,7 @@ class NetworkPlotter:
 
         Returns
         -------
-        list[go.Scattermapbox]
+        list[go.Scattermap]
             List containing single edge trace (or empty if no valid edges).
         """
         lons = []
@@ -487,7 +659,7 @@ class NetworkPlotter:
         if not lons:
             return []
 
-        trace = go.Scattermapbox(
+        trace = go.Scattermap(
             lon=lons,
             lat=lats,
             mode="lines",
@@ -499,7 +671,7 @@ class NetworkPlotter:
 
     def _build_node_trace(
         self, config: PlotConfig, color_by_cluster: bool = False
-    ) -> go.Scattermapbox | None:
+    ) -> go.Scattermap | None:
         """
         Build node trace with optional cluster-based coloring.
 
@@ -516,8 +688,8 @@ class NetworkPlotter:
 
         Returns
         -------
-        go.Scattermapbox or None
-            Scattermapbox trace for nodes, or None if nodes are hidden.
+        go.Scattermap or None
+            Scattermap trace for nodes, or None if nodes are hidden.
         """
         if not config.show_nodes:
             return None
@@ -573,7 +745,7 @@ class NetworkPlotter:
             # Uniform coloring: single color for all nodes
             marker = dict(size=config.node_size, color=config.node_color)
 
-        trace = go.Scattermapbox(
+        trace = go.Scattermap(
             lon=node_lons,
             lat=node_lats,
             mode="markers",
@@ -586,18 +758,18 @@ class NetworkPlotter:
         return trace
 
     @staticmethod
-    def _create_figure(traces: list[go.Scattermapbox], config: PlotConfig) -> go.Figure:
+    def _create_figure(traces: list[go.Scattermap], config: PlotConfig) -> go.Figure:
         """
         Assemble Plotly figure with all traces and layout configuration.
 
         This method handles the final assembly: combining edge and node traces,
-        configuring the mapbox layout, and setting up the legend for optimal
+        configuring the map layout, and setting up the legend for optimal
         user interaction.
 
         Parameters
         ----------
-        traces : list[go.Scattermapbox]
-            List of all Scattermapbox traces (edges + nodes).
+        traces : list[go.Scattermap]
+            List of all Scattermap traces (edges + nodes).
         config : PlotConfig
             Plot configuration with layout settings.
 
@@ -630,7 +802,7 @@ class NetworkPlotter:
                 itemsizing="constant",
                 tracegroupgap=5,
             ),
-            mapbox=dict(
+            map=dict(
                 style=config.map_style,
                 bearing=0,
                 center=dict(lat=config.map_center_lat, lon=config.map_center_lon),
@@ -650,7 +822,15 @@ class NetworkPlotter:
         return fig
 
     def _plot(
-        self, style: PlotStyle, config: PlotConfig | None = None, show: bool = True
+        self,
+        style: PlotStyle,
+        config: PlotConfig | None = None,
+        *,
+        renderer: str | None = None,
+        save_html: bool | None = None,
+        output_dir: str | Path | None = None,
+        filename: str | None = None,
+        show: bool | None = None,
     ) -> go.Figure:
         """
         Execute centralized plotting for all visualization styles.
@@ -665,8 +845,17 @@ class NetworkPlotter:
             Visualization style (SIMPLE, VOLTAGE_AWARE, or CLUSTERED).
         config : PlotConfig or None
             Optional plot configuration (uses defaults if not provided).
-        show : bool
-            Whether to display the figure immediately in browser.
+        renderer : str or None
+            Plotly renderer used to display the figure. See :func:`deliver_figure`.
+        save_html : bool or None
+            Whether to export a standalone HTML file. `None` exports only
+            outside Jupyter kernels.
+        output_dir : str or Path or None
+            Directory for the exported HTML. Defaults to the working directory.
+        filename : str or None
+            File name for the exported HTML.
+        show : bool or None
+            Deprecated. Use `renderer` instead.
 
         Returns
         -------
@@ -678,6 +867,7 @@ class NetworkPlotter:
         ValueError
             If CLUSTERED style requested without partition_map.
         """
+        renderer = _resolve_deprecated_show(show, renderer)
         config = config or PlotConfig()
 
         # Validate prerequisites for clustered visualization
@@ -705,16 +895,21 @@ class NetworkPlotter:
         # Create figure
         fig = self._create_figure(traces, config)
 
-        # Display in browser if requested
-        if show:
-            pio.renderers.default = "browser"
-            fig.show(config={"scrollZoom": True})
+        # Export to HTML and/or display, without touching global Plotly state
+        deliver_figure(
+            fig,
+            renderer=renderer,
+            save_html=save_html,
+            output_dir=output_dir,
+            filename=filename,
+            title=config.title,
+        )
 
         return fig
 
     # Public API methods - these provide clean interfaces for each style
 
-    def plot_simple(self, config: PlotConfig | None = None, show: bool = True) -> go.Figure:
+    def plot_simple(self, config: PlotConfig | None = None, **output_kwargs: Any) -> go.Figure:
         """
         Create simple visualization with uniform edge styling.
 
@@ -724,17 +919,20 @@ class NetworkPlotter:
         ----------
         config : PlotConfig or None
             Optional plot configuration.
-        show : bool
-            Whether to display immediately.
+        **output_kwargs : dict
+            Output options forwarded to :func:`deliver_figure` (`renderer`,
+            `save_html`, `output_dir`, `filename`).
 
         Returns
         -------
         go.Figure
             Plotly Figure object.
         """
-        return self._plot(PlotStyle.SIMPLE, config, show)
+        return self._plot(PlotStyle.SIMPLE, config, **output_kwargs)
 
-    def plot_voltage_aware(self, config: PlotConfig | None = None, show: bool = True) -> go.Figure:
+    def plot_voltage_aware(
+        self, config: PlotConfig | None = None, **output_kwargs: Any
+    ) -> go.Figure:
         """
         Create voltage-aware visualization with edges colored by type and voltage.
 
@@ -744,17 +942,18 @@ class NetworkPlotter:
         ----------
         config : PlotConfig or None
             Optional plot configuration.
-        show : bool
-            Whether to display immediately.
+        **output_kwargs : dict
+            Output options forwarded to :func:`deliver_figure` (`renderer`,
+            `save_html`, `output_dir`, `filename`).
 
         Returns
         -------
         go.Figure
             Plotly Figure object.
         """
-        return self._plot(PlotStyle.VOLTAGE_AWARE, config, show)
+        return self._plot(PlotStyle.VOLTAGE_AWARE, config, **output_kwargs)
 
-    def plot_clustered(self, config: PlotConfig | None = None, show: bool = True) -> go.Figure:
+    def plot_clustered(self, config: PlotConfig | None = None, **output_kwargs: Any) -> go.Figure:
         """
         Create clustered visualization with nodes colored by cluster assignment.
 
@@ -764,8 +963,9 @@ class NetworkPlotter:
         ----------
         config : PlotConfig or None
             Optional plot configuration.
-        show : bool
-            Whether to display immediately.
+        **output_kwargs : dict
+            Output options forwarded to :func:`deliver_figure` (`renderer`,
+            `save_html`, `output_dir`, `filename`).
 
         Returns
         -------
@@ -777,14 +977,19 @@ class NetworkPlotter:
         ValueError
             If partition_map was not provided during initialization.
         """
-        return self._plot(PlotStyle.CLUSTERED, config, show)
+        return self._plot(PlotStyle.CLUSTERED, config, **output_kwargs)
 
 
 def plot_network(
     graph: nx.DiGraph,
     style: str = "simple",
     partition_map: dict[int, list[Any]] | None = None,
-    show: bool = True,
+    *,
+    renderer: str | None = None,
+    save_html: bool | None = None,
+    output_dir: str | Path | None = None,
+    filename: str | None = None,
+    show: bool | None = None,
     config: PlotConfig | None = None,
     **kwargs,
 ) -> go.Figure:
@@ -794,6 +999,10 @@ def plot_network(
     This function provides a simple interface for one-line plotting without
     needing to instantiate the NetworkPlotter class explicitly.
 
+    The figure is always returned. Outside Jupyter it is additionally exported
+    as a standalone HTML file; inside a notebook nothing is written to disk so
+    the returned figure renders inline. Pass `renderer` to display it.
+
     Parameters
     ----------
     graph : nx.DiGraph
@@ -802,8 +1011,20 @@ def plot_network(
         Visualization style ('simple', 'voltage_aware', or 'clustered').
     partition_map : dict[int, list[Any]] or None
         Optional cluster mapping for 'clustered' style.
-    show : bool
-        Whether to display the figure immediately.
+    renderer : str or None
+        Plotly renderer used to display the figure. `None` (default) does not
+        display anything. `"auto"` lets Plotly choose based on the environment.
+        Any other value (e.g. `"browser"`) is forwarded to Plotly as-is.
+    save_html : bool or None
+        Whether to export a standalone HTML file. `None` (default) exports
+        only when running outside a Jupyter kernel.
+    output_dir : str or Path or None
+        Directory for the exported HTML. Defaults to the working directory.
+    filename : str or None
+        File name for the exported HTML. Defaults to a slug of the title.
+    show : bool or None
+        Deprecated. `show=True` maps to `renderer="browser"` and `show=False`
+        to `renderer=None`. Use `renderer` directly instead.
     config : PlotConfig or None
         Optional PlotConfig instance to override defaults. If provided,
         kwargs will further override values from this config.
@@ -826,6 +1047,7 @@ def plot_network(
     >>> from npap.visualization import plot_network
     >>> fig = plot_network(graph, style="voltage_aware", title="My Network")
     >>> fig = plot_network(graph, style="clustered", partition_map=result.mapping)
+    >>> fig = plot_network(graph, renderer="browser")  # open in a browser tab
     """
     if config is not None:
         # Start with provided config, then override with kwargs
@@ -838,14 +1060,21 @@ def plot_network(
         effective_config = PlotConfig(**kwargs)
 
     plotter = NetworkPlotter(graph, partition_map=partition_map)
+    output_kwargs = {
+        "renderer": renderer,
+        "save_html": save_html,
+        "output_dir": output_dir,
+        "filename": filename,
+        "show": show,
+    }
 
     # Support both string and enum style specifications
     if style == "simple" or style == PlotStyle.SIMPLE:
-        return plotter.plot_simple(effective_config, show=show)
+        return plotter.plot_simple(effective_config, **output_kwargs)
     elif style == "voltage_aware" or style == PlotStyle.VOLTAGE_AWARE:
-        return plotter.plot_voltage_aware(effective_config, show=show)
+        return plotter.plot_voltage_aware(effective_config, **output_kwargs)
     elif style == "clustered" or style == PlotStyle.CLUSTERED:
-        return plotter.plot_clustered(effective_config, show=show)
+        return plotter.plot_clustered(effective_config, **output_kwargs)
     else:
         raise ValueError(
             f"Unknown plot style: {style}. Valid options: 'simple', 'voltage_aware', 'clustered'"

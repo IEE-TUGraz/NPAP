@@ -6,9 +6,9 @@ import networkx as nx
 import numpy as np
 from scipy.linalg import LinAlgError, solve
 
+from npap._logging import LogCategory, log_debug, log_info, log_warning
 from npap.exceptions import PartitioningError, ValidationError
 from npap.interfaces import EdgeType, PartitioningStrategy
-from npap.logging import LogCategory, log_debug, log_info, log_warning
 from npap.utils import (
     create_partition_map,
     run_kmeans,

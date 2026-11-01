@@ -10,6 +10,8 @@ This section contains the complete API reference for NPAP.
    interfaces
    partitioning
    aggregation
+   visualization
+   datasets
    exceptions
 
 Core Module
@@ -26,3 +28,8 @@ Core Module
    AggregationMode
    PartitionResult
    get_mode_profile
+   configure_logging
+   disable_logging
+   enable_logging
+   get_logger
+   LogCategory

@@ -46,7 +46,7 @@ Install NPAP from PyPI or source, including development dependencies.
 :link: quick-start
 :link-type: doc
 
-Complete workflow example using a voltage-aware power network.
+A runnable end-to-end example on the real European grid, plus the notebooks.
 :::
 
 :::{grid-item-card} Available Strategies
@@ -154,12 +154,12 @@ NPAP provides a comprehensive exception hierarchy:
 
 ```python
 from npap import (
-    NPAPError,              # Base exception
-    DataLoadingError,       # Input/loading issues
-    PartitioningError,      # Partitioning failures
-    AggregationError,       # Aggregation issues
-    ValidationError,        # Input validation
-    GraphCompatibilityError # Partition/graph mismatch
+    NPAPError,  # Base exception
+    DataLoadingError,  # Input/loading issues
+    PartitioningError,  # Partitioning failures
+    AggregationError,  # Aggregation issues
+    ValidationError,  # Input validation
+    GraphCompatibilityError,  # Partition/graph mismatch
 )
 
 try:
@@ -175,14 +175,14 @@ except NPAPError as e:
 Configure logging to monitor NPAP operations:
 
 ```python
-from npap.logging import configure_logging, LogCategory
 import logging
+
+from npap import configure_logging, disable_logging
 
 # Enable debug logging
 configure_logging(level=logging.DEBUG)
 
 # Or disable all logging
-from npap.logging import disable_logging
 disable_logging()
 ```
 

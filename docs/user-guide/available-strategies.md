@@ -233,7 +233,7 @@ profile = AggregationProfile(
         "p_max": "sum",
     },
     default_node_strategy="sum",
-    default_edge_strategy="average"
+    default_edge_strategy="average",
 )
 
 aggregated = manager.aggregate(profile=profile)

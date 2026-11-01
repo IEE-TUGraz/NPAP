@@ -92,19 +92,10 @@ from npap import AggregationProfile
 profile = AggregationProfile(
     topology_strategy="simple",
     physical_strategy=None,
-    node_properties={
-        "lat": "average",
-        "lon": "average",
-        "load": "sum",
-        "generation": "sum"
-    },
-    edge_properties={
-        "x": "equivalent_reactance",
-        "r": "equivalent_reactance",
-        "p_max": "sum"
-    },
+    node_properties={"lat": "average", "lon": "average", "load": "sum", "generation": "sum"},
+    edge_properties={"x": "equivalent_reactance", "r": "equivalent_reactance", "p_max": "sum"},
     default_node_strategy="sum",
-    default_edge_strategy="average"
+    default_edge_strategy="average",
 )
 
 aggregated = manager.aggregate(profile=profile)
@@ -140,14 +131,14 @@ power_flow_profile = AggregationProfile(
         "q_load": "sum",
         "p_gen": "sum",
         "q_gen": "sum",
-        "voltage": "average"
+        "voltage": "average",
     },
     edge_properties={
         "x": "equivalent_reactance",
         "r": "equivalent_reactance",
         "b": "sum",
-        "p_max": "sum"
-    }
+        "p_max": "sum",
+    },
 )
 ```
 
@@ -155,16 +146,10 @@ power_flow_profile = AggregationProfile(
 ```python
 geo_profile = AggregationProfile(
     topology_strategy="simple",
-    node_properties={
-        "lat": "average",
-        "lon": "average",
-        "name": "first"
-    },
-    edge_properties={
-        "length": "sum"
-    },
+    node_properties={"lat": "average", "lon": "average", "name": "first"},
+    edge_properties={"length": "sum"},
     default_node_strategy="first",
-    default_edge_strategy="first"
+    default_edge_strategy="first",
 )
 ```
 
@@ -212,7 +197,7 @@ For use with physical aggregation strategies:
 ```python
 profile = AggregationProfile(
     topology_strategy="electrical",
-    connectivity="existing"  # or "full"
+    connectivity="existing",  # or "full"
 )
 ```
 
@@ -232,11 +217,11 @@ profile = AggregationProfile(
 
 **Examples:**
 ```python
-node_properties={
-    "load": "sum",        # Total load in cluster
-    "lat": "average",     # Geographic center
-    "name": "first",      # Keep first name
-    "voltage": "average"  # Average voltage level
+node_properties = {
+    "load": "sum",  # Total load in cluster
+    "lat": "average",  # Geographic center
+    "name": "first",  # Keep first name
+    "voltage": "average",  # Average voltage level
 }
 ```
 
@@ -251,11 +236,11 @@ node_properties={
 
 **Examples:**
 ```python
-edge_properties={
-    "p_max": "sum",              # Total capacity
+edge_properties = {
+    "p_max": "sum",  # Total capacity
     "x": "equivalent_reactance",  # Parallel reactance
-    "length": "average",          # Average length
-    "type": "first"              # Keep first type
+    "length": "average",  # Average length
+    "type": "first",  # Keep first type
 }
 ```
 
@@ -268,10 +253,7 @@ $$x_{eq} = \frac{1}{\sum_{i=1}^{n} \frac{1}{x_i}}$$
 This is the electrical equivalent of parallel resistors/inductors.
 
 ```python
-edge_properties={
-    "x": "equivalent_reactance",
-    "r": "equivalent_reactance"
-}
+edge_properties = {"x": "equivalent_reactance", "r": "equivalent_reactance"}
 ```
 
 ## Physical Aggregation
@@ -290,9 +272,9 @@ When a property isn't explicitly mapped, NPAP uses the default strategy:
 
 ```python
 profile = AggregationProfile(
-    node_properties={"load": "sum"},   # Only load is mapped
-    default_node_strategy="average",   # Everything else uses average
-    warn_on_defaults=True              # Warn when using defaults
+    node_properties={"load": "sum"},  # Only load is mapped
+    default_node_strategy="average",  # Everything else uses average
+    warn_on_defaults=True,  # Warn when using defaults
 )
 ```
 
@@ -321,10 +303,10 @@ if isinstance(graph, nx.MultiDiGraph):
             "x": "equivalent_reactance",
             "r": "equivalent_reactance",
             "p_max": "sum",
-            "length": "average"
+            "length": "average",
         },
         default_strategy="average",
-        warn_on_defaults=False
+        warn_on_defaults=False,
     )
 ```
 
@@ -341,15 +323,11 @@ import networkx as nx
 manager = npap.PartitionAggregatorManager()
 
 # Load data
-graph = manager.load_data("csv_files",
-                          node_file="nodes.csv",
-                          edge_file="edges.csv")
+graph = manager.load_data("csv_files", node_file="nodes.csv", edge_file="edges.csv")
 
 # Handle parallel edges if present
 if isinstance(graph, nx.MultiDiGraph):
-    manager.aggregate_parallel_edges(
-        edge_properties={"x": "equivalent_reactance", "p_max": "sum"}
-    )
+    manager.aggregate_parallel_edges(edge_properties={"x": "equivalent_reactance", "p_max": "sum"})
 
 # Partition
 partition = manager.partition("geographical_kmeans", n_clusters=20)
@@ -360,18 +338,10 @@ aggregated = manager.aggregate(mode=AggregationMode.GEOGRAPHICAL)
 # Option 2: Use custom profile
 custom_profile = AggregationProfile(
     topology_strategy="simple",
-    node_properties={
-        "lat": "average",
-        "lon": "average",
-        "load": "sum",
-        "generation": "sum"
-    },
-    edge_properties={
-        "x": "equivalent_reactance",
-        "p_max": "sum"
-    },
+    node_properties={"lat": "average", "lon": "average", "load": "sum", "generation": "sum"},
+    edge_properties={"x": "equivalent_reactance", "p_max": "sum"},
     default_node_strategy="sum",
-    default_edge_strategy="sum"
+    default_edge_strategy="sum",
 )
 aggregated = manager.aggregate(profile=custom_profile)
 
@@ -454,14 +424,14 @@ When using custom profiles, document your choices:
 profile = AggregationProfile(
     topology_strategy="simple",
     node_properties={
-        "lat": "average",     # Geographic center of cluster
-        "lon": "average",     # Geographic center of cluster
-        "p_load": "sum",      # Total active load (MW)
-        "q_load": "sum",      # Total reactive load (MVAr)
+        "lat": "average",  # Geographic center of cluster
+        "lon": "average",  # Geographic center of cluster
+        "p_load": "sum",  # Total active load (MW)
+        "q_load": "sum",  # Total reactive load (MVAr)
     },
     edge_properties={
         "x": "equivalent_reactance",  # Parallel combination
-        "p_max": "sum",               # Total transfer capacity
-    }
+        "p_max": "sum",  # Total transfer capacity
+    },
 )
 ```

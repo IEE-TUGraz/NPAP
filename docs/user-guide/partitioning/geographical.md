@@ -27,11 +27,7 @@ Fast clustering on raw coordinates. Best for quick partitioning when AC-island b
 
 ```python
 partition = manager.partition(
-    "geographical_kmeans",
-    n_clusters=10,
-    random_state=42,
-    max_iter=300,
-    n_init=10
+    "geographical_kmeans", n_clusters=10, random_state=42, max_iter=300, n_init=10
 )
 ```
 
@@ -51,16 +47,10 @@ More robust clustering using precomputed distance matrices. Supports AC-island c
 
 ```python
 # Euclidean distance (for projected coordinates)
-partition = manager.partition(
-    "geographical_kmedoids_euclidean",
-    n_clusters=10
-)
+partition = manager.partition("geographical_kmedoids_euclidean", n_clusters=10)
 
 # Haversine distance (for lat/lon on Earth's surface)
-partition = manager.partition(
-    "geographical_kmedoids_haversine",
-    n_clusters=10
-)
+partition = manager.partition("geographical_kmedoids_haversine", n_clusters=10)
 ```
 **Parameters:**
 - `n_clusters`: Number of clusters (required)
@@ -72,8 +62,8 @@ Density-based clustering that automatically determines the number of clusters.
 ```python
 partition = manager.partition(
     "geographical_dbscan_euclidean",
-    eps=0.5,          # Maximum distance between points in a cluster
-    min_samples=5     # Minimum points to form a cluster
+    eps=0.5,  # Maximum distance between points in a cluster
+    min_samples=5,  # Minimum points to form a cluster
 )
 
 print(f"Found {partition.n_clusters} clusters")
@@ -95,7 +85,7 @@ Agglomerative clustering with different linkage methods.
 partition = manager.partition(
     "geographical_hierarchical",
     n_clusters=10,
-    linkage="complete"  # 'complete', 'average', 'single'
+    linkage="complete",  # 'complete', 'average', 'single'
 )
 ```
 
@@ -115,10 +105,7 @@ Ward linkage (`ward`) is **not supported** when AC-island awareness is needed, a
 Hierarchical density-based clustering for robust automatic cluster detection.
 
 ```python
-partition = manager.partition(
-    "geographical_hdbscan_haversine",
-    min_cluster_size=5
-)
+partition = manager.partition("geographical_hdbscan_haversine", min_cluster_size=5)
 ```
 
 **Parameters:**

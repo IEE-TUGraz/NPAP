@@ -91,26 +91,22 @@ config = PlotConfig(
     show_trafos=True,
     show_dc_links=True,
     show_nodes=True,
-
     # Voltage threshold (kV)
     line_voltage_threshold=300,
-
     # Colors (hex)
-    line_high_voltage_color="#e74c3c",   # Red for HV
-    line_low_voltage_color="#3498db",    # Blue for LV
-    trafo_color="#9b59b6",               # Purple for transformers
-    dc_link_color="#2ecc71",             # Green for DC links
-    node_color="#34495e",                # Dark gray for nodes
-
+    line_high_voltage_color="#e74c3c",  # Red for HV
+    line_low_voltage_color="#3498db",  # Blue for LV
+    trafo_color="#9b59b6",  # Purple for transformers
+    dc_link_color="#2ecc71",  # Green for DC links
+    node_color="#34495e",  # Dark gray for nodes
     # Geometry
     edge_width=1.5,
     node_size=6,
-
     # Map settings
     map_center_lat=47.0,
     map_center_lon=15.0,
     map_zoom=5,
-    map_style="carto-positron"
+    map_style="carto-positron",
 )
 
 manager.plot_network(style="voltage_aware", config=config)
@@ -199,13 +195,10 @@ Available colorscales include:
 
 ```python
 # Get the Plotly figure without displaying
-fig = manager.plot_network(style="voltage_aware", show=False)
+fig = manager.plot_network(style="voltage_aware")
 
 # Customize further
-fig.update_layout(
-    title="My Network",
-    title_x=0.5
-)
+fig.update_layout(title="My Network", title_x=0.5)
 
 # Save to file
 fig.write_html("network.html")
@@ -220,16 +213,18 @@ fig.show()
 ```python
 import plotly.graph_objects as go
 
-fig = manager.plot_network(style="simple", show=False)
+fig = manager.plot_network(style="simple")
 
 # Add custom markers
-fig.add_trace(go.Scattermapbox(
-    lat=[47.0, 47.5],
-    lon=[15.0, 15.5],
-    mode="markers",
-    marker=dict(size=15, color="red"),
-    name="Critical Nodes"
-))
+fig.add_trace(
+    go.Scattermap(
+        lat=[47.0, 47.5],
+        lon=[15.0, 15.5],
+        mode="markers",
+        marker=dict(size=15, color="red"),
+        name="Critical Nodes",
+    )
+)
 
 fig.show()
 ```
@@ -244,25 +239,17 @@ manager.load_data("csv_files", node_file="...", edge_file="...")
 partition = manager.partition("geographical_kmeans", n_clusters=20)
 
 # Plot original with clusters
-fig_original = manager.plot_network(
-    style="clustered",
-    title="Original Network (Clustered)",
-    show=False
-)
+fig_original = manager.plot_network(style="clustered", title="Original Network (Clustered)")
 
 # Aggregate
 aggregated = manager.aggregate(mode=AggregationMode.GEOGRAPHICAL)
 
 # Plot aggregated
-fig_aggregated = manager.plot_network(
-    graph=aggregated,
-    style="simple",
-    title="Aggregated Network",
-    show=False
-)
+fig_aggregated = manager.plot_network(graph=aggregated, style="simple", title="Aggregated Network")
 
 # Display side by side (in Jupyter)
 from plotly.subplots import make_subplots
+
 # ... or save both
 fig_original.write_html("original.html")
 fig_aggregated.write_html("aggregated.html")
@@ -293,8 +280,8 @@ For networks with >10,000 edges:
 
 ```python
 config = PlotConfig(
-    show_nodes=False,    # Hide nodes for faster rendering
-    edge_width=0.5       # Thinner lines
+    show_nodes=False,  # Hide nodes for faster rendering
+    edge_width=0.5,  # Thinner lines
 )
 
 manager.plot_network(style="simple", config=config)
@@ -330,7 +317,7 @@ Default hover shows:
 Customize with Plotly's hovertemplate:
 
 ```python
-fig = manager.plot_network(style="simple", show=False)
+fig = manager.plot_network(style="simple")
 
 # Update node hover
 for trace in fig.data:
@@ -351,17 +338,17 @@ manager.load_data(
     node_file="buses.csv",
     line_file="lines.csv",
     transformer_file="transformers.csv",
-    link_file="dc_links.csv"
+    link_file="dc_links.csv",
 )
 
 # Configure for power system visualization
 config = PlotConfig(
-    line_voltage_threshold=300,        # 300 kV threshold
-    line_high_voltage_color="#c0392b", # Dark red for EHV
+    line_voltage_threshold=300,  # 300 kV threshold
+    line_high_voltage_color="#c0392b",  # Dark red for EHV
     line_low_voltage_color="#2980b9",  # Blue for HV
-    trafo_color="#8e44ad",             # Purple for transformers
-    dc_link_color="#27ae60",           # Green for DC
-    map_style="carto-darkmatter"       # Dark theme
+    trafo_color="#8e44ad",  # Purple for transformers
+    dc_link_color="#27ae60",  # Green for DC
+    map_style="carto-darkmatter",  # Dark theme
 )
 
 manager.plot_network(style="voltage_aware", config=config)
@@ -374,11 +361,7 @@ manager.plot_network(style="voltage_aware", config=config)
 for n_clusters in [5, 10, 20, 50]:
     partition = manager.partition("geographical_kmeans", n_clusters=n_clusters)
 
-    fig = manager.plot_network(
-        style="clustered",
-        title=f"Partitioning with {n_clusters} Clusters",
-        show=False
-    )
+    fig = manager.plot_network(style="clustered", title=f"Partitioning with {n_clusters} Clusters")
 
     fig.write_html(f"partition_{n_clusters}.html")
 ```
@@ -394,7 +377,7 @@ import plotly.graph_objects as go
 frames = []
 for n_clusters in range(5, 51, 5):
     partition = manager.partition("geographical_kmeans", n_clusters=n_clusters)
-    fig = manager.plot_network(style="clustered", show=False)
+    fig = manager.plot_network(style="clustered")
     frames.append(go.Frame(data=fig.data, name=str(n_clusters)))
 
 # Create animated figure
@@ -402,11 +385,8 @@ animated_fig = go.Figure(
     data=frames[0].data,
     frames=frames,
     layout=go.Layout(
-        updatemenus=[dict(
-            type="buttons",
-            buttons=[dict(label="Play", method="animate")]
-        )]
-    )
+        updatemenus=[dict(type="buttons", buttons=[dict(label="Play", method="animate")])]
+    ),
 )
 
 animated_fig.show()
@@ -418,8 +398,7 @@ animated_fig.show()
 
 ```python
 # Check for nodes without coordinates
-missing = [n for n, d in graph.nodes(data=True)
-           if "lat" not in d or "lon" not in d]
+missing = [n for n, d in graph.nodes(data=True) if "lat" not in d or "lon" not in d]
 
 if missing:
     print(f"Nodes without coordinates: {missing[:5]}...")

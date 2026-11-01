@@ -15,6 +15,7 @@
 [![codecov](https://codecov.io/gh/IEE-TUGraz/npap/branch/main/graph/badge.svg)](https://codecov.io/gh/IEE-TUGraz/npap)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/IEE-TUGraz/NPAP/main.svg)](https://results.pre-commit.ci/latest/github/IEE-TUGraz/NPAP/main)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![JOSS status](https://joss.theoj.org/papers/a48865bb0af0faffe1c9074db581d072/status.svg)](https://joss.theoj.org/papers/a48865bb0af0faffe1c9074db581d072)
 
 ---
 
@@ -53,55 +54,66 @@ pip install npap
 
 ## Quick Start
 
+This example runs as-is: NPAP downloads and caches the network for you. It
+reduces the European high-voltage grid from 6,863 buses to 50, and takes about a
+minute.
+
 ```python
-from npap import PartitionAggregatorManager, AggregationProfile, AggregationMode
+import npap
+from npap import AggregationProfile
+from npap.datasets import fetch_pypsa_eur
 
-# 1. Initialize the manager
-manager = PartitionAggregatorManager()
+files = fetch_pypsa_eur()
 
-# 2. Load data (voltage-aware loader for power systems)
+manager = npap.PartitionAggregatorManager()
+
 manager.load_data(
-    strategy='va_loader',
-    node_file="buses.csv",
-    line_file="lines.csv",
-    transformer_file="transformers.csv",
-    converter_file="converters.csv",
-    link_file="dc_links.csv"
+    strategy="csv_files",
+    node_file=str(files["buses.csv"]),
+    edge_file=str(files["lines.csv"]),
 )
 
-# 3. Aggregate parallel edges (optional)
 manager.aggregate_parallel_edges(
-    edge_properties={"x": "equivalent_reactance", "type": "first"},
-    default_strategy="average"
+    edge_properties={"x": "equivalent_reactance", "s_nom": "sum"},
+    default_strategy="average",
 )
 
-# 4. Partition the network
-manager.partition(strategy="electrical_kmedoids", n_clusters=50)
+manager.partition(strategy="geographical_kmedoids_haversine", n_clusters=50)
 
-# 5. Visualize the partitioned network
-manager.plot_network(style='clustered', title='Partitioned Network')
-
-# 6. Aggregate with a custom profile
 profile = AggregationProfile(
-    mode=AggregationMode.GEOGRAPHICAL,
     topology_strategy="simple",
-    node_properties={"lat": "average", "lon": "average", "voltage": "average"},
-    edge_properties={"p_max": "sum", "x": "equivalent_reactance"},
+    node_properties={"lat": "average", "lon": "average", "voltage": "first"},
+    edge_properties={"x": "equivalent_reactance", "s_nom": "sum"},
     default_node_strategy="average",
-    default_edge_strategy="average"
+    default_edge_strategy="average",
 )
-aggregated_network = manager.aggregate(profile=profile)
+reduced = manager.aggregate(profile=profile)
 
-# 7. Visualize the reduced network
-manager.plot_network(style='simple', title='Aggregated Network')
+manager.plot_network(graph=reduced, style="simple", title="Reduced network")
 ```
+
+The result is a 50-bus, 153-line network — 0.7% of the buses you started with.
+
+The [Quick Start guide](https://npap.readthedocs.io/en/latest/user-guide/quick-start.html)
+explains each step and how the configuration choices affect the outcome, and the
+[example notebooks](https://github.com/IEE-TUGraz/NPAP/tree/main/examples)
+run the full voltage-aware pipeline, which respects transformers, DC links and
+voltage levels.
 
 ## Contributing
 
 We warmly welcome contributions from everyone! Whether it's fixing a typo, improving documentation, reporting bugs, or implementing new features —
 every contribution matters.
 
-Please read our [Contributing Guide](CONTRIBUTING.md) to get started, or visit the full [Contributing Documentation](https://npap.readthedocs.io/en/latest/contributing.html) for detailed guidelines. Don't hesitate to open an issue if you have questions or ideas!
+Please read our [Contributing Guide](CONTRIBUTING.md) to get started, or visit the full [Contributing Documentation](https://npap.readthedocs.io/en/latest/contributing.html) for detailed guidelines.
+
+## Reporting Issues and Asking Questions
+
+Found a bug, want to request a feature, or have a question about using NPAP?
+**[Open an issue](https://github.com/IEE-TUGraz/NPAP/issues/new/choose)** — the
+template picker will guide you to the right form. Please
+[search the existing issues](https://github.com/IEE-TUGraz/NPAP/issues) first, in
+case it has already been reported.
 
 ## License
 

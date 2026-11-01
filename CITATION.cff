@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: Contributors to NPAP
+# SPDX-License-Identifier: MIT
+#
+# Keep `version` and `date-released` in sync with each tagged release.
+# Once the JOSS paper is accepted, add a `preferred-citation` block with its
+# DOI so that GitHub and citation managers point at the article instead.
+
+cff-version: 1.2.0
+title: "NPAP: Network Partitioning and Aggregation Package for Python"
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+
+authors:
+  - given-names: Marco
+    family-names: Anarmo
+    orcid: "https://orcid.org/0009-0000-3806-7946"
+    affiliation: "Institute of Electricity Economics and Energy Innovation (IEE), Graz University of Technology, Austria"
+  - given-names: Benjamin
+    family-names: Stöckl
+    orcid: "https://orcid.org/0009-0005-6579-8169"
+    affiliation: "Institute of Electricity Economics and Energy Innovation (IEE), Graz University of Technology, Austria"
+  - given-names: Yannick
+    family-names: Werner
+    orcid: "https://orcid.org/0000-0002-6674-805X"
+    affiliation: "Institute of Electricity Economics and Energy Innovation (IEE), Graz University of Technology, Austria"
+  - given-names: Sonja
+    family-names: Wogrin
+    orcid: "https://orcid.org/0000-0002-3889-7197"
+    affiliation: "Institute of Electricity Economics and Energy Innovation (IEE), Graz University of Technology, Austria"
+
+abstract: >-
+  NPAP is an open-source Python library for partitioning and aggregating
+  network graphs, with a focus on electrical power systems. Built on NetworkX,
+  it provides a strategy-based architecture for reducing the spatial complexity
+  of networks while preserving their essential physical properties.
+
+repository-code: "https://github.com/IEE-TUGraz/NPAP"
+url: "https://npap.readthedocs.io"
+license: MIT
+version: 1.1.0
+date-released: "2026-08-15"
+
+keywords:
+  - network partitioning
+  - spatial aggregation
+  - power systems
+  - clustering
+  - energy system modeling
+  - NetworkX
+  - Python

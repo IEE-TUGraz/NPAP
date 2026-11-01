@@ -68,7 +68,7 @@ print("NPAP installed successfully!")
 
 ## Requirements
 
-- **Python**: 3.10 or higher
+- **Python**: 3.10 or higher (3.10, 3.11, 3.12, 3.13 and 3.14 are tested in CI)
 - **Operating System**: Windows, macOS, or Linux
 
 ### Core Dependencies
@@ -80,7 +80,9 @@ print("NPAP installed successfully!")
 | pandas | 2.0 | Data manipulation |
 | scipy | 1.10 | Scientific computing |
 | scikit-learn | 1.3 | Clustering algorithms |
-| plotly | 5.0 | Interactive visualization |
+| kmedoids | 0.5.4 | FasterPAM k-medoids |
+| hdbscan | 0.8.41 | Density-based clustering |
+| plotly | 5.24 | Interactive visualization (MapLibre traces) |
 
 ## Troubleshooting
 

@@ -28,10 +28,7 @@ Nodes with similar PTDF columns have similar impact on power flows of lines.
 ## Basic Usage
 
 ```python
-partition = manager.partition(
-    "electrical_kmeans",
-    n_clusters=10
-)
+partition = manager.partition("electrical_kmeans", n_clusters=10)
 ```
 
 ## AC-Island Handling
@@ -68,13 +65,9 @@ from npap.partitioning import ElectricalDistanceConfig
 # Custom configuration
 config = ElectricalDistanceConfig(
     zero_reactance_replacement=1e-5,  # Replace zero reactance
-    regularization_factor=1e-10,       # Matrix regularization
-    infinite_distance=1e4              # Inter-island distance
+    regularization_factor=1e-10,  # Matrix regularization
+    infinite_distance=1e4,  # Inter-island distance
 )
 
-partition = manager.partition(
-    "electrical_kmeans",
-    n_clusters=10,
-    config=config
-)
+partition = manager.partition("electrical_kmeans", n_clusters=10, config=config)
 ```

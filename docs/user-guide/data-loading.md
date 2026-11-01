@@ -77,11 +77,7 @@ Load network data from separate CSV files for nodes and edges.
 ### Basic Usage
 
 ```python
-graph = manager.load_data(
-    "csv_files",
-    node_file="path/to/nodes.csv",
-    edge_file="path/to/edges.csv"
-)
+graph = manager.load_data("csv_files", node_file="path/to/nodes.csv", edge_file="path/to/edges.csv")
 ```
 
 ### Parameters
@@ -144,7 +140,7 @@ graph = manager.load_data(
     line_file="lines.csv",
     transformer_file="transformers.csv",
     converter_file="converters.csv",
-    link_file="dc_links.csv"
+    link_file="dc_links.csv",
 )
 ```
 
@@ -277,11 +273,11 @@ if isinstance(graph, nx.MultiDiGraph):
         edge_properties={
             "x": "equivalent_reactance",  # Parallel reactance formula
             "r": "equivalent_reactance",  # Same for resistance
-            "p_max": "sum",               # Sum capacities
-            "length": "average"           # Average length
+            "p_max": "sum",  # Sum capacities
+            "length": "average",  # Average length
         },
         default_strategy="average",
-        warn_on_defaults=True
+        warn_on_defaults=True,
     )
 ```
 
@@ -308,8 +304,8 @@ graph = manager.load_data("va_loader", ...)
 
 # Group similar voltage levels
 manager.group_by_voltage_levels(
-    target_levels=[220, 380],      # Target voltage levels in kV
-    voltage_attr="voltage",         # Attribute containing voltage
+    target_levels=[220, 380],  # Target voltage levels in kV
+    voltage_attr="voltage",  # Attribute containing voltage
 )
 ```
 
@@ -328,8 +324,7 @@ Check that required attributes exist after loading:
 graph = manager.load_data("csv_files", ...)
 
 # Check for geographic coordinates
-missing_coords = [n for n, d in graph.nodes(data=True)
-                  if "lat" not in d or "lon" not in d]
+missing_coords = [n for n, d in graph.nodes(data=True) if "lat" not in d or "lon" not in d]
 if missing_coords:
     print(f"Warning: {len(missing_coords)} nodes missing coordinates")
 ```
@@ -350,9 +345,7 @@ nodes_df = pd.read_csv("nodes.csv")
 nodes_df = nodes_df.dropna(subset=["lat", "lon"])
 nodes_df.to_csv("nodes_clean.csv", index=False)
 
-graph = manager.load_data("csv_files",
-                          node_file="nodes_clean.csv",
-                          edge_file="edges.csv")
+graph = manager.load_data("csv_files", node_file="nodes_clean.csv", edge_file="edges.csv")
 ```
 
 ### 3. Choose the Right Loader

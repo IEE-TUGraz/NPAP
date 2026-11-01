@@ -69,10 +69,7 @@ from npap import AggregationMode
 manager = npap.PartitionAggregatorManager()
 
 # 2. Load data
-manager.load_data(
-    strategy="networkx_direct",
-    graph=your_graph
-)
+manager.load_data(strategy="networkx_direct", graph=your_graph)
 
 # 2.1. Aggregate parallel edges (if applicable)
 manager.aggregate_parallel_edges(
@@ -82,14 +79,10 @@ manager.aggregate_parallel_edges(
 )
 
 # 3. Create partition result
-partition_result = manager.partition(
-    strategy="geographical_kmeans", n_clusters=250
-)
+partition_result = manager.partition(strategy="geographical_kmeans", n_clusters=250)
 
 # 3.1. Plot the partitioned network
-manager.plot_network(
-    style="clustered", title="Partitioned Network"
-)
+manager.plot_network(style="clustered", title="Partitioned Network")
 
 # 4. Aggregate the network based on a given AggregationMode
 aggregated_network = manager.aggregate(mode=AggregationMode.GEOGRAPHICAL)

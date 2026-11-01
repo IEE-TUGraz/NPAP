@@ -22,10 +22,7 @@ manager = npap.PartitionAggregatorManager()
 manager.load_data("networkx_direct", graph=G)
 
 # Partition the network
-partition_result = manager.partition(
-    strategy="geographical_kmeans",
-    n_clusters=10
-)
+partition_result = manager.partition(strategy="geographical_kmeans", n_clusters=10)
 ```
 
 The result is a {py:class}`~npap.PartitionResult` object:
@@ -140,11 +137,11 @@ All geographical partitioning strategies share a common configuration:
 from npap.partitioning import GeographicalConfig
 
 config = GeographicalConfig(
-    random_state=42,              # Reproducibility
-    max_iter=300,                 # K-Means iterations
-    n_init=10,                    # K-Means initializations
+    random_state=42,  # Reproducibility
+    max_iter=300,  # K-Means iterations
+    n_init=10,  # K-Means initializations
     hierarchical_linkage="ward",  # Hierarchical linkage
-    infinite_distance=1e4         # AC island separation
+    infinite_distance=1e4,  # AC island separation
 )
 ```
 
@@ -154,9 +151,7 @@ Electrical strategies have their own configuration:
 from npap.partitioning import ElectricalDistanceConfig
 
 config = ElectricalDistanceConfig(
-    zero_reactance_replacement=1e-5,
-    regularization_factor=1e-10,
-    infinite_distance=1e4
+    zero_reactance_replacement=1e-5, regularization_factor=1e-10, infinite_distance=1e4
 )
 ```
 

@@ -47,6 +47,7 @@ All strategies inherit from abstract base classes in `npap.interfaces`.
 from npap.interfaces import DataLoadingStrategy
 import networkx as nx
 
+
 class MyFormatStrategy(DataLoadingStrategy):
     """Load network from my custom format."""
 
@@ -92,23 +93,16 @@ Add documentation in `docs/user-guide/data-loading.md`.
 from npap.interfaces import PartitioningStrategy
 import networkx as nx
 
+
 class MyPartitioning(PartitioningStrategy):
     """Partition using my algorithm."""
 
     @property
     def required_attributes(self) -> dict[str, list[str]]:
         """Required node and edge attributes."""
-        return {
-            "nodes": ["my_attribute"],
-            "edges": []
-        }
+        return {"nodes": ["my_attribute"], "edges": []}
 
-    def partition(
-        self,
-        graph: nx.DiGraph,
-        n_clusters: int = 10,
-        **kwargs
-    ) -> dict[int, list]:
+    def partition(self, graph: nx.DiGraph, n_clusters: int = 10, **kwargs) -> dict[int, list]:
         """Partition the graph.
 
         Parameters
@@ -173,23 +167,15 @@ Add documentation in `docs/user-guide/partitioning/`.
 from npap.interfaces import NodePropertyStrategy
 import networkx as nx
 
+
 class MedianNodeStrategy(NodePropertyStrategy):
     """Aggregate using median value."""
 
-    def aggregate_property(
-        self,
-        graph: nx.DiGraph,
-        nodes: list,
-        property_name: str
-    ):
+    def aggregate_property(self, graph: nx.DiGraph, nodes: list, property_name: str):
         """Compute median across nodes."""
         import numpy as np
 
-        values = [
-            graph.nodes[n][property_name]
-            for n in nodes
-            if property_name in graph.nodes[n]
-        ]
+        values = [graph.nodes[n][property_name] for n in nodes if property_name in graph.nodes[n]]
         return float(np.median(values)) if values else 0
 ```
 
@@ -199,20 +185,13 @@ class MedianNodeStrategy(NodePropertyStrategy):
 from npap.interfaces import EdgePropertyStrategy
 from typing import Any
 
+
 class MaxEdgeStrategy(EdgePropertyStrategy):
     """Aggregate using maximum value."""
 
-    def aggregate_property(
-        self,
-        original_edges: list[dict[str, Any]],
-        property_name: str
-    ):
+    def aggregate_property(self, original_edges: list[dict[str, Any]], property_name: str):
         """Return maximum value across edges."""
-        values = [
-            edge[property_name]
-            for edge in original_edges
-            if property_name in edge
-        ]
+        values = [edge[property_name] for edge in original_edges if property_name in edge]
         return max(values) if values else 0
 ```
 
@@ -261,13 +240,10 @@ def partition(self, graph, n_clusters=10, **kwargs):
 from typing import Any
 import networkx as nx
 
+
 def partition(
-    self,
-    graph: nx.DiGraph,
-    n_clusters: int = 10,
-    **kwargs: Any
-) -> dict[int, list[Any]]:
-    ...
+    self, graph: nx.DiGraph, n_clusters: int = 10, **kwargs: Any
+) -> dict[int, list[Any]]: ...
 ```
 
 ### 4. Write Comprehensive Docstrings
@@ -300,22 +276,17 @@ class MyPartitioning(PartitioningStrategy):
 ```python
 from npap import PartitioningError, ValidationError
 
+
 class MyPartitioning(PartitioningStrategy):
     def partition(self, graph, n_clusters=10, **kwargs):
         if n_clusters < 1:
-            raise ValidationError(
-                "n_clusters must be positive",
-                strategy="my_partitioning"
-            )
+            raise ValidationError("n_clusters must be positive", strategy="my_partitioning")
 
         try:
             # Algorithm logic
             ...
         except Exception as e:
-            raise PartitioningError(
-                f"Partitioning failed: {e}",
-                strategy="my_partitioning"
-            )
+            raise PartitioningError(f"Partitioning failed: {e}", strategy="my_partitioning")
 ```
 
 ## Contribution Checklist

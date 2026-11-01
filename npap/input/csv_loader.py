@@ -3,9 +3,9 @@ from pathlib import Path
 import networkx as nx
 import pandas as pd
 
+from npap._logging import LogCategory, log_debug, log_info, log_warning
 from npap.exceptions import DataLoadingError
 from npap.interfaces import DataLoadingStrategy
-from npap.logging import LogCategory, log_debug, log_info, log_warning
 
 
 class CSVFilesStrategy(DataLoadingStrategy):
